@@ -1,3 +1,4 @@
+// SDK 54 + NativeWind v4.2
 const { getDefaultConfig } = require("expo/metro-config");
 const { withNativeWind } = require("nativewind/metro");
 

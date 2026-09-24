@@ -1,43 +1,40 @@
-from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel
-import jwt
-from datetime import datetime, timedelta, timezone
+from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session
+
+from core.deps import get_usuario_logado
+from models.database import get_db
+from models.db_models import Usuario
+from models.schemas import (
+    UsuarioCreate, UsuarioResponse, LoginRequest,
+    TokenResponse, RefreshRequest
+)
+from rules import auth_service
 
 router = APIRouter(prefix="/auth", tags=["Autenticação"])
 
-SECRET_KEY = (
-    "sua_chave_secreta_de_producao_aqui"  # Idealmente via variável de ambiente [22, 23]
-)
-ALGORITHM = "HS256"
+
+@router.post("/registrar", response_model=UsuarioResponse, status_code=201)
+async def registrar_usuario(dados: UsuarioCreate, db: Session = Depends(get_db)):
+    """Endpoint para cadastro de novo usuário"""
+    return auth_service.criar_usuario(db, dados)
 
 
-class RefreshRequest(BaseModel):
-    refresh_token: str
+@router.post("/login", response_model=TokenResponse)
+async def login(dados: LoginRequest, db: Session = Depends(get_db)):
+    """Endpoint de login: retorna access_token e refresh_token"""
+    return auth_service.autenticar_usuario(db, dados)
 
 
 @router.post("/refresh")
-async def refresh(body: RefreshRequest):
-    try:
-        payload = jwt.decode(
-            body.refresh_token, SECRET_KEY, algorithms=[ALGORITHM]
-        )  # Importante usar "algorithms" no plural [22, 24]
-    except jwt.ExpiredSignatureError:
-        raise HTTPException(status_code=401, detail="Refresh token expirado")
-    except jwt.InvalidTokenError:
-        raise HTTPException(status_code=401, detail="Token inválido")
+async def refresh_token(dados: RefreshRequest):
+    """
+    Endpoint para renovar access_token usando refresh_token
+    Com tratamento de erro exatamente como no seu auth.py original
+    """
+    return auth_service.renovar_access_token(dados.refresh_token)
 
-    if payload.get("type") != "refresh":
-        raise HTTPException(status_code=401, detail="Tipo de token incorreto")
 
-    # Gera novo access_token de curta duração (ex: 15 minutos) [22, 23]
-    now = datetime.now(timezone.utc)
-    new_access_payload = {
-        "sub": payload["sub"],
-        "type": "access",
-        "iat": now,
-        "exp": now + timedelta(minutes=15),
-    }
-    return {
-        "access_token": jwt.encode(new_access_payload, SECRET_KEY, algorithm=ALGORITHM),
-        "token_type": "bearer",
-    }
+@router.get("/me", response_model=UsuarioResponse)
+async def obter_dados_usuario_logado(usuario: Usuario = Depends(get_usuario_logado)):
+    """Retorna dados do usuário atualmente logado (requer token JWT)"""
+    return usuario

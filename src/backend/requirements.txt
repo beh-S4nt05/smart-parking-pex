@@ -1,8 +1,20 @@
-fastapi
-uvicorn
-sqlalchemy
-psycopg2-binary
-pydantic
-pyjwt
-bcrypt
-websockets
+# Core FastAPI
+fastapi>=0.110.0
+uvicorn[standard]>=0.29.0
+
+# Validação e Configuração
+pydantic[email]>=2.6.0
+pydantic-settings>=2.2.0
+email-validator>=2.1.0
+
+# Banco de Dados (SQLAlchemy 2.0 + PostgreSQL)
+sqlalchemy>=2.0.0
+psycopg2-binary>=2.9.9
+
+# Segurança e Autenticação
+PyJWT>=2.8.0
+bcrypt>=4.1.0
+python-multipart>=0.0.9
+
+# Utilitários
+python-dotenv>=1.0.0

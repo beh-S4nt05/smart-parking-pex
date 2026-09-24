@@ -1,38 +1,53 @@
-# main.py
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from .api import router as api_router  # Importa o roteador que você criou no api.py
+
+from core.config import settings
+from models.database import engine, Base
+from api.api import router as api_router
+from api.auth import router as auth_router
+
+
+# Cria todas as tabelas no banco de dados automaticamente
+# Em produção recomenda-se usar Alembic para migrações, mas para desenvolvimento isso funciona
+Base.metadata.create_all(bind=engine)
 
 # Inicializa o app do FastAPI
 app = FastAPI(
-    title="SmartParking API",
-    description="Backend em FastAPI para gerenciamento inteligente de vagas",
-    version="1.0.0",
+    title=settings.APP_NAME,
+    description=settings.APP_DESCRIPTION,
+    version=settings.APP_VERSION,
+    debug=settings.DEBUG,
 )
 
-# Configuração obrigatória de CORS para permitir comunicação com o React Native Expo [2, 7]
-# Em desenvolvimento, você pode liberar todas as origins. Em produção, limite ao necessário.
+# Configuração de CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Permite requisições do seu app móvel [2]
+    allow_origins=settings.CORS_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],  # Permite GET, POST, PUT, DELETE, PATCH [2, 3]
+    allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Inclui as rotas do api.py na aplicação principal
+# Inclui todos os roteadores
 app.include_router(api_router)
+app.include_router(auth_router)
 
 
-# Rota simples de verificação de status na raiz (opcional)
+# Rota raiz
 @app.get("/")
 async def root():
-    return {"status": "SmartParking API está rodando perfeitamente!"}
+    return {
+        "status": "SmartParking API está rodando perfeitamente!",
+        "docs": "/docs",
+        "version": settings.APP_VERSION
+    }
 
 
-# Inicialização do servidor Uvicorn [6]
 if __name__ == "__main__":
-    # Rodar em 0.0.0.0 permite que seu celular/emulador na mesma rede Wi-Fi encontre o backend [6]
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
-
+    uvicorn.run(
+        "main:app",
+        host="0.0.0.0",
+        port=8000,
+        reload=settings.DEBUG,
+    )

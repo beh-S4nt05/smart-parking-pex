@@ -1,11 +1,13 @@
 /** @type {import('tailwindcss').Config} */
+// NativeWind v4 exige Tailwind 3.x (o react-native-css-interop 0.2.7 tem peer
+// "tailwindcss": "~3"). NÃO subir para Tailwind 4 sem migrar para NativeWind v5.
+
 module.exports = {
-  content: [
-    "./App.{js,jsx,ts,tsx}",
-    "./app/**/*.{js,jsx,ts,tsx}",
-    "./src/**/*.{js,jsx,ts,tsx}", // Ajuste para as pastas onde seu código vive
-  ],
-  presets: [require("nativewind/preset")], // ⚠️ Obrigatório no NativeWind v4
+  // precisa cobrir app/ E src/ — se faltar caminho aqui, a classe simplesmente
+  // não é gerada e o estilo "não aplica" sem erro nenhum.
+  content: ["./app/**/*.{js,jsx,ts,tsx}", "./src/**/*.{js,jsx,ts,tsx}"],
+  presets: [require("nativewind/preset")],
+  darkMode: "class",
   theme: {
     extend: {},
   },

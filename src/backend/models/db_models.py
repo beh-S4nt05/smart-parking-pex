@@ -1,12 +1,36 @@
-# db_models.py
 import uuid
-from sqlalchemy import Column, String, Integer, ForeignKey, DateTime, Boolean, Enum, Table
+import enum
+from sqlalchemy import Column, String, Integer, ForeignKey, DateTime, Boolean, Float, Text
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from .database import Base
 
+
 def generate_uuid():
     return str(uuid.uuid4())
+
+
+class StatusVaga(str, enum.Enum):
+    """Enum padronizado de status de vaga"""
+    LIVRE = "livre"
+    OCUPADA = "ocupada"
+    RESERVADA = "reservada"
+    INATIVA = "inativa"
+
+
+class StatusReserva(str, enum.Enum):
+    CONFIRMADA = "confirmada"
+    CANCELADA = "cancelada"
+    CONCLUIDA = "concluida"
+
+
+class TipoVaga(str, enum.Enum):
+    COMUM = "comum"
+    IDOSO = "idoso"
+    PCD = "pcd"
+    MOTO = "moto"
+    ELETRICO = "eletrico"
+
 
 class Usuario(Base):
     __tablename__ = "usuarios"
@@ -15,7 +39,9 @@ class Usuario(Base):
     nome = Column(String, nullable=False)
     email = Column(String, nullable=False, unique=True, index=True)
     senha_hash = Column(String, nullable=False)
-    placa_veiculo = Column(String, nullable=True, index=True) # Indexado para buscas rápidas de entrada/saída
+    placa_veiculo = Column(String, nullable=True, index=True)
+    telefone = Column(String, nullable=True)
+    is_ativo = Column(Boolean, default=True)
     criado_em = Column(DateTime(timezone=True), server_default=func.now())
     atualizado_em = Column(DateTime(timezone=True), onupdate=func.now())
 
@@ -32,18 +58,35 @@ class Estacionamento(Base):
     endereco = Column(String, nullable=True)
     total_andares = Column(Integer, nullable=False, default=1)
     total_vagas = Column(Integer, nullable=False, default=0)
+    hora_abertura = Column(String, default="06:00")
+    hora_fechamento = Column(String, default="22:00")
+    taxa_hora = Column(Float, default=0.0)
+    telefone = Column(String, nullable=True)
+    latitude = Column(Float, nullable=True)
+    longitude = Column(Float, nullable=True)
     criado_em = Column(DateTime(timezone=True), server_default=func.now())
 
     # Relacionamentos
-    andares = relationship("Andar", back_populates="estacionamento", cascade="all, delete-orphan", order_by="Andar.numero_andar")
+    andares = relationship(
+        "Andar",
+        back_populates="estacionamento",
+        cascade="all, delete-orphan",
+        order_by="Andar.numero_andar"
+    )
+    historicos = relationship("Historico", back_populates="estacionamento")
 
 
 class Andar(Base):
     __tablename__ = "andares"
 
     id = Column(String, primary_key=True, default=generate_uuid, index=True)
-    estacionamento_id = Column(String, ForeignKey("estacionamentos.id", ondelete="CASCADE"), nullable=False, index=True)
-    numero_andar = Column(Integer, nullable=False) # Ex: 0 (Térreo), 1, 2...
+    estacionamento_id = Column(
+        String,
+        ForeignKey("estacionamentos.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True
+    )
+    numero_andar = Column(Integer, nullable=False)
     capacidade = Column(Integer, nullable=False)
     criado_em = Column(DateTime(timezone=True), server_default=func.now())
 
@@ -56,21 +99,24 @@ class Vaga(Base):
     __tablename__ = "vagas"
 
     id = Column(String, primary_key=True, default=generate_uuid, index=True)
-    andar_id = Column(String, ForeignKey("andares.id", ondelete="CASCADE"), nullable=False, index=True)
-    codigo = Column(String, nullable=False, index=True) # Ex: A1, B12, C03
-    
+    andar_id = Column(
+        String,
+        ForeignKey("andares.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True
+    )
+    codigo = Column(String, nullable=False, index=True)  # Ex: A1, B12, C03
+    tipo = Column(String, nullable=False, default=TipoVaga.COMUM)
+    posicao_x = Column(Integer, nullable=True)  # Posição para mapa
+    posicao_y = Column(Integer, nullable=True)
     # Status da vaga: 'livre', 'ocupada', 'reservada', 'inativa'
-    status = Column(String, nullable=False, default="livre", index=True)
-    
-    # Tipo de veículo suportado: 'carro', 'moto', 'caminhonete'
-    tipo_veiculo = Column(String, nullable=False, default="carro", index=True)
-    
+    status = Column(String, nullable=False, default=StatusVaga.LIVRE, index=True)
     criado_em = Column(DateTime(timezone=True), server_default=func.now())
-    atualizado_em = Column(DateTime(timezone=True), onupdate=func.now())
+    ultima_atualizacao = Column(DateTime(timezone=True), onupdate=func.now())
 
     # Relacionamentos
     andar = relationship("Andar", back_populates="vagas")
-    reservas = relationship("Reserva", back_populates="vaga", cascade="all, delete-orphan")
+    reservas = relationship("Reserva", back_populates="vaga")
     historicos = relationship("Historico", back_populates="vaga")
 
 
@@ -78,40 +124,54 @@ class Reserva(Base):
     __tablename__ = "reservas"
 
     id = Column(String, primary_key=True, default=generate_uuid, index=True)
-    vaga_id = Column(String, ForeignKey("vagas.id", ondelete="CASCADE"), nullable=False, index=True)
-    usuario_id = Column(String, ForeignKey("usuarios.id", ondelete="CASCADE"), nullable=False, index=True)
-    
-    dt_inicio = Column(DateTime(timezone=True), nullable=False, server_default=func.now(), index=True)
-    dt_expiracao = Column(DateTime(timezone=True), nullable=False, index=True)
-    
-    # Status do fluxo: 'ativa' (em andamento), 'concluida' (usuário estacionou), 'cancelada' (pelo usuário), 'expirada' (tempo limite excedido)
-    status = Column(String, nullable=False, default="ativa", index=True)
-    
+    usuario_id = Column(
+        String,
+        ForeignKey("usuarios.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True
+    )
+    vaga_id = Column(
+        String,
+        ForeignKey("vagas.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True
+    )
+    horario_inicio = Column(DateTime(timezone=True), nullable=False)
+    horario_fim = Column(DateTime(timezone=True), nullable=False)
+    status = Column(String, nullable=False, default=StatusReserva.CONFIRMADA, index=True)
+    observacoes = Column(Text, nullable=True)
     criado_em = Column(DateTime(timezone=True), server_default=func.now())
-    atualizado_em = Column(DateTime(timezone=True), onupdate=func.now())
 
     # Relacionamentos
-    vaga = relationship("Vaga", back_populates="reservas")
     usuario = relationship("Usuario", back_populates="reservas")
+    vaga = relationship("Vaga", back_populates="reservas")
 
 
 class Historico(Base):
+    """Tabela de histórico de entradas/saídas para relatórios"""
     __tablename__ = "historicos"
 
     id = Column(String, primary_key=True, default=generate_uuid, index=True)
-    vaga_id = Column(String, ForeignKey("vagas.id", ondelete="SET NULL"), nullable=True, index=True) # SET NULL garante integridade se vaga for deletada
-    usuario_id = Column(String, ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True, index=True)
-    
-    placa_veiculo = Column(String, nullable=False, index=True)
-    dt_entrada = Column(DateTime(timezone=True), nullable=False, server_default=func.now(), index=True)
-    dt_saida = Column(DateTime(timezone=True), nullable=True, index=True)
-    
-    # Origem do fluxo de entrada: 'reserva' ou 'entrada_direta'
-    origem = Column(String, nullable=False, default="entrada_direta", index=True)
-    
-    # Métricas de escalabilidade/permanência adicionais
-    tempo_permanencia_minutos = Column(Integer, nullable=True) # Calculado no checkout para relatórios rápidos
+    usuario_id = Column(String, ForeignKey("usuarios.id"), nullable=True)
+    estacionamento_id = Column(
+        String,
+        ForeignKey("estacionamentos.id"),
+        nullable=False,
+        index=True
+    )
+    vaga_id = Column(
+        String,
+        ForeignKey("vagas.id"),
+        nullable=False,
+        index=True
+    )
+    placa_veiculo = Column(String, index=True)
+    entrada_em = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    saida_em = Column(DateTime(timezone=True), nullable=True)
+    tempo_permanencia_minutos = Column(Integer, nullable=True)
+    valor_total = Column(Float, nullable=True)
 
     # Relacionamentos
-    vaga = relationship("Vaga", back_populates="historicos")
     usuario = relationship("Usuario", back_populates="historicos")
+    estacionamento = relationship("Estacionamento", back_populates="historicos")
+    vaga = relationship("Vaga", back_populates="historicos")
