@@ -26,7 +26,9 @@ def criar_usuario(db: Session, dados: UsuarioCreate) -> Usuario:
         email=dados.email,
         telefone=dados.telefone,
         placa_veiculo=dados.placa_veiculo,
-        senha_hash=senha_hash
+        senha_hash=senha_hash,
+        role="usuario",  # Usuários cadastrados publicamente são sempre comuns
+        is_ativo=True
     )
 
     db.add(novo_usuario)

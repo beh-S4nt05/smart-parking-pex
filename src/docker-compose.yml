@@ -1,0 +1,73 @@
+services:
+  nginx:
+    build: ./nginx
+    container_name: smartparking-nginx
+    restart: always
+    ports:
+      - "80:80"
+    # ❌ Removido COMPLETAMENTE todos os volumes de bind mount do host!
+    # As configurações já estão copiadas para dentro da imagem no build.
+    depends_on:
+      - backend
+    networks:
+      - smartparking-network
+
+  backend:
+    build: ./backend
+    restart: always
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/smartparking
+      - ENVIRONMENT=production
+      - SECRET_KEY=mude_esta_chave_secreta_em_producao
+    expose:
+      - "8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - smartparking-network
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: smartparking-postgres
+    restart: always
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: smartparking
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d smartparking"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - smartparking-network
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: smartparking-pgadmin
+    restart: always
+    ports:
+      - "5050:80"
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - smartparking-network
+
+volumes:
+  postgres_data:
+  pgadmin_data:
+
+networks:
+  smartparking-network:
+    driver: bridge

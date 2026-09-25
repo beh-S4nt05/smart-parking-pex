@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -30,6 +30,17 @@ class Settings(BaseSettings):
 
     # CORS
     CORS_ORIGINS: List[str] = ["*"]
+
+    # Chave de assinatura de requisições anti-replicação (deve ser a MESMA no frontend)
+    APP_SIGNING_SECRET: str = "smartparking_default_signing_key_change_in_production"
+
+    # OAuth Providers (autenticação social)
+    GOOGLE_CLIENT_ID: Optional[str] = None
+    GOOGLE_CLIENT_SECRET: Optional[str] = None
+    FACEBOOK_CLIENT_ID: Optional[str] = None
+    FACEBOOK_CLIENT_SECRET: Optional[str] = None
+    APPLE_CLIENT_ID: Optional[str] = None
+    APPLE_CLIENT_SECRET: Optional[str] = None
 
 
 settings = Settings()

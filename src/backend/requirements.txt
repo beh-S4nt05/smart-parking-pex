@@ -1,6 +1,11 @@
-# Core FastAPI
+# Core FastAPI e Servidor de Produção
 fastapi>=0.110.0
+gunicorn>=22.0.0
+# Segurança da API e performance
+slowapi>=0.1.9
+limits>=3.13.0
 uvicorn[standard]>=0.29.0
+secure>=0.3.0
 
 # Validação e Configuração
 pydantic[email]>=2.6.0
@@ -15,6 +20,8 @@ psycopg2-binary>=2.9.9
 PyJWT>=2.8.0
 bcrypt>=4.1.0
 python-multipart>=0.0.9
+authlib>=1.3.0
+httpx>=0.27.0
 
 # Utilitários
 python-dotenv>=1.0.0

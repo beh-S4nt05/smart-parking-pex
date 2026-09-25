@@ -21,6 +21,7 @@ class UsuarioCreate(UsuarioBase):
 class UsuarioResponse(UsuarioBase):
     id: str
     is_ativo: bool
+    role: str
     criado_em: datetime
 
     model_config = {"from_attributes": True}
@@ -181,3 +182,157 @@ class StatusResponse(BaseModel):
 class HealthCheckResponse(BaseModel):
     status: str
     banco_dados: bool
+
+
+# --- Schemas de Usuário para Admin ---
+class UsuarioAdminCreate(UsuarioCreate):
+    role: str = "usuario"
+    estacionamento_id: Optional[str] = None
+
+
+class UsuarioAdminUpdate(BaseModel):
+    nome: Optional[str] = None
+    telefone: Optional[str] = None
+    placa_veiculo: Optional[str] = None
+    role: Optional[str] = None
+    is_ativo: Optional[bool] = None
+    estacionamento_id: Optional[str] = None
+
+
+# --- Schemas de Finanças ---
+class ConfiguracaoPrecoBase(BaseModel):
+    tipo_vaga: str
+    valor_hora: float = Field(..., ge=0)
+    valor_diaria: Optional[float] = Field(None, ge=0)
+    tolerancia_minutos: int = 15
+
+
+class ConfiguracaoPrecoCreate(ConfiguracaoPrecoBase):
+    estacionamento_id: str
+
+
+class ConfiguracaoPrecoResponse(ConfiguracaoPrecoBase):
+    id: str
+    estacionamento_id: str
+    criado_em: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class PagamentoResponse(BaseModel):
+    id: str
+    historico_id: str
+    estacionamento_id: str
+    valor_total: float
+    metodo_pagamento: str
+    status_pagamento: str
+    data_pagamento: datetime
+    comprovante_url: Optional[str] = None
+    placa_veiculo: Optional[str] = None
+    tempo_permanencia_min: Optional[int] = None
+
+    model_config = {"from_attributes": True}
+
+
+class ResumoFinanceiroResponse(BaseModel):
+    estacionamento_id: Optional[str] = None
+    estacionamento_nome: Optional[str] = None
+    periodo: str
+    faturamento_total: float
+    ticket_medio: float
+    total_pagamentos: int
+    pagamentos_pix: int
+    pagamentos_cartao: int
+    pagamentos_dinheiro: int
+    valor_pix: float
+    valor_cartao: float
+    valor_dinheiro: float
+    faturamento_por_dia: List[dict]
+    faturamento_por_tipo_vaga: List[dict]
+
+
+class RegistrarPagamentoRequest(BaseModel):
+    historico_id: str
+    metodo_pagamento: str = Field(..., pattern="^(pix|cartao|dinheiro)$")
+    valor_total: float = Field(..., gt=0)
+    comprovante_url: Optional[str] = None
+    observacoes: Optional[str] = None
+
+
+
+# --- Schemas do Módulo de Pagamentos ---
+class CalcularTarifaRequest(BaseModel):
+    cupom_codigo: Optional[str] = None
+
+class PagamentoRequest(BaseModel):
+    historico_id: str
+    metodo_pagamento: str = Field(..., pattern="^(pix|cartao_credito|cartao_debito|dinheiro)$")
+    valor_recebido: Optional[float] = None
+    observacoes: Optional[str] = None
+
+class PagamentoResponse(BaseModel):
+    id: str
+    valor_total: float
+    metodo_pagamento: str
+    status_pagamento: str
+    copia_cola_pix: Optional[str] = None
+    qr_code_pix: Optional[str] = None
+    link_pagamento: Optional[str] = None
+    data_pagamento: Optional[datetime] = None
+    troco: Optional[float] = 0.0
+
+    model_config = {"from_attributes": True}
+
+class TarifaResponse(BaseModel):
+    historico_id: str
+    tempo_permanencia_minutos: int
+    valor_bruto: float
+    desconto_aplicado: float
+    valor_total: float
+    cupom_aplicado: Optional[str] = None
+
+class CupomCreate(BaseModel):
+    estacionamento_id: str
+    codigo: str
+    tipo_desconto: str = Field(..., pattern="^(porcentagem|valor_fixo|isencao_total)$")
+    valor_desconto: float = Field(..., ge=0)
+    descricao: Optional[str] = None
+    limite_usos: Optional[int] = None
+    data_validade: Optional[datetime] = None
+
+class CupomResponse(BaseModel):
+    id: str
+    codigo: str
+    tipo_desconto: str
+    valor_desconto: float
+    descricao: Optional[str]
+    limite_usos: Optional[int]
+    usos_realizados: int
+    data_validade: Optional[datetime]
+    ativo: bool
+
+    model_config = {"from_attributes": True}
+
+class AbrirCaixaRequest(BaseModel):
+    estacionamento_id: str
+    valor_inicial: float = 0.0
+
+class FecharCaixaRequest(BaseModel):
+    valor_sangria: float = 0.0
+    observacoes: Optional[str] = None
+
+class FechamentoCaixaResponse(BaseModel):
+    id: str
+    data_abertura: datetime
+    data_fechamento: Optional[datetime]
+    valor_inicial_caixa: float
+    valor_pix: float
+    valor_cartao_credito: float
+    valor_cartao_debito: float
+    valor_dinheiro: float
+    valor_total: float
+    quantidade_pagamentos: int
+    valor_sangria: float
+    fechado: bool
+
+    model_config = {"from_attributes": True}
