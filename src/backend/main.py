@@ -9,26 +9,32 @@ from core.security import criar_hash_senha
 from core.security_middleware import SecurityHeadersMiddleware
 from core.rate_limiter import limiter, rate_limit_exceeded_handler, LIMITS
 from core.request_validator import RequestValidationMiddleware
+from sqlalchemy.exc import ProgrammingError, IntegrityError
 from models.database import engine, Base, SessionLocal
 from models.db_models import Usuario, TipoUsuario
 from api.api import router as api_router
 from api.auth import router as auth_router
 from api.admin import router as admin_router
 
-
 # Cria todas as tabelas no banco de dados automaticamente
-Base.metadata.create_all(bind=engine)
+try:
+    Base.metadata.create_all(bind=engine)
+except (ProgrammingError, IntegrityError):
+    # Tabelas já existem (corrida entre workers/processos) — segue em frente
+    pass
 
 # Cria usuário administrador padrão se não existir (primeira execução)
 db = SessionLocal()
-admin_existente = db.query(Usuario).filter(Usuario.email == "admin@smartparking.com").first()
+admin_existente = (
+    db.query(Usuario).filter(Usuario.email == "admin@smartparking.com").first()
+)
 if not admin_existente:
     admin_padrao = Usuario(
         nome="Administrador",
         email="admin@smartparking.com",
         senha_hash=criar_hash_senha("admin123"),
         role=TipoUsuario.ADMIN,
-        is_ativo=True
+        is_ativo=True,
     )
     db.add(admin_padrao)
     db.commit()
@@ -62,9 +68,10 @@ if settings.ENVIRONMENT == "production":
     app.add_middleware(
         TrustedHostMiddleware,
         allowed_hosts=[
-            "localhost", "127.0.0.1",
+            "localhost",
+            "127.0.0.1",
             # Adicione aqui seu domínio de produção
-        ]
+        ],
     )
 
 # 3. CORS
@@ -87,14 +94,14 @@ app.include_router(admin_router)
 async def root():
     return {
         "status": "SmartParking API está rodando perfeitamente!",
-        "version": settings.APP_VERSION
+        "version": settings.APP_VERSION,
     }
 
 
 if __name__ == "__main__":
     uvicorn.run(
         "main:app",
-        host="0.0.0.0",
+        host="localhost",
         port=8000,
         reload=settings.DEBUG,
         workers=4 if not settings.DEBUG else 1,

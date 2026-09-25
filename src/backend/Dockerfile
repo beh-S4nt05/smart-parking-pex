@@ -8,14 +8,21 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Instala dependências Python
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+
+# Instala dependências Python
+RUN pip3 install --upgrade pip && \
+    pip3 install --no-cache-dir --retries 5 --timeout 60 -r requirements.txt
+
+ENV PYTHONPATH=/app
 
 # Copia código da aplicação
-COPY . .
+COPY . /app
 
-# Cria usuário não-root para rodar a aplicação (boa prática de segurança)
+# Corrige permissões: leitura E escrita (necessário para fallback SQLite)
+RUN chmod -R a+rwX /app
+
+# Cria usuário não-root para rodar a aplicação
 RUN useradd -m appuser
 USER appuser
 

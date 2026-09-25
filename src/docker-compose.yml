@@ -19,6 +19,8 @@ services:
       - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/smartparking
       - ENVIRONMENT=production
       - SECRET_KEY=mude_esta_chave_secreta_em_producao
+    ports:
+    - "8000:8000"
     expose:
       - "8000"
     depends_on:

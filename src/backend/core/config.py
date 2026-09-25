@@ -17,7 +17,7 @@ class Settings(BaseSettings):
     APP_VERSION: str = "1.0.0"
     ENVIRONMENT: str = "development"
     DEBUG: bool = True
-    API_V1_PREFIX: str = "/api"
+    API_V2_PREFIX: str = "/api"
 
     # Banco de dados (PostgreSQL padrão como no seu database.py)
     DATABASE_URL: str = "postgresql://postgres:postgres@localhost:5432/smartparking"

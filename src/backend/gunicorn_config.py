@@ -7,6 +7,11 @@ import os
 workers = int(os.getenv("GUNICORN_WORKERS", multiprocessing.cpu_count() * 2 + 1))
 worker_class = "uvicorn.workers.UvicornWorker"
 
+# Carrega a aplicação UMA VEZ no processo master antes de criar os workers
+# Evita que cada worker execute código de inicialização (como criação de tabelas) em paralelo
+preload_app = True
+
+
 # Bind em todas as interfaces na porta 8000
 bind = os.getenv("GUNICORN_BIND", "localhost:8000")
 

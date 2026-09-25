@@ -5,3 +5,9 @@
 expo-env.d.ts
 # @end expo-cli
 .env
+
+.gitignore
+
+# Python 
+__pycache__
+__pycache__/*

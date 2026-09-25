@@ -22,18 +22,37 @@ class RequestValidationMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next):
         public_get_routes = [
-            "/", "/api/status", "/api/health", "/api/version", "/docs", "/redoc", "/openapi.json"
+            "/",
+            "/api/status",
+            "/api/health",
+            "/api/version",
+            "/docs",
+            "/redoc",
+            "/openapi.json",
         ]
-        auth_routes = ["/auth/login", "/auth/registrar", "/auth/refresh",
-                       "/auth/login/google", "/auth/login/facebook", "/auth/login/apple"]
+        auth_routes = [
+            "/auth/login",
+            "/auth/registrar",
+            "/auth/refresh",
+            "/auth/login/google",
+            "/auth/login/facebook",
+            "/auth/login/apple",
+        ]
         path = request.url.path
 
         # Rotas GET de consulta pública e autenticação não exigem assinatura
-        if (request.method == "GET") or (path in auth_routes) or (path in public_get_routes):
+        if (
+            (request.method == "GET")
+            or (path in auth_routes)
+            or (path in public_get_routes)
+        ):
             return await call_next(request)
 
         # Para TODAS as rotas que modificam dados em produção, exigimos assinatura
-        if request.method in ["POST", "PUT", "PATCH", "DELETE"] and settings.ENVIRONMENT == "production":
+        if (
+            request.method in ["POST", "PUT", "PATCH", "DELETE"]
+            and settings.ENVIRONMENT == "production"
+        ):
             # TODA validação de assinatura só ocorre em produção
             pass
         else:
@@ -46,20 +65,28 @@ class RequestValidationMiddleware(BaseHTTPMiddleware):
             if not timestamp_header or not nonce_header or not signature_header:
                 return JSONResponse(
                     status_code=403,
-                    content={"detail": "Requisição inválida: Assinatura ausente. Use o aplicativo oficial."}
+                    content={
+                        "detail": "Requisição inválida: Assinatura ausente. Use o aplicativo oficial."
+                    },
                 )
 
             try:
                 req_timestamp = int(timestamp_header)
             except ValueError:
-                return JSONResponse(status_code=403, content={"detail": "Timestamp inválido."})
+                return JSONResponse(
+                    status_code=403, content={"detail": "Timestamp inválido."}
+                )
 
             now = int(time.time())
             if abs(now - req_timestamp) > self.TIMESTAMP_TOLERANCE:
-                return JSONResponse(status_code=403, content={"detail": "Requisição expirada."})
+                return JSONResponse(
+                    status_code=403, content={"detail": "Requisição expirada."}
+                )
 
             if nonce_header in self.used_nonces:
-                return JSONResponse(status_code=403, content={"detail": "Requisição duplicada."})
+                return JSONResponse(
+                    status_code=403, content={"detail": "Requisição duplicada."}
+                )
 
             self._limpar_nonces_antigos(now)
 
@@ -73,18 +100,34 @@ class RequestValidationMiddleware(BaseHTTPMiddleware):
             assinatura_esperada = hmac.new(
                 self.APP_SECRET.encode("utf-8"),
                 string_para_assinar.encode("utf-8"),
-                hashlib.sha256
+                hashlib.sha256,
             ).hexdigest()
 
             if not hmac.compare_digest(assinatura_esperada, signature_header):
-                return JSONResponse(status_code=403, content={"detail": "Assinatura inválida. Acesso negado."})
+                return JSONResponse(
+                    status_code=403,
+                    content={"detail": "Assinatura inválida. Acesso negado."},
+                )
 
             # Verifica User Agent
             user_agent = request.headers.get("user-agent", "").lower()
-            blocked_uas = ["postman", "insomnia", "curl", "wget", "python-requests", "mozilla", "chrome", "safari", "firefox"]
+            blocked_uas = [
+                "postman",
+                "insomnia",
+                "curl",
+                "wget",
+                "python-requests",
+                "mozilla",
+                "chrome",
+                "safari",
+                "firefox",
+            ]
             for blocked in blocked_uas:
                 if blocked in user_agent:
-                    return JSONResponse(status_code=403, content={"detail": "Utilize o aplicativo oficial."})
+                    return JSONResponse(
+                        status_code=403,
+                        content={"detail": "Utilize o aplicativo oficial."},
+                    )
 
             # Marca nonce como usado
             self.used_nonces.add(nonce_header)

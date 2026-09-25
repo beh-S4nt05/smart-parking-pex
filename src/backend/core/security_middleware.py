@@ -12,18 +12,30 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 
     # Padrões comuns de SQL Injection para detectar e bloquear automaticamente
     SQL_INJECTION_PATTERNS = [
-        re.compile(r"(?i)(\b(select|insert|update|delete|drop|alter|create|truncate|exec|union|into|load_file|outfile)\b)"),
+        re.compile(
+            r"(?i)(\b(select|insert|update|delete|drop|alter|create|truncate|exec|union|into|load_file|outfile)\b)"
+        ),
         re.compile(r"(?i)(--\s|\bor\b\s+\d+\s*=\s*\d+|\band\b\s+\d+\s*=\s*\d+)"),
         re.compile(r"(?i)(\'|\"|;|--|/\*|\*/|xp_|sp_)"),
         re.compile(r"(?i)(union(\s|\+)+select|select(\s|\+)+from)", re.IGNORECASE),
-        re.compile(r"(?i)script\s*>", re.IGNORECASE),  # Proteção contra XSS básico em parâmetros
-        re.compile(r"(?i)(javascript:|onerror=|onload=|eval\()", re.IGNORECASE)
+        re.compile(
+            r"(?i)script\s*>", re.IGNORECASE
+        ),  # Proteção contra XSS básico em parâmetros
+        re.compile(r"(?i)(javascript:|onerror=|onload=|eval\()", re.IGNORECASE),
     ]
 
     # User agents de scanners automatizados que costumam atacar APIs
     BLOCKED_AGENTS = {
-        "sqlmap", "nikto", "nmap", "masscan", "dirbuster", "wpscan",
-        "acunetix", "burpsuite", "zaproxy", "vulnerability-scanner"
+        "sqlmap",
+        "nikto",
+        "nmap",
+        "masscan",
+        "dirbuster",
+        "wpscan",
+        "acunetix",
+        "burpsuite",
+        "zaproxy",
+        "vulnerability-scanner",
     }
 
     def __init__(self, app, environment: str = "development"):
@@ -44,13 +56,15 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             if blocked_agent in user_agent:
                 return JSONResponse(
                     status_code=403,
-                    content={"detail": "Acesso não autorizado: Scanner detectado"}
+                    content={"detail": "Acesso não autorizado: Scanner detectado"},
                 )
 
         # 2. Verifica se não está tentando acessar endpoints que não existem com método HEAD/OPTIONS bloqueado
         # (evita scaneamento automatizado de rotas)
         if request.method not in {"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"}:
-            return JSONResponse(status_code=405, content={"detail": "Método não permitido"})
+            return JSONResponse(
+                status_code=405, content={"detail": "Método não permitido"}
+            )
 
         # 3. Proteção contra SQL Injection: verifica TODOS os parâmetros de query e body
         client_ip = request.client.host if request.client else "unknown"
@@ -58,16 +72,24 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 
         # 4. Anti-duplicação de requisições: bloqueia requisições idênticas feitas em menos de 1s
         # Evita cliques duplicados e ataques de repetição
-        request_key = f"{client_ip}:{request.method}:{request.url.path}:{await request.body()}"
+        request_key = (
+            f"{client_ip}:{request.method}:{request.url.path}:{await request.body()}"
+        )
         agora = time.time()
         # Limpa registros antigos (mais de 1 segundo)
-        self.request_tracker[client_ip] = [t for t in self.request_tracker[client_ip] if agora - t < 1]
+        self.request_tracker[client_ip] = [
+            t for t in self.request_tracker[client_ip] if agora - t < 1
+        ]
 
         # Verifica se essa requisição foi feita muito recentemente
-        if len(self.request_tracker[client_ip]) >= 5:  # Mais de 5 requisições por segundo
+        if (
+            len(self.request_tracker[client_ip]) >= 5
+        ):  # Mais de 5 requisições por segundo
             return JSONResponse(
                 status_code=429,
-                content={"detail": "Muitas requisições. Aguarde um momento e tente novamente."}
+                content={
+                    "detail": "Muitas requisições. Aguarde um momento e tente novamente."
+                },
             )
 
         self.request_tracker[client_ip].append(agora)
@@ -83,7 +105,11 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             "Referrer-Policy": "strict-origin-when-cross-origin",
             "Content-Security-Policy": "default-src 'self'; script-src 'self'; object-src 'none'; frame-ancestors 'none'",
             "Permissions-Policy": "geolocation=(self), microphone=()",
-            "Strict-Transport-Security": "max-age=31536000; includeSubDomains" if self.environment == "production" else "",
+            "Strict-Transport-Security": (
+                "max-age=31536000; includeSubDomains"
+                if self.environment == "production"
+                else ""
+            ),
             "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
             "Server": "SmartParking API",  # Esconde o cabeçalho Server padrão do Uvicorn
             "X-Powered-By": "",  # Remove cabeçalho que expõe tecnologia
@@ -108,7 +134,9 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             if self._contem_sql_injection(valor):
                 raise JSONResponse(
                     status_code=400,
-                    content={"detail": "Requisição inválida: Caracteres não permitidos detectados"}
+                    content={
+                        "detail": "Requisição inválida: Caracteres não permitidos detectados"
+                    },
                 )
 
         # Verifica path parameters
@@ -116,11 +144,14 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             if isinstance(valor, str) and self._contem_sql_injection(valor):
                 raise JSONResponse(
                     status_code=400,
-                    content={"detail": "Requisição inválida: Caracteres não permitidos detectados"}
+                    content={
+                        "detail": "Requisição inválida: Caracteres não permitidos detectados"
+                    },
                 )
 
         # Verifica corpo da requisição (se for JSON/form)
         from fastapi.responses import JSONResponse
+
         if request.method in {"POST", "PUT", "PATCH"}:
             content_type = request.headers.get("content-type", "")
             if "application/json" in content_type:
@@ -147,6 +178,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     async def _verificar_objeto_injection(self, obj):
         """Percorre recursivamente o JSON do corpo verificando injection"""
         from fastapi.responses import JSONResponse
+
         if isinstance(obj, dict):
             for valor in obj.values():
                 res = await self._verificar_objeto_injection(valor)
@@ -161,6 +193,8 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             if self._contem_sql_injection(obj):
                 return JSONResponse(
                     status_code=400,
-                    content={"detail": "Requisição inválida: Caracteres não permitidos detectados"}
+                    content={
+                        "detail": "Requisição inválida: Caracteres não permitidos detectados"
+                    },
                 )
         return None

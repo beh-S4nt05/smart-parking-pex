@@ -9,14 +9,26 @@ from core.deps import get_usuario_logado
 from models.database import get_db
 from models.db_models import Usuario
 from models.schemas import (
-    EstacionamentoDetalhadoResponse, VagaResponse, MapaVagasResponse,
-    ProximaVagaResponse, ReservaCreate, ReservaResponse,
-    FluxoResponse, OcupacaoResponse, StatusResponse, HealthCheckResponse,
-    VagaAtualizaStatus
+    EstacionamentoDetalhadoResponse,
+    VagaResponse,
+    MapaVagasResponse,
+    ProximaVagaResponse,
+    ReservaCreate,
+    ReservaResponse,
+    FluxoResponse,
+    OcupacaoResponse,
+    StatusResponse,
+    HealthCheckResponse,
+    VagaAtualizaStatus,
 )
-from rules import estacionamento_service, vaga_service, reserva_service, relatorio_service
+from rules import (
+    estacionamento_service,
+    vaga_service,
+    reserva_service,
+    relatorio_service,
+)
 
-router = APIRouter(prefix=settings.API_V1_PREFIX, tags=["SmartParking"])
+router = APIRouter(prefix=settings.API_V2_PREFIX, tags=["SmartParking"])
 
 
 # --- Rotas de status e saúde ---
@@ -27,7 +39,7 @@ async def status_api():
         "status": "SmartParking API está rodando perfeitamente!",
         "versao": settings.APP_VERSION,
         "ambiente": settings.ENVIRONMENT,
-        "docs": "/docs"
+        "docs": "/docs",
     }
 
 
@@ -42,7 +54,7 @@ async def health_check(db: Session = Depends(get_db)):
 
     return {
         "status": "saudavel" if db_ok else "banco_indisponivel",
-        "banco_dados": db_ok
+        "banco_dados": db_ok,
     }
 
 
@@ -81,28 +93,36 @@ async def mapa_vagas(id: str, db: Session = Depends(get_db)):
         "estacionamento_id": id,
         "estacionamento_nome": estacionamento.nome,
         "andares": andares,
-        "vagas": vagas
+        "vagas": vagas,
     }
 
 
 @router.get("/estacionamentos/{id}/proxima-vaga", response_model=ProximaVagaResponse)
 async def proxima_vaga(
     id: str,
-    tipo_vaga: Optional[str] = Query(None, description="Tipo de vaga: comum, idoso, pcd, moto, eletrico"),
-    db: Session = Depends(get_db)
+    tipo_vaga: Optional[str] = Query(
+        None, description="Tipo de vaga: comum, idoso, pcd, moto, eletrico"
+    ),
+    db: Session = Depends(get_db),
 ):
     """Consulta o motor de atribuição para obter a próxima vaga disponível"""
     estacionamento = estacionamento_service.buscar_estacionamento_por_id(db, id)
     if not estacionamento:
         raise HTTPException(status_code=404, detail="Estacionamento não encontrado")
 
-    vaga, andar_numero = estacionamento_service.buscar_proxima_vaga_disponivel(db, id, tipo_vaga)
+    vaga, andar_numero = estacionamento_service.buscar_proxima_vaga_disponivel(
+        db, id, tipo_vaga
+    )
 
     return {
         "estacionamento_id": id,
         "vaga": vaga,
         "andar_numero": andar_numero,
-        "mensagem": f"Vaga encontrada no {andar_numero}º andar!" if vaga else "Não há vagas disponíveis no momento."
+        "mensagem": (
+            f"Vaga encontrada no {andar_numero}º andar!"
+            if vaga
+            else "Não há vagas disponíveis no momento."
+        ),
     }
 
 
@@ -111,7 +131,7 @@ async def proxima_vaga(
 async def criar_reserva(
     dados: ReservaCreate,
     db: Session = Depends(get_db),
-    usuario: Usuario = Depends(get_usuario_logado)
+    usuario: Usuario = Depends(get_usuario_logado),
 ):
     """Cria uma nova reserva vinculada ao usuário logado"""
     return reserva_service.criar_reserva(db, dados, usuario)
@@ -121,7 +141,7 @@ async def criar_reserva(
 async def cancelar_reserva(
     id: str,
     db: Session = Depends(get_db),
-    usuario: Usuario = Depends(get_usuario_logado)
+    usuario: Usuario = Depends(get_usuario_logado),
 ):
     """Cancela uma reserva e libera a vaga imediatamente"""
     return reserva_service.cancelar_reserva(db, id, usuario)
@@ -129,8 +149,7 @@ async def cancelar_reserva(
 
 @router.get("/reservas/minhas", response_model=list[ReservaResponse])
 async def listar_minhas_reservas(
-    db: Session = Depends(get_db),
-    usuario: Usuario = Depends(get_usuario_logado)
+    db: Session = Depends(get_db), usuario: Usuario = Depends(get_usuario_logado)
 ):
     """Lista todas as reservas do usuário logado"""
     return reserva_service.listar_reservas_usuario(db, usuario.id)
@@ -139,9 +158,7 @@ async def listar_minhas_reservas(
 # --- Rotas de Vagas ---
 @router.patch("/vagas/{id}/status", response_model=VagaResponse)
 async def atualizar_status_vaga(
-    id: str,
-    dados: VagaAtualizaStatus,
-    db: Session = Depends(get_db)
+    id: str, dados: VagaAtualizaStatus, db: Session = Depends(get_db)
 ):
     """
     Atualiza o status de uma vaga (uso manual ou integração com sensores).
@@ -155,7 +172,7 @@ async def atualizar_status_vaga(
 async def relatorio_fluxo(
     periodo: str = Query(..., description="Período: diario, semanal, mensal"),
     estacionamento_id: Optional[str] = Query(None),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """Relatórios de entradas e saídas por período"""
     return relatorio_service.gerar_relatorio_fluxo(db, periodo, estacionamento_id)
@@ -165,7 +182,7 @@ async def relatorio_fluxo(
 async def relatorio_ocupacao(
     periodo: str = Query(..., description="Período: diario, semanal, mensal"),
     estacionamento_id: Optional[str] = Query(None),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """Taxa de ocupação histórica e dados para mapas de calor por andar"""
     return relatorio_service.gerar_relatorio_ocupacao(db, periodo, estacionamento_id)
