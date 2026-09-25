@@ -11,11 +11,11 @@ import StatusPanel from "@/components/StatusPanel";
 export default function App() {
   return (
     <View className="flex-1 bg-white">
-      <Header activeSection="home" onNavigate={(section) => console.log(`Navigating to ${section}`)} />
+      <Header/>
       <View className="flex-1 items-center justify-center">
         <Text className="text-lg font-bold text-slate-900">Welcome to Smart Parking</Text>
       </View>
-      <Footer></Footer>
+      <Footer/>
     </View>
   );
 }
