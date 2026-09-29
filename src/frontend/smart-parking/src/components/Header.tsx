@@ -1,5 +1,5 @@
-import { View, ScrollView, Pressable, Text, Image } from 'react-native';
-import { Link } from 'expo-router'
+import { Link } from "expo-router";
+import { Image, Pressable, ScrollView, Text, View } from "react-native";
 
 export default function Header() {
   return (
@@ -7,25 +7,44 @@ export default function Header() {
       <View className="mx-auto flex-row max-w items-stretch justify-between px-4 py-3 sm:px-6 lg:px-8 gap-[clamp(1rem,5vw,2rem)]">
         <View className="flex-row items-center gap-2.5">
           <View className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-blue-700 shadow-md shadow-blue-200">
-            <Image src='@/../../../assets/images/Logo.svg' className="h-full w-full" />
+            <Image
+              src="@/../../../assets/images/Logo.svg"
+              className="h-full w-full"
+            />
           </View>
-          <View className="leading-tight">  
-            <Text className="text-base font-bold text-slate-900">Smart Parking</Text>
-            <Text className="text-[11px] font-medium text-slate-500">Shoppings</Text>
+          <View className="leading-tight">
+            <Text className="text-base font-bold text-slate-900">
+              Smart Parking
+            </Text>
+            <Text className="text-[11px] font-medium text-slate-500">
+              Shoppings
+            </Text>
           </View>
         </View>
 
         <View className="items-center gap-1 md:flex-row">
-          <Link href="/app" className="rounded-lg px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 hover:text-slate-900">
+          <Link
+            href="/Index"
+            className="rounded-lg px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 hover:text-slate-900"
+          >
             Home
           </Link>
-          <Link href="/app" className="rounded-lg px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 hover:text-slate-900">
+          <Link
+            href="/Index"
+            className="rounded-lg px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 hover:text-slate-900"
+          >
             Reservar Vaga
           </Link>
-          <Link href="/app" className="rounded-lg px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 hover:text-slate-900">
+          <Link
+            href="/Index"
+            className="rounded-lg px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 hover:text-slate-900"
+          >
             Status do Estacionamento
           </Link>
-          <Link href="/app" className="rounded-lg px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 hover:text-slate-900">
+          <Link
+            href="/Index"
+            className="rounded-lg px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 hover:text-slate-900"
+          >
             Lista de Shoppings
           </Link>
         </View>
@@ -35,13 +54,14 @@ export default function Header() {
             <Text>Suporte</Text>
           </Pressable>
           <Pressable className="rounded-full bg-blue-600 px-5 py-2 text-sm font-semibold text-white shadow-sm shadow-blue-200 transition hover:bg-blue-700">
-            <Text>Entrar</Text>
+            <Link href="/Login">
+              <Text>Entrar</Text>
+            </Link>
           </Pressable>
         </View>
       </View>
 
-      <View className="flex items-center gap-1 overflow-x-auto border-t border-slate-100 px-4 py-2 md:hidden">
-      </View>
+      <View className="flex items-center gap-1 overflow-x-auto border-t border-slate-100 px-4 py-2 md:hidden"></View>
     </ScrollView>
   );
 }
