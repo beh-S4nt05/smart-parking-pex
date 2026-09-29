@@ -51,7 +51,7 @@ export default function Header() {
 
         <View className="flex-row items-center gap-2">
           <Pressable className="hidden rounded-full px-4 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-50 sm:block">
-            <Text>Suporte</Text>
+            <Text>HelpDesk</Text>
           </Pressable>
           <Pressable className="rounded-full bg-blue-600 px-5 py-2 text-sm font-semibold text-white shadow-sm shadow-blue-200 transition hover:bg-blue-700">
             <Link href="/Login">
