@@ -1,4 +1,4 @@
-import { View, Text, Pressable } from 'react-native';
+import { View, Text, Pressable, Image } from 'react-native';
 
 export default function Footer() {
   return (
@@ -8,6 +8,7 @@ export default function Footer() {
           <View>
             <View className="flex items-center gap-2.5">
               <View className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-blue-700">
+                <Image src='@/../../../assets/images/Logo.svg' className="h-full w-full" />
               </View>
               <Text className="font-bold text-white">Smart Parking</Text>
             </View>
@@ -27,9 +28,9 @@ export default function Footer() {
           <View>
             <Text className="text-sm font-bold uppercase tracking-wide text-white">Contato</Text>
             <View className="mt-4 space-y-2.5 text-sm">
-              <Text className="flex items-center gap-2">📞 (92) 98123-0258</Text>
-              <Text className="flex items-center gap-2">✉️ behsolutionsandautomations@gmail.com</Text>
-              <Text className="flex items-center gap-2">📍 Manaus, AM</Text>
+              <Text className="flex items-center gap-2 text-white">📞 (92) 98123-0258</Text>
+              <Text className="flex items-center gap-2 text-white">✉️ behsolutionsandautomations@gmail.com</Text>
+              <Text className="flex items-center gap-2 text-white">📍 Manaus, AM</Text>
             </View>
           </View>
         </View>
