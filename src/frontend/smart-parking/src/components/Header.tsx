@@ -11,6 +11,7 @@ export default function Header() {
             <Image
               className="h-6 w-6 rounded-full"
               source={require("../assets/imgs/Logo.png")}
+
             />
           </View>
           <View className="leading-tight">
@@ -25,25 +26,25 @@ export default function Header() {
 
         <View className="items-center gap-1 md:flex-row">
           <Link
-            href="/Index"
+            href="/"
             className="rounded-lg px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 hover:text-slate-900"
           >
             Home
           </Link>
           <Link
-            href="/Index"
+            href="/"
             className="rounded-lg px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 hover:text-slate-900"
           >
             Reservar Vaga
           </Link>
           <Link
-            href="/Index"
+            href="/"
             className="rounded-lg px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 hover:text-slate-900"
           >
             Status do Estacionamento
           </Link>
           <Link
-            href="/Index"
+            href="/"
             className="rounded-lg px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 hover:text-slate-900"
           >
             Lista de Shoppings
@@ -54,7 +55,7 @@ export default function Header() {
           <Pressable className="hidden rounded-full px-4 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-50 sm:block">
             <Text>HelpDesk</Text>
           </Pressable>
-          <Link href="/Login">
+          <Link href="/login">
             <Pressable className="rounded-full bg-blue-600 px-5 py-2 text-sm font-semibold text-white shadow-sm shadow-blue-200 transition hover:bg-blue-700">
               <Text>Entrar</Text>
             </Pressable>

@@ -1,3 +1,4 @@
+import { Link } from 'expo-router';
 import { View, Text, Pressable, Image } from 'react-native';
 
 export default function Footer() {

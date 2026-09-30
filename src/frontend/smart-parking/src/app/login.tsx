@@ -1,7 +1,7 @@
 import { Link, useRouter } from "expo-router";
 import { useState } from "react";
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
-import FormField from "../components/FormField";
+import FormField from "@/components/FormField";
 
 export default function Login() {
   const router = useRouter();
@@ -37,7 +37,7 @@ export default function Login() {
     try {
       // TODO: chamar sua API/autenticação aqui
       // await api.login(email, senha);
-      router.replace("/Cadastro");
+      router.replace("/cadastro");
     } catch (err) {
       setErrors({ senha: "E-mail ou senha incorretos" });
     } finally {
@@ -88,7 +88,7 @@ export default function Login() {
 
       <View className="mt-4 flex-row justify-center">
         <Text className="text-sm text-slate-500">Não tem conta? </Text>
-        <Link href="/Cadastro" className="text-sm font-semibold text-blue-600">
+        <Link href="/cadastro" className="text-sm font-semibold text-blue-600">
           Cadastre-se
         </Link>
       </View>
