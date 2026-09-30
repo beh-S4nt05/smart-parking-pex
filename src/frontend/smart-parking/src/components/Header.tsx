@@ -1,6 +1,7 @@
 import { Link } from "expo-router";
 import { Image, Pressable, ScrollView, Text, View } from "react-native";
 
+
 export default function Header() {
   return (
     <ScrollView className="sticky top-0 z-50 border-b border-slate-200 bg-white/90 backdrop-blur">
@@ -8,8 +9,8 @@ export default function Header() {
         <View className="flex-row items-center gap-2.5">
           <View className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-blue-700 shadow-md shadow-blue-200">
             <Image
-              src="@/../../../assets/images/Logo.svg"
-              className="h-full w-full"
+              className="h-6 w-6 rounded-full"
+              source={require("../assets/imgs/Logo.png")}
             />
           </View>
           <View className="leading-tight">
@@ -53,11 +54,11 @@ export default function Header() {
           <Pressable className="hidden rounded-full px-4 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-50 sm:block">
             <Text>HelpDesk</Text>
           </Pressable>
-          <Pressable className="rounded-full bg-blue-600 px-5 py-2 text-sm font-semibold text-white shadow-sm shadow-blue-200 transition hover:bg-blue-700">
-            <Link href="/Login">
+          <Link href="/Login">
+            <Pressable className="rounded-full bg-blue-600 px-5 py-2 text-sm font-semibold text-white shadow-sm shadow-blue-200 transition hover:bg-blue-700">
               <Text>Entrar</Text>
-            </Link>
-          </Pressable>
+            </Pressable>
+          </Link>
         </View>
       </View>
 
