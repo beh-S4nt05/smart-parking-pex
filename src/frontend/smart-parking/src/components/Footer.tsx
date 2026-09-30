@@ -8,7 +8,10 @@ export default function Footer() {
           <View>
             <View className="flex items-center gap-2.5">
               <View className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-blue-700">
-                <Image src='@/../../../assets/images/Logo.svg' className="h-full w-full" />
+                <Image
+                  source={require("../assets/imgs/Logo.png")}
+                  className="h-[24px] w-[24px] rounded-full"
+                />
               </View>
               <Text className="font-bold text-white">Smart Parking</Text>
             </View>
