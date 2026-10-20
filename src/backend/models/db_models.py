@@ -189,6 +189,7 @@ class Historico(Base):
     cupom_aplicado = Column(String, nullable=True)
     status_pagamento = Column(String, nullable=False, default=StatusPagamento.PENDENTE)
     forma_pagamento = Column(String, nullable=True)
+    origem = Column(String, nullable=True, default="sensor")  # sensor | simulador | app_motorista | manual
     pagamento_id = Column(String, ForeignKey("pagamentos.id"), nullable=True)
     comprovante_url = Column(String, nullable=True)
     is_saida_manual = Column(Boolean, default=False)

@@ -9,7 +9,7 @@ from models.database import get_db
 from models.db_models import Usuario, TipoUsuario
 
 # Define o esquema OAuth2 para extrair token do header Authorization
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"{settings.API_V2_PREFIX}/auth/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
 
 def get_usuario_logado(

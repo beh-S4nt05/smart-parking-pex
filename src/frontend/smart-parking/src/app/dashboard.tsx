@@ -1,0 +1,760 @@
+/**
+ * Painel administrativo — templates "Admin - Dashboard (MOBILE/WEB)" do Figma.
+ * Abas: Dashboard, Estacionamentos, Andares e Vagas, Relatórios, Usuários
+ * (Simulador QR leva à rota própria). Web = sidebar escura; mobile = toasts.
+ * Dados reais: /api/admin/*, /api/relatorios/*, /api/estacionamentos.
+ */
+import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  ActivityIndicator,
+  Pressable,
+  ScrollView,
+  Text,
+  View,
+} from "react-native";
+import { useRouter } from "expo-router";
+import AdminShell, { type AbaPainel } from "../components/AdminShell";
+import VagaMapa from "../components/VagaMapa";
+import { useAuth } from "../hooks/useAuth";
+import { useEstacionamentos } from "../hooks/useEstacionamentos";
+import { useMapaVagas } from "../hooks/useMapaVagas";
+import { apiErrorMessage, parkingApi } from "../services/api";
+import {
+  BarraOcupacao,
+  Botao,
+  Card,
+  Chip,
+  StatTile,
+  StatusVagaChip,
+  formatarMinutos,
+  formatarMoedaBR,
+} from "../components/ui";
+import { ORIGEM_LABEL, ocupacaoColor } from "../theme";
+import type {
+  DashboardAdmin,
+  EventoVaga,
+  Estacionamento,
+  OcupacaoAndar,
+  Usuario,
+} from "../types/api";
+
+const ROLE_LABEL: Record<string, string> = {
+  admin: "Admin",
+  gestor: "Gestor",
+  financeiro: "Financeiro",
+  usuario: "Motorista",
+  publico: "Público",
+};
+
+export default function Dashboard() {
+  const router = useRouter();
+  const { user, loading: authLoading, isAuthenticated, canAccessPanel, isAdmin } =
+    useAuth();
+  const [aba, setAba] = useState<AbaPainel>("dashboard");
+  const [estSel, setEstSel] = useState<string | null>(null); // null = todos (admin)
+
+  const { estacionamentos, loading: estLoading } = useEstacionamentos({
+    pollingMs: 30000,
+  });
+
+  useEffect(() => {
+    if (!authLoading && (!isAuthenticated || !canAccessPanel)) {
+      router.replace("/login");
+    }
+  }, [authLoading, isAuthenticated, canAccessPanel, router]);
+
+  // gestor/financeiro: trava no estacionamento vinculado
+  useEffect(() => {
+    if (user?.estacionamento_id) setEstSel(user.estacionamento_id);
+  }, [user]);
+
+  const bloqueado = authLoading || !isAuthenticated || !canAccessPanel;
+  if (bloqueado) {
+    return (
+      <View className="flex-1 items-center justify-center bg-slate-50">
+        <ActivityIndicator size="large" color="#2563EB" />
+      </View>
+    );
+  }
+
+  const seletor = (
+    <SeletorEstacionamento
+      estacionamentos={estacionamentos}
+      valor={estSel}
+      onChange={setEstSel}
+      travado={!!user?.estacionamento_id}
+    />
+  );
+
+  return (
+    <AdminShell
+      aba={aba}
+      onAba={setAba}
+      titulo={
+        aba === "dashboard"
+          ? "Dashboard"
+          : aba === "estacionamentos"
+            ? "Estacionamentos"
+            : aba === "andares"
+              ? "Andares e Vagas"
+              : aba === "relatorios"
+                ? "Relatórios"
+                : "Usuários"
+      }
+      subtitulo={
+        aba === "dashboard"
+          ? "Visão geral em tempo real"
+          : aba === "relatorios"
+            ? "Fluxo e ocupação por período"
+            : undefined
+      }
+      direita={seletor}
+    >
+      {aba === "dashboard" && (
+        <AbaDashboard estacionamentos={estacionamentos} estSel={estSel} isAdmin={isAdmin} />
+      )}
+      {aba === "estacionamentos" && (
+        <AbaEstacionamentos estacionamentos={estacionamentos} onAbrir={(id) => router.push(`/shopping/${id}` as never)} />
+      )}
+      {aba === "andares" && <AbaAndares estacionamentos={estacionamentos} estSel={estSel} />}
+      {aba === "relatorios" && <AbaRelatorios estSel={estSel} />}
+      {aba === "usuarios" && <AbaUsuarios isAdmin={isAdmin} />}
+    </AdminShell>
+  );
+}
+
+// ==================================================== seletor de shopping
+function SeletorEstacionamento({
+  estacionamentos,
+  valor,
+  onChange,
+  travado,
+}: {
+  estacionamentos: Estacionamento[];
+  valor: string | null;
+  onChange: (id: string | null) => void;
+  travado: boolean;
+}) {
+  const atual = estacionamentos.find((e) => e.id === valor);
+  return (
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      style={{ maxWidth: 460 }}
+      contentContainerStyle={{ gap: 8 }}
+    >
+      {!travado ? (
+        <Pressable
+          onPress={() => onChange(null)}
+          className={`rounded-full border px-4 py-2 ${
+            valor === null ? "border-blue-600 bg-blue-600" : "border-slate-200 bg-white"
+          }`}
+        >
+          <Text
+            className={`text-[13px] font-semibold ${
+              valor === null ? "text-white" : "text-slate-600"
+            }`}
+          >
+            Todos
+          </Text>
+        </Pressable>
+      ) : null}
+      {estacionamentos.map((e) => {
+        const ativo = e.id === valor;
+        return (
+          <Pressable
+            key={e.id}
+            onPress={() => onChange(e.id)}
+            className={`rounded-full border px-4 py-2 ${
+              ativo ? "border-blue-600 bg-blue-600" : "border-slate-200 bg-white"
+            }`}
+          >
+            <Text
+              className={`text-[13px] font-semibold ${ativo ? "text-white" : "text-slate-600"}`}
+            >
+              {e.nome}
+            </Text>
+          </Pressable>
+        );
+      })}
+      {atual ? null : null}
+    </ScrollView>
+  );
+}
+
+// ==================================================== aba dashboard
+function AbaDashboard({
+  estacionamentos,
+  estSel,
+  isAdmin,
+}: {
+  estacionamentos: Estacionamento[];
+  estSel: string | null;
+  isAdmin: boolean;
+}) {
+  const router = useRouter();
+  const [admin, setAdmin] = useState<DashboardAdmin | null>(null);
+  const [gestor, setGestor] = useState<{
+    faturamento_hoje: number;
+    ticket_medio_hoje: number;
+    total_pagamentos_hoje: number;
+  } | null>(null);
+  const [fluxo, setFluxo] = useState<{
+    total_entradas: number;
+    total_saidas: number;
+    tempo_medio_permanencia_min: number;
+    registros: Array<{ entrada_em: string | null; saida_em: string | null }>;
+  } | null>(null);
+  const [andares, setAndares] = useState<OcupacaoAndar[]>([]);
+  const [eventos, setEventos] = useState<EventoVaga[]>([]);
+  const [erro, setErro] = useState<string | null>(null);
+
+  const carregar = useCallback(async () => {
+    try {
+      if (isAdmin && !estSel) {
+        const d = await parkingApi.dashboardAdmin();
+        setAdmin(d);
+      } else {
+        const d = await parkingApi.dashboardGestor().catch(() => null);
+        if (d) setGestor(d as never);
+      }
+      const f = await parkingApi.fluxoHoje(estSel ?? undefined);
+      setFluxo(f);
+      if (estSel) {
+        const [a, ev] = await Promise.all([
+          parkingApi.ocupacaoPorAndar(estSel).catch(() => []),
+          parkingApi.listarEventos(estSel, 8).catch(() => []),
+        ]);
+        setAndares(a as OcupacaoAndar[]);
+        setEventos(ev as EventoVaga[]);
+      } else {
+        setAndares([]);
+        const ev = await parkingApi.listarEventos(undefined, 8).catch(() => []);
+        setEventos(ev as EventoVaga[]);
+      }
+      setErro(null);
+    } catch (e) {
+      setErro(apiErrorMessage(e, "Falha ao carregar o painel."));
+    }
+  }, [estSel, isAdmin]);
+
+  useEffect(() => {
+    carregar();
+    const t = setInterval(carregar, 25000);
+    return () => clearInterval(t);
+  }, [carregar]);
+
+  // agregado global quando "Todos"
+  const agregados = useMemo(() => {
+    if (estSel) {
+      const e = estacionamentos.find((x) => x.id === estSel);
+      const total = e?.total_vagas ?? 0;
+      const livres = e?.vagas_disponiveis_total ?? 0;
+      return {
+        livres,
+        total,
+        ocupacao: total ? Math.round(((total - livres) / total) * 100) : 0,
+      };
+    }
+    const total = estacionamentos.reduce((acc, e) => acc + (e.total_vagas || 0), 0);
+    const livres = estacionamentos.reduce(
+      (acc, e) => acc + (e.vagas_disponiveis_total || 0),
+      0,
+    );
+    return {
+      livres,
+      total,
+      ocupacao: total ? Math.round(((total - livres) / total) * 100) : 0,
+    };
+  }, [estacionamentos, estSel]);
+
+  const horas = useMemo(() => {
+    // buckets 8h..19h de entradas por hora
+    const base = Array.from({ length: 12 }, (_, i) => ({ hora: 8 + i, n: 0 }));
+    (fluxo?.registros ?? []).forEach((r) => {
+      if (!r.entrada_em) return;
+      const h = new Date(r.entrada_em).getHours();
+      const idx = h - 8;
+      if (idx >= 0 && idx < base.length) base[idx].n += 1;
+    });
+    const max = Math.max(...base.map((b) => b.n), 1);
+    const agoraHora = new Date().getHours();
+    return { base, max, agoraHora };
+  }, [fluxo]);
+
+  return (
+    <View className="gap-5">
+      {erro ? (
+        <View className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+          <Text className="text-[13px] font-medium text-amber-700">⚠️ {erro}</Text>
+        </View>
+      ) : null}
+
+      {/* tiles */}
+      <View className="flex-row flex-wrap gap-3">
+        <View className="min-w-[150px] flex-1">
+          <StatTile
+            rotulo="Vagas livres"
+            valor={String(agregados.livres)}
+            tone="verde"
+          />
+        </View>
+        <View className="min-w-[150px] flex-1">
+          <StatTile
+            rotulo="Taxa de ocupação"
+            valor={`${agregados.ocupacao}%`}
+            tone="azul"
+          />
+        </View>
+        <View className="min-w-[150px] flex-1">
+          <StatTile
+            rotulo="Entradas hoje"
+            valor={String(fluxo?.total_entradas ?? 0)}
+            tone="neutro"
+          />
+        </View>
+        <View className="min-w-[150px] flex-1">
+          <StatTile
+            rotulo="Permanência média"
+            valor={formatarMinutos(fluxo?.tempo_medio_permanencia_min)}
+            tone="roxo"
+          />
+        </View>
+      </View>
+
+      {gestor ? (
+        <Text className="text-xs text-slate-500">
+          Faturamento hoje: {formatarMoedaBR(gestor.faturamento_hoje)} ·{" "}
+          {gestor.total_pagamentos_hoje} pagamentos
+        </Text>
+      ) : null}
+
+      <View className="flex-row flex-wrap gap-5">
+        {/* ocupação por andar */}
+        <Card className="flex-1 p-5" style={{ minWidth: 300 }}>
+          <Text className="mb-4 text-base font-bold text-slate-900">
+            Ocupação por andar
+          </Text>
+          {andares.length === 0 ? (
+            <Text className="text-[13px] text-slate-400">
+              Selecione um shopping no topo para ver a divisão por andar.
+            </Text>
+          ) : (
+            <View className="gap-3.5">
+              {andares.map((a) => (
+                <View key={a.andar_id}>
+                  <View className="mb-1.5 flex-row items-center justify-between">
+                    <Text className="text-sm font-medium text-slate-600">
+                      {a.numero_andar}º andar
+                    </Text>
+                    <Text className="text-sm font-extrabold text-slate-900">
+                      {a.percentual}%
+                    </Text>
+                  </View>
+                  <BarraOcupacao percentual={a.percentual} />
+                </View>
+              ))}
+            </View>
+          )}
+        </Card>
+
+        {/* fluxo por hora (web) / fluxo hoje (mobile) */}
+        <Card className="flex-1 p-5" style={{ minWidth: 300 }}>
+          <Text className="mb-4 text-base font-bold text-slate-900">
+            Fluxo de veículos por hora
+          </Text>
+          <View className="h-36 flex-row items-end gap-1.5">
+            {horas.base.map((b) => {
+              const h = Math.max(6, (b.n / horas.max) * 110);
+              const ativoHora = b.hora === horas.agoraHora;
+              return (
+                <View key={b.hora} className="flex-1 items-center gap-1">
+                  <View
+                    className="w-full rounded-t-md"
+                    style={{
+                      height: h,
+                      backgroundColor: ativoHora ? "#2563EB" : "#DBEAFE",
+                    }}
+                  />
+                  <Text
+                    className={`text-[9px] ${ativoHora ? "font-bold text-blue-600" : "text-slate-400"}`}
+                  >
+                    {b.hora}h
+                  </Text>
+                </View>
+              );
+            })}
+          </View>
+          <View className="mt-4 flex-row gap-3">
+            <View className="flex-1 rounded-xl bg-slate-50 p-3">
+              <Text className="text-[11px] font-medium text-slate-500">Entradas</Text>
+              <Text className="text-xl font-extrabold text-emerald-600">
+                {fluxo?.total_entradas ?? 0}
+              </Text>
+            </View>
+            <View className="flex-1 rounded-xl bg-slate-50 p-3">
+              <Text className="text-[11px] font-medium text-slate-500">Saídas</Text>
+              <Text className="text-xl font-extrabold text-red-500">
+                {fluxo?.total_saidas ?? 0}
+              </Text>
+            </View>
+          </View>
+        </Card>
+      </View>
+
+      {/* últimos eventos */}
+      <Card className="p-5">
+        <Text className="mb-3 text-base font-bold text-slate-900">
+          Últimos eventos de vagas
+        </Text>
+        {eventos.length === 0 ? (
+          <Text className="text-[13px] text-slate-400">
+            Nenhum movimento registrado hoje — altere vagas pelo simulador para
+            popular o feed.
+          </Text>
+        ) : (
+          <View>
+            {/* header estilo tabela (web) */}
+            <View className="hidden flex-row items-center gap-3 rounded-lg bg-slate-50 px-3 py-2 md:flex">
+              <HeaderCol w={90} t="Vaga" />
+              <HeaderCol w={70} t="Andar" />
+              <HeaderCol w={110} t="Status" />
+              <HeaderCol w={140} t="Origem" />
+              <HeaderCol w={0} t="Horário" flex />
+            </View>
+            <View className="mt-1">
+              {eventos.map((ev, i) => (
+                <View
+                  key={ev.id}
+                  className={`flex-row flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2.5 ${
+                    i % 2 ? "bg-slate-50/60" : ""
+                  }`}
+                >
+                  <Text className="w-[80px] text-sm font-bold text-slate-900">
+                    {ev.vaga_codigo}
+                  </Text>
+                  <Text className="w-[60px] text-sm text-slate-600">
+                    {ev.andar_numero != null ? `${ev.andar_numero}º` : "—"}
+                  </Text>
+                  <View className="w-[110px]">
+                    <StatusVagaChip status={ev.vaga_status} />
+                  </View>
+                  <Text className="w-[130px] text-sm text-slate-500">
+                    {ORIGEM_LABEL[ev.origem] ?? ev.origem}
+                  </Text>
+                  <Text className="flex-1 text-xs text-slate-400">
+                    {ev.momento
+                      ? new Date(ev.momento).toLocaleTimeString("pt-BR", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                          second: "2-digit",
+                        })
+                      : "—"}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
+      </Card>
+
+      {/* atalho para o simulador */}
+      <Card className="flex-row flex-wrap items-center justify-between gap-3 border-blue-200 bg-blue-50 p-5">
+        <View>
+          <Text className="text-base font-bold text-slate-900">
+            Simular entrada/saída de veículos
+          </Text>
+          <Text className="mt-0.5 text-[13px] text-slate-600">
+            Gere o QR do simulador e toque nas vagas pelo celular.
+          </Text>
+        </View>
+        <Botao label="Abrir Simulador QR" onPress={() => router.push("/simulador-qr")} />
+      </Card>
+    </View>
+  );
+}
+
+function HeaderCol({ t, w, flex }: { t: string; w: number; flex?: boolean }) {
+  return (
+    <Text
+      className="text-[11px] font-bold uppercase tracking-wide text-slate-400"
+      style={flex ? { flex: 1 } : { width: w }}
+    >
+      {t}
+    </Text>
+  );
+}
+
+// ==================================================== aba estacionamentos
+function AbaEstacionamentos({
+  estacionamentos,
+  onAbrir,
+}: {
+  estacionamentos: Estacionamento[];
+  onAbrir: (id: string) => void;
+}) {
+  return (
+    <View className="gap-3">
+      {estacionamentos.map((e) => {
+        const pct =
+          e.total_vagas > 0
+            ? Math.round(((e.total_vagas - (e.vagas_disponiveis_total ?? 0)) / e.total_vagas) * 100)
+            : 0;
+        return (
+          <Card key={e.id} className="p-4">
+            <View className="flex-row flex-wrap items-center justify-between gap-3">
+              <View className="flex-1" style={{ minWidth: 220 }}>
+                <Text className="text-base font-bold text-slate-900">{e.nome}</Text>
+                <Text className="mt-0.5 text-[13px] text-slate-500">{e.endereco}</Text>
+                <Text className="mt-0.5 text-xs text-slate-400">
+                  {e.total_andares} andares · {e.total_vagas} vagas ·{" "}
+                  {e.hora_abertura}–{e.hora_fechamento} · {formatarMoedaBR(e.taxa_hora)}/h
+                </Text>
+                <View className="mt-3 flex-row items-center gap-3">
+                  <View className="flex-1">
+                    <BarraOcupacao percentual={pct} />
+                  </View>
+                  <Text
+                    className="text-[13px] font-extrabold"
+                    style={{ color: ocupacaoColor(pct) }}
+                  >
+                    {pct}%
+                  </Text>
+                </View>
+              </View>
+              <View className="flex-row items-center gap-2 self-start">
+                <Chip
+                  label={`${e.vagas_disponiveis_total ?? 0} livres`}
+                  tone={pct >= 90 ? "vermelho" : pct >= 70 ? "ambar" : "verde"}
+                />
+                <Botao
+                  label="Abrir mapa"
+                  variant="contorno"
+                  className="px-4 py-2"
+                  onPress={() => onAbrir(e.id)}
+                />
+              </View>
+            </View>
+          </Card>
+        );
+      })}
+    </View>
+  );
+}
+
+// ==================================================== aba andares e vagas
+function AbaAndares({
+  estacionamentos,
+  estSel,
+}: {
+  estacionamentos: Estacionamento[];
+  estSel: string | null;
+}) {
+  const [est, setEst] = useState<string | null>(estSel);
+  useEffect(() => setEst(estSel), [estSel]);
+  const { mapa, loading } = useMapaVagas(est ?? undefined, {});
+  const [andar, setAndar] = useState<number | null>(null);
+
+  if (!est) {
+    return (
+      <Card className="p-8">
+        <Text className="text-center text-sm text-slate-500">
+          Selecione um estacionamento no topo para inspecionar andares e vagas.
+        </Text>
+      </Card>
+    );
+  }
+
+  const andares = mapa ? [...mapa.andares].sort((a, b) => a.numero_andar - b.numero_andar) : [];
+  const andarAtual = andares.find((a) => a.numero_andar === andar) ?? andares[0];
+  const vagas = andarAtual
+    ? mapa!.vagas.filter((v) => v.andar_id === andarAtual.id)
+    : [];
+
+  return (
+    <Card className="p-5">
+      <View className="mb-4 flex-row flex-wrap gap-2">
+        {andares.map((a) => {
+          const ativo = andarAtual?.id === a.id;
+          return (
+            <Pressable
+              key={a.id}
+              onPress={() => setAndar(a.numero_andar)}
+              className={`rounded-full px-4 py-2 ${ativo ? "bg-blue-600" : "border border-slate-200 bg-white"}`}
+            >
+              <Text
+                className={`text-[13px] font-semibold ${ativo ? "text-white" : "text-slate-600"}`}
+              >
+                {a.numero_andar}º andar
+              </Text>
+            </Pressable>
+          );
+        })}
+        {loading && andares.length === 0 ? <ActivityIndicator color="#2563EB" /> : null}
+      </View>
+      <Text className="mb-3 text-[13px] text-slate-500">
+        {andarAtual ? `${andarAtual.capacidade} vagas configuradas` : "—"}
+      </Text>
+      <VagaMapa vagas={vagas.slice(0, 96)} />
+      {vagas.length > 96 ? (
+        <Text className="mt-3 text-xs text-slate-400">
+          + {vagas.length - 96} vagas não exibidas aqui — use o mapa completo.
+        </Text>
+      ) : null}
+    </Card>
+  );
+}
+
+// ==================================================== aba relatórios
+function AbaRelatorios({ estSel }: { estSel: string | null }) {
+  const [periodo, setPeriodo] = useState<"diario" | "semanal" | "mensal">("diario");
+  const [dados, setDados] = useState<{
+    total_entradas: number;
+    total_saidas: number;
+    tempo_medio_permanencia_min: number;
+  } | null>(null);
+  const [carregando, setCarregando] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+    setCarregando(true);
+    parkingApi
+      .relatorioFluxo(periodo, estSel ?? undefined)
+      .then((d) => alive && setDados(d))
+      .catch(() => alive && setDados(null))
+      .finally(() => alive && setCarregando(false));
+    return () => {
+      alive = false;
+    };
+  }, [periodo, estSel]);
+
+  return (
+    <View className="gap-5">
+      <View className="flex-row gap-2">
+        {(["diario", "semanal", "mensal"] as const).map((p) => (
+          <Pressable
+            key={p}
+            onPress={() => setPeriodo(p)}
+            className={`rounded-full px-4 py-2 ${
+              periodo === p ? "bg-blue-600" : "border border-slate-200 bg-white"
+            }`}
+          >
+            <Text
+              className={`text-[13px] font-semibold capitalize ${
+                periodo === p ? "text-white" : "text-slate-600"
+              }`}
+            >
+              {p === "diario" ? "Diário" : p === "semanal" ? "Semanal" : "Mensal"}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
+
+      <View className="flex-row flex-wrap gap-3">
+        <View className="min-w-[150px] flex-1">
+          <StatTile rotulo="Entradas" valor={String(dados?.total_entradas ?? "—")} tone="verde" />
+        </View>
+        <View className="min-w-[150px] flex-1">
+          <StatTile rotulo="Saídas" valor={String(dados?.total_saidas ?? "—")} tone="vermelho" />
+        </View>
+        <View className="min-w-[150px] flex-1">
+          <StatTile
+            rotulo="Permanência média"
+            valor={formatarMinutos(dados?.tempo_medio_permanencia_min)}
+            tone="roxo"
+          />
+        </View>
+      </View>
+      {carregando ? <ActivityIndicator color="#2563EB" /> : null}
+      <Text className="text-xs text-slate-400">
+        Relatório consolidado de entradas e saídas no período — fonte dos dados
+        históricos do estacionamento.
+      </Text>
+    </View>
+  );
+}
+
+// ==================================================== aba usuários
+function AbaUsuarios({ isAdmin }: { isAdmin: boolean }) {
+  const [usuarios, setUsuarios] = useState<Usuario[]>([]);
+  const [erro, setErro] = useState<string | null>(null);
+  const [carregando, setCarregando] = useState(true);
+
+  const carregar = useCallback(async () => {
+    try {
+      setUsuarios(await parkingApi.listarUsuarios());
+      setErro(null);
+    } catch (e) {
+      setErro(apiErrorMessage(e, "Rota disponível apenas para administradores."));
+    } finally {
+      setCarregando(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isAdmin) carregar();
+    else setCarregando(false);
+  }, [isAdmin, carregar]);
+
+  if (!isAdmin) {
+    return (
+      <Card className="p-8">
+        <Text className="text-center text-sm text-slate-500">
+          Gestão de usuários é exclusiva do administrador global.
+        </Text>
+      </Card>
+    );
+  }
+
+  async function alternar(u: Usuario) {
+    try {
+      const novo = await parkingApi.alternarUsuario(u.id);
+      setUsuarios((prev) => prev.map((x) => (x.id === novo.id ? novo : x)));
+    } catch (e) {
+      setErro(apiErrorMessage(e));
+    }
+  }
+
+  return (
+    <View className="gap-3">
+      {erro ? (
+        <View className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+          <Text className="text-[13px] text-amber-700">⚠️ {erro}</Text>
+        </View>
+      ) : null}
+      {carregando ? <BlocoCentral /> : null}
+      {usuarios.map((u) => (
+        <Card key={u.id} className="flex-row flex-wrap items-center gap-3 p-4">
+          <View className="h-9 w-9 items-center justify-center rounded-full bg-blue-100">
+            <Text className="text-[13px] font-bold text-blue-700">
+              {u.nome.slice(0, 1).toUpperCase()}
+            </Text>
+          </View>
+          <View className="min-w-[160px] flex-1">
+            <Text className="text-sm font-bold text-slate-900">{u.nome}</Text>
+            <Text className="text-xs text-slate-500">{u.email}</Text>
+          </View>
+          <Chip
+            label={ROLE_LABEL[u.role] ?? u.role}
+            tone={u.role === "admin" ? "vermelho" : u.role === "usuario" ? "neutro" : "azul"}
+          />
+          {u.placa_veiculo ? <Chip label={u.placa_veiculo} tone="vaga" /> : null}
+          <Botao
+            label={u.is_ativo ? "Desativar" : "Reativar"}
+            variant="contorno"
+            className={`px-4 py-2 ${u.is_ativo ? "border-red-300" : "border-emerald-300"}`}
+            onPress={() => alternar(u)}
+          />
+        </Card>
+      ))}
+    </View>
+  );
+}
+
+function BlocoCentral() {
+  return (
+    <View className="py-8">
+      <ActivityIndicator size="large" color="#2563EB" />
+    </View>
+  );
+}

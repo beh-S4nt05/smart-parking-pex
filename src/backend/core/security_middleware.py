@@ -68,13 +68,21 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 
         # 3. Proteção contra SQL Injection: verifica TODOS os parâmetros de query e body
         client_ip = request.client.host if request.client else "unknown"
-        await self._verificar_sql_injection(request)
+        blocked = await self._verificar_sql_injection(request)
+        if blocked is not None:
+            return blocked
 
         # 4. Anti-duplicação de requisições: bloqueia requisições idênticas feitas em menos de 1s
         # Evita cliques duplicados e ataques de repetição
-        request_key = (
-            f"{client_ip}:{request.method}:{request.url.path}:{await request.body()}"
-        )
+        body = await request.body()
+        request_key = f"{client_ip}:{request.method}:{request.url.path}:{body}"
+
+        # Devolve o body lido para os handlers do FastAPI conseguirem reler
+        async def _cached_receive():
+            return {"type": "http.request", "body": body, "more_body": False}
+
+        request._receive = _cached_receive
+
         agora = time.time()
         # Limpa registros antigos (mais de 1 segundo)
         self.request_tracker[client_ip] = [
@@ -127,22 +135,15 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 
         return response
 
-    async def _verificar_sql_injection(self, request: Request):
-        """Verifica todos os parâmetros da requisição por tentativas de SQL Injection"""
+    async def _verificar_sql_injection(self, request: Request) -> JSONResponse | None:
+        """
+        Verifica query params, path params e corpo JSON por padrões de SQL Injection/XSS.
+        Retorna um JSONResponse 400 quando algo é bloqueado, None caso contrário.
+        """
         # Verifica parâmetros de query string
         for chave, valor in request.query_params.items():
             if self._contem_sql_injection(valor):
-                raise JSONResponse(
-                    status_code=400,
-                    content={
-                        "detail": "Requisição inválida: Caracteres não permitidos detectados"
-                    },
-                )
-
-        # Verifica path parameters
-        for valor in request.path_params.values():
-            if isinstance(valor, str) and self._contem_sql_injection(valor):
-                raise JSONResponse(
+                return JSONResponse(
                     status_code=400,
                     content={
                         "detail": "Requisição inválida: Caracteres não permitidos detectados"
@@ -150,8 +151,6 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
                 )
 
         # Verifica corpo da requisição (se for JSON/form)
-        from fastapi.responses import JSONResponse
-
         if request.method in {"POST", "PUT", "PATCH"}:
             content_type = request.headers.get("content-type", "")
             if "application/json" in content_type:
@@ -159,12 +158,12 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
                     body = await request.json()
                     res = await self._verificar_objeto_injection(body)
                     if res is not None:
-                        raise res
-                except JSONResponse:
-                    raise
+                        return res
                 except Exception:
                     # Se não for JSON válido deixa passar pra validação do Pydantic tratar
                     pass
+
+        return None
 
     def _contem_sql_injection(self, texto: str) -> bool:
         """Verifica se um texto contém padrões de SQL Injection/XSS"""

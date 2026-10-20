@@ -6,7 +6,8 @@ from sqlalchemy.orm import Session
 from core.config import settings
 from core.security import criar_token
 from models.db_models import Usuario, TipoUsuario
-from models.schemas import TokenResponse
+from models.schemas import TokenResponse, UsuarioResponse
+from rules.auth_service import montar_token_response
 
 
 async def autenticar_google(token_id: str, db: Session) -> TokenResponse:
@@ -185,8 +186,4 @@ def _processar_login_social(db: Session, email: str, nome: str, foto_url: Option
     access_token = criar_token(subject=usuario.id, tipo_token="access")
     refresh_token = criar_token(subject=usuario.id, tipo_token="refresh")
 
-    return TokenResponse(
-        access_token=access_token,
-        refresh_token=refresh_token,
-        token_type="bearer"
-    )
+    return montar_token_response(usuario, access_token, refresh_token)
