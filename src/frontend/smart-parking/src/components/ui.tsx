@@ -2,9 +2,11 @@
  * Kit de primitivas visuais do SmartParking (NativeWind + RN puro, sem HTML).
  * Todas as telas (mobile e web) montam os templates do Figma com estas peças.
  */
-import { ReactNode } from "react";
+import { ReactNode, useEffect, useRef } from "react";
 import {
   ActivityIndicator,
+  Animated,
+  Easing,
   Pressable,
   StyleProp,
   Text,
@@ -14,6 +16,45 @@ import {
   ViewStyle,
 } from "react-native";
 import { colors, ocupacaoColor } from "../theme";
+
+// ---------------------------------------------------------- animações (RN core)
+/**
+ * Entrada suave (fade + leve subida) para listas e cards — usa só o
+ * `Animated` do React Native (nenhuma dependência nova) e `useNativeDriver`,
+ * que vale tanto no app (iOS/Android) quanto no web (wasm/JS driver).
+ */
+export function AnimarEntrada({
+  children,
+  delay = 0,
+  distancia = 12,
+}: {
+  children: ReactNode;
+  delay?: number;
+  distancia?: number;
+}) {
+  const anim = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.timing(anim, {
+      toValue: 1,
+      duration: 320,
+      delay,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+  }, [anim, delay]);
+  return (
+    <Animated.View
+      style={{
+        opacity: anim,
+        transform: [
+          { translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [distancia, 0] }) },
+        ],
+      }}
+    >
+      {children}
+    </Animated.View>
+  );
+}
 
 // ---------------------------------------------------------------- Logo
 export function Logo({
@@ -78,6 +119,16 @@ export function Botao({
   style,
   icon,
 }: BotaoProps) {
+  // feedback tátil visual: mola de escala ao pressionar (web e nativo)
+  const escala = useRef(new Animated.Value(1)).current;
+  const apertar = (paraDentro: boolean) =>
+    Animated.spring(escala, {
+      toValue: paraDentro ? 0.96 : 1,
+      friction: 5,
+      tension: 120,
+      useNativeDriver: true,
+    }).start();
+
   const base = "flex-row items-center justify-center gap-2 rounded-xl px-5 py-3.5";
   const variants: Record<string, string> = {
     primario: "bg-blue-600 active:bg-blue-700",
@@ -97,11 +148,13 @@ export function Botao({
     <Pressable
       accessibilityRole="button"
       onPress={onPress}
+      onPressIn={() => apertar(true)}
+      onPressOut={() => apertar(false)}
       disabled={disabled || loading}
       className={`${base} ${variants[variant]} ${
         disabled ? "opacity-40" : ""
       } ${className}`}
-      style={style}
+      style={[style, { transform: [{ scale: escala }] }]}
     >
       {loading ? (
         <ActivityIndicator
@@ -168,9 +221,34 @@ export function TituloSecao({
 }
 
 export function SeloAoVivo() {
+  // ponto pulsando — reforça visualmente que os dados são ao vivo
+  const pulso = useRef(new Animated.Value(1)).current;
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulso, {
+          toValue: 0.35,
+          duration: 900,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulso, {
+          toValue: 1,
+          duration: 900,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [pulso]);
   return (
     <View className="flex-row items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1">
-      <View className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+      <Animated.View
+        style={{ opacity: pulso }}
+        className="h-1.5 w-1.5 rounded-full bg-emerald-500"
+      />
       <Text className="text-[11px] font-semibold text-emerald-700">Ao vivo</Text>
     </View>
   );

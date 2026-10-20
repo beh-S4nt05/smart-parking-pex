@@ -11,6 +11,7 @@ import {
   ScrollView,
   Text,
   View,
+  useWindowDimensions,
 } from "react-native";
 import { useRouter } from "expo-router";
 import AdminShell, { type AbaPainel } from "../components/AdminShell";
@@ -193,6 +194,8 @@ function AbaDashboard({
   isAdmin: boolean;
 }) {
   const router = useRouter();
+  const { width } = useWindowDimensions();
+  const compacto = width < 768;
   const [admin, setAdmin] = useState<DashboardAdmin | null>(null);
   const [gestor, setGestor] = useState<{
     faturamento_hoje: number;
@@ -414,45 +417,71 @@ function AbaDashboard({
           </Text>
         ) : (
           <View>
-            {/* header estilo tabela (web) */}
-            <View className="hidden flex-row items-center gap-3 rounded-lg bg-slate-50 px-3 py-2 md:flex">
-              <HeaderCol w={90} t="Vaga" />
-              <HeaderCol w={70} t="Andar" />
-              <HeaderCol w={110} t="Status" />
-              <HeaderCol w={140} t="Origem" />
-              <HeaderCol w={0} t="Horário" flex />
-            </View>
+            {!compacto ? (
+              <View className="flex-row items-center gap-3 rounded-lg bg-slate-50 px-3 py-2">
+                <HeaderCol w={90} t="Vaga" />
+                <HeaderCol w={70} t="Andar" />
+                <HeaderCol w={110} t="Status" />
+                <HeaderCol w={140} t="Origem" />
+                <HeaderCol w={0} t="Horário" flex />
+              </View>
+            ) : null}
             <View className="mt-1">
-              {eventos.map((ev, i) => (
-                <View
-                  key={ev.id}
-                  className={`flex-row flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2.5 ${
-                    i % 2 ? "bg-slate-50/60" : ""
-                  }`}
-                >
-                  <Text className="w-[80px] text-sm font-bold text-slate-900">
-                    {ev.vaga_codigo}
-                  </Text>
-                  <Text className="w-[60px] text-sm text-slate-600">
-                    {ev.andar_numero != null ? `${ev.andar_numero}º` : "—"}
-                  </Text>
-                  <View className="w-[110px]">
-                    <StatusVagaChip status={ev.vaga_status} />
+              {eventos.map((ev, i) => {
+                const hora = ev.momento
+                  ? new Date(ev.momento).toLocaleTimeString("pt-BR", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                      second: "2-digit",
+                    })
+                  : "—";
+                const zebrado = i % 2 ? "bg-slate-50/60" : "";
+                if (compacto) {
+                  // mobile: linha em duas alturas, sem larguras fixas
+                  return (
+                    <View
+                      key={ev.id}
+                      className={`gap-1 rounded-lg px-3 py-2.5 ${zebrado}`}
+                    >
+                      <View className="flex-row items-center justify-between">
+                        <Text className="text-sm font-bold text-slate-900">
+                          {ev.vaga_codigo}
+                          {ev.andar_numero != null
+                            ? ` · ${ev.andar_numero}º`
+                            : ""}
+                        </Text>
+                        <Text className="text-xs text-slate-400">{hora}</Text>
+                      </View>
+                      <View className="flex-row items-center gap-2">
+                        <StatusVagaChip status={ev.vaga_status} />
+                        <Text className="text-xs text-slate-500">
+                          {ORIGEM_LABEL[ev.origem] ?? ev.origem}
+                        </Text>
+                      </View>
+                    </View>
+                  );
+                }
+                return (
+                  <View
+                    key={ev.id}
+                    className={`flex-row items-center gap-3 px-3 py-2.5 ${zebrado}`}
+                  >
+                    <Text className="w-[80px] text-sm font-bold text-slate-900">
+                      {ev.vaga_codigo}
+                    </Text>
+                    <Text className="w-[60px] text-sm text-slate-600">
+                      {ev.andar_numero != null ? `${ev.andar_numero}º` : "—"}
+                    </Text>
+                    <View className="w-[110px]">
+                      <StatusVagaChip status={ev.vaga_status} />
+                    </View>
+                    <Text className="w-[130px] text-sm text-slate-500">
+                      {ORIGEM_LABEL[ev.origem] ?? ev.origem}
+                    </Text>
+                    <Text className="flex-1 text-xs text-slate-400">{hora}</Text>
                   </View>
-                  <Text className="w-[130px] text-sm text-slate-500">
-                    {ORIGEM_LABEL[ev.origem] ?? ev.origem}
-                  </Text>
-                  <Text className="flex-1 text-xs text-slate-400">
-                    {ev.momento
-                      ? new Date(ev.momento).toLocaleTimeString("pt-BR", {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                          second: "2-digit",
-                        })
-                      : "—"}
-                  </Text>
-                </View>
-              ))}
+                );
+              })}
             </View>
           </View>
         )}

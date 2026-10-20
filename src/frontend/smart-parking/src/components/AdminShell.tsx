@@ -52,6 +52,9 @@ export default function AdminShell({
   const router = useRouter();
   const { user, signOut } = useAuth();
 
+  // Simulador QR é tooling de infraestrutura: visível SOMENTE ao admin global
+  const abas = ABAS.filter((a) => a.id !== "simulador-qr" || user?.role === "admin");
+
   const trocar = (a: AbaPainel) => {
     if (a === "simulador-qr") {
       router.push("/simulador-qr");
@@ -74,7 +77,7 @@ export default function AdminShell({
               </View>
             </View>
             <View className="gap-1">
-              {ABAS.map((item) => {
+              {abas.map((item) => {
                 const ativo = item.id === aba;
                 return (
                   <Pressable
@@ -167,7 +170,7 @@ export default function AdminShell({
           className="mt-3"
           contentContainerStyle={{ gap: 8 }}
         >
-          {ABAS.map((item) => {
+          {abas.map((item) => {
             const ativo = item.id === aba;
             return (
               <Pressable

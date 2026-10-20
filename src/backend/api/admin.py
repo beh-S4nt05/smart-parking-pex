@@ -246,12 +246,13 @@ class SimuladorSessaoCreate(BaseModel):
 async def criar_sessao_simulador(
     dados: SimuladorSessaoCreate,
     db: Session = Depends(get_db),
-    admin: Usuario = Depends(get_usuario_gestor),
+    admin: Usuario = Depends(get_usuario_admin),
 ):
     """
     Gera uma sessão do simulador para um estacionamento (e andar opcional):
     retorna URL tokenizada + QR Code em data-URL PNG, revogável e com expiração.
-    Acesso: Admin e Gestor.
+    Acesso: somente o administrador global (simulação de vagas é tooling de
+    infraestrutura de sensores — gestores não operam).
     """
     return simulador_service.criar_sessao(
         db,
@@ -264,16 +265,16 @@ async def criar_sessao_simulador(
 
 @router.get("/simulador/sessoes")
 async def listar_sessoes_simulador(
-    usuario: Usuario = Depends(get_usuario_gestor),
+    usuario: Usuario = Depends(get_usuario_admin),
 ):
-    """Lista as sessões ativas do simulador (expiração e local). Acesso: Admin/Gestor."""
+    """Lista as sessões ativas do simulador (expiração e local). Acesso: Admin global."""
     return simulador_service.listar_sessoes_ativas()
 
 
 @router.delete("/simulador/sessoes/{token}")
 async def revogar_sessao_simulador(
     token: str,
-    usuario: Usuario = Depends(get_usuario_gestor),
+    usuario: Usuario = Depends(get_usuario_admin),
 ):
     """Revoga uma sessão do simulador (o link do celular para de funcionar)."""
     return simulador_service.revogar_sessao(token)
@@ -283,7 +284,8 @@ async def revogar_sessao_simulador(
 async def validar_sessao_simulador(token: str):
     """
     Consulta pública do estado da sessão (o token de 13 chars + expiração é o
-    segredo). As OPERAÇÕES do simulador continuam exigindo JWT de admin/gestor.
+    segredo). A rota /simulador do app só deixa operar quem tem JWT de
+    administrador global — quem criou a sessão, usa o simulador.
     """
     return simulador_service.validar_sessao(token)
 

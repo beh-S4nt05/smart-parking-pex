@@ -25,7 +25,7 @@ import type { SimSession } from "../types/api";
 
 export default function SimuladorQR() {
   const router = useRouter();
-  const { loading: authLoading, canAccessPanel, isAuthenticated } = useAuth();
+  const { loading: authLoading, isAdmin, isAuthenticated } = useAuth();
   const { estacionamentos } = useEstacionamentos();
 
   const [estId, setEstId] = useState<string | null>(null);
@@ -37,11 +37,12 @@ export default function SimuladorQR() {
   const [copiando, setCopiando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
 
+  // Simulação de vagas = ferramenta do administrador GLOBAL (não gestor/financeiro)
   useEffect(() => {
-    if (!authLoading && (!isAuthenticated || !canAccessPanel)) {
-      router.replace("/login");
+    if (!authLoading && (!isAuthenticated || !isAdmin)) {
+      router.replace(isAuthenticated ? "/dashboard" : "/login");
     }
-  }, [authLoading, isAuthenticated, canAccessPanel, router]);
+  }, [authLoading, isAuthenticated, isAdmin, router]);
 
   const est = estacionamentos.find((e) => e.id === estId) ?? null;
 
@@ -63,8 +64,8 @@ export default function SimuladorQR() {
   }, []);
 
   useEffect(() => {
-    if (canAccessPanel) listarSessoes();
-  }, [canAccessPanel, listarSessoes]);
+    if (isAdmin) listarSessoes();
+  }, [isAdmin, listarSessoes]);
 
   async function gerar() {
     if (!estId || andar == null) {
@@ -124,7 +125,7 @@ export default function SimuladorQR() {
     ]);
   }
 
-  if (authLoading) {
+  if (authLoading || !isAdmin) {
     return (
       <View className="flex-1 items-center justify-center bg-slate-50">
         <ActivityIndicator size="large" color="#2563EB" />
