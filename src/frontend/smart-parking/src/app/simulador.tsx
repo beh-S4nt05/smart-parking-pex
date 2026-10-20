@@ -21,20 +21,27 @@ import { useMapaVagas } from "../hooks/useMapaVagas";
 import { apiErrorMessage, parkingApi } from "../services/api";
 import { Chip, Logo } from "../components/ui";
 import { useAgora, desdeAte } from "../hooks/useAgora";
-import type { Vaga } from "../types/api";
+import type { SimSession, Vaga } from "../types/api";
 
 export default function Simulador() {
-  const params = useLocalSearchParams<{ s?: string; e?: string; a?: string }>();
+  const params = useLocalSearchParams<{
+    sessao?: string;
+    s?: string;
+    e?: string;
+    a?: string;
+  }>();
   const router = useRouter();
   const { isAuthenticated, canAccessPanel, loading: authLoading } = useAuth();
 
   const [validando, setValidando] = useState(true);
   const [sessaoOk, setSessaoOk] = useState(false);
   const [motivo, setMotivo] = useState<string | null>(null);
+  const [info, setInfo] = useState<SimSession | null>(null);
 
-  const token = params.s ?? null;
-  const estId = params.e ?? null;
-  const andarNum = params.a ? Number(params.a) : null;
+  const token = params.sessao ?? params.s ?? null;
+  const estId = info?.estacionamento_id ?? params.e ?? null;
+  const andarNum =
+    info?.andar_numero ?? (params.a != null ? Number(params.a) : null);
 
   // 1) valida o token do QR (rota pública)
   useEffect(() => {
@@ -46,8 +53,9 @@ export default function Simulador() {
     }
     parkingApi
       .validarSessaoSimulador(token)
-      .then(() => {
+      .then((s) => {
         if (!alive) return;
+        setInfo(s);
         setSessaoOk(true);
       })
       .catch((e: { response?: { status?: number } }) => {
@@ -68,7 +76,9 @@ export default function Simulador() {
   // 2) sessão validada exige identidade com acesso a escrita
   useEffect(() => {
     if (!validando && sessaoOk && !authLoading && !canAccessPanel) {
-      router.replace(`/login?next=${encodeURIComponent(`/simulador?s=${token}`)}` as never);
+      router.replace(
+        `/login?next=${encodeURIComponent(`/simulador?sessao=${token}`)}` as never,
+      );
     }
   }, [validando, sessaoOk, authLoading, canAccessPanel, router, token]);
 
