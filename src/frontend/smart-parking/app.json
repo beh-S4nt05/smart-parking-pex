@@ -1,45 +1,37 @@
 {
   "expo": {
-    "name": "smart-parking",
+    "name": "Smart Parking",
     "slug": "smart-parking",
     "version": "1.0.0",
-    "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "orientation": "default",
+    "icon": "./src/assets/imgs/logo.png",
     "scheme": "smartparking",
-    "userInterfaceStyle": "automatic",
+    "userInterfaceStyle": "light",
+    "backgroundColor": "#F8FAFC",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./src/assets/imgs/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#2563EB"
+    },
     "ios": {
       "supportsTablet": true
     },
     "android": {
+      "edgeToEdgeEnabled": true,
+      "predictiveBackGestureEnabled": false,
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
-      },
-      "predictiveBackGestureEnabled": false
+        "foregroundImage": "./src/assets/imgs/adaptive-icon.png",
+        "backgroundColor": "#2563EB"
+      }
     },
     "web": {
       "bundler": "metro",
       "output": "static",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./src/assets/imgs/favicon.png"
     },
     "plugins": [
-      "expo-router",
-      "expo-secure-store",
-      "expo-font",
-      "expo-splash-screen",
-      "expo-status-bar",
-      "expo-web-browser",
-      "expo-router",
-      ["expo-splash-screen", {
-        "image": "./assets/images/splash-icon.png",
-        "imageWidth": 200,
-        "resizeMode": "contain",
-        "backgroundColor": "#ffffff"
-      }],
-  "expo-secure-store"
-    ],
-    "experiments": {
-      "typedRoutes": true
-    }
+      "expo-router"
+    ]
   }
 }

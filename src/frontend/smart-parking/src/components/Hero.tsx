@@ -1,74 +1,118 @@
-import { Shopping } from "../data/shoppings";
+/**
+ * Hero da Home — template "Home (MOBILE/WEB)" do Figma:
+ * badge "Monitoramento em tempo real", título, seletor de shopping,
+ * CTA "Ver Vagas Disponíveis →" e legenda de cores.
+ */
+import { Pressable, ScrollView, Text, View, useWindowDimensions } from "react-native";
+import { colors } from "../theme";
+import { Botao } from "./ui";
+import type { Estacionamento } from "../types/api";
 
-interface HeroProps {
-  shoppings: Shopping[];
-  selectedId: string;
+interface Props {
+  shoppings: Estacionamento[];
+  selecionadoId: string | null;
   onSelect: (id: string) => void;
-  onSearch: () => void;
+  onBuscar: () => void;
 }
 
-export default function Hero({ shoppings, selectedId, onSelect, onSearch }: HeroProps) {
+export default function Hero({ shoppings, selecionadoId, onSelect, onBuscar }: Props) {
+  const { width } = useWindowDimensions();
+  const isWide = width >= 768;
+  const selecionado =
+    shoppings.find((s) => s.id === selecionadoId) ?? shoppings[0];
+
   return (
-    <section id="inicio" className="relative overflow-hidden bg-gradient-to-b from-blue-50 via-blue-50/60 to-white">
-      <div className="pointer-events-none absolute -top-24 -left-24 h-72 w-72 rounded-full bg-blue-200/40 blur-3xl" />
-      <div className="pointer-events-none absolute top-10 -right-16 h-72 w-72 rounded-full bg-indigo-200/40 blur-3xl" />
+    <View className="bg-blue-50/70 px-4 pb-10 pt-8 sm:px-6 sm:pt-12">
+      <View className="mx-auto w-full items-center" style={{ maxWidth: 900 }}>
+        <View className="mb-4 flex-row items-center gap-1.5 self-center rounded-full border border-blue-100 bg-white px-3.5 py-1.5">
+          <View className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+          <Text className="text-xs font-semibold text-blue-700">
+            Monitoramento em tempo real
+          </Text>
+        </View>
 
-      <div className="relative mx-auto max-w-4xl px-4 py-16 text-center sm:px-6 sm:py-24 lg:px-8">
-        <span className="mb-4 inline-flex items-center gap-2 rounded-full bg-white px-4 py-1.5 text-xs font-semibold text-blue-700 shadow-sm ring-1 ring-blue-100">
-          <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
-          Monitoramento em tempo real
-        </span>
-        <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 sm:text-5xl">
-          Encontre Vagas de Estacionamento!
-        </h1>
-        <p className="mx-auto mt-4 max-w-xl text-base text-slate-600 sm:text-lg">
-          Saiba onde estacionar nos principais shoppings em tempo real, com atualização automática por setor.
-        </p>
+        <Text
+          className={`text-center font-extrabold leading-tight text-slate-900 ${
+            isWide ? "text-5xl" : "text-3xl"
+          }`}
+        >
+          Encontre Vagas de{"\n"}Estacionamento!
+        </Text>
+        <Text className="mt-4 max-w-xl text-center text-base leading-6 text-slate-500">
+          {isWide
+            ? "Saiba onde estacionar nos principais shoppings de Manaus em tempo real, com atualização automática por andar."
+            : "Saiba onde estacionar nos principais shoppings de Manaus, em tempo real, com atualização por andar."}
+        </Text>
 
-        <div className="mx-auto mt-8 flex max-w-2xl flex-col gap-3 rounded-2xl bg-white p-3 shadow-xl shadow-blue-100 ring-1 ring-slate-100 sm:flex-row sm:items-center">
-          <div className="flex flex-1 items-center gap-2 rounded-xl bg-slate-50 px-3 py-2.5 text-left">
-            <svg viewBox="0 0 24 24" className="h-5 w-5 shrink-0 text-blue-500" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 21s-7-6.14-7-11a7 7 0 0 1 14 0c0 4.86-7 11-7 11z" />
-              <circle cx="12" cy="10" r="2.5" />
-            </svg>
-            <select
-              value={selectedId}
-              onChange={(e) => onSelect(e.target.value)}
-              className="w-full bg-transparent text-sm font-medium text-slate-800 outline-none"
-            >
-              <option value="" disabled>
-                Selecione o Shopping
-              </option>
-              {shoppings.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name} — {s.city}
-                </option>
-              ))}
-            </select>
-          </div>
-          <button
-            onClick={onSearch}
-            className="flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 py-3 text-sm font-semibold text-white shadow-md shadow-blue-200 transition hover:bg-blue-700 active:scale-[0.98]"
+        {/* seletor + CTA */}
+        <View
+          className={`mt-7 w-full max-w-2xl ${
+            isWide ? "flex-row items-center gap-2.5" : "gap-3"
+          }`}
+        >
+          <View
+            className={`flex-1 flex-row items-center justify-between rounded-full bg-white px-4 ${
+              isWide ? "py-3.5" : "rounded-2xl py-3"
+            } border border-slate-200`}
           >
-            Ver Vagas Disponíveis
-            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
-              <path d="M5 12h14M13 6l6 6-6 6" />
-            </svg>
-          </button>
-        </div>
+            <View className="h-2 w-2 rounded-full bg-blue-600" />
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={{ flexShrink: 1, marginHorizontal: 10 }}
+            >
+              <View className="flex-row items-center gap-2">
+                {shoppings.length === 0 ? (
+                  <Text className="text-sm font-semibold text-slate-700">
+                    Carregando shoppings…
+                  </Text>
+                ) : (
+                  shoppings.map((s) => (
+                    <Pressable
+                      key={s.id}
+                      onPress={() => onSelect(s.id)}
+                      className={`rounded-full px-3 py-1 ${
+                        (selecionado?.id === s.id ? "bg-blue-50" : "")
+                      }`}
+                    >
+                      <Text
+                        className={`text-sm font-semibold ${
+                          selecionado?.id === s.id
+                            ? "text-blue-700"
+                            : "text-slate-500"
+                        }`}
+                      >
+                        {s.nome} — Manaus, AM
+                      </Text>
+                    </Pressable>
+                  ))
+                )}
+              </View>
+            </ScrollView>
+            <Text className="text-blue-600">⌄</Text>
+          </View>
 
-        <div className="mt-8 flex flex-wrap items-center justify-center gap-x-8 gap-y-3 text-sm text-slate-500">
-          <div className="flex items-center gap-2">
-            <span className="h-3 w-3 rounded-sm bg-emerald-500" /> Vaga livre
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="h-3 w-3 rounded-sm bg-red-500" /> Vaga ocupada
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="h-3 w-3 rounded-sm bg-amber-400" /> Poucas vagas
-          </div>
-        </div>
-      </div>
-    </section>
+          <Botao
+            label="Ver Vagas Disponíveis  →"
+            onPress={onBuscar}
+            className={isWide ? "" : "w-full"}
+          />
+        </View>
+
+        {/* legenda */}
+        <View className="mt-6 flex-row flex-wrap items-center justify-center gap-x-5 gap-y-1">
+          {[
+            { c: "#10B981", t: "Vaga livre" },
+            { c: "#EF4444", t: "Vaga ocupada" },
+            { c: colors.warning, t: "Poucas vagas" },
+          ].map((i) => (
+            <View key={i.t} className="flex-row items-center gap-1.5">
+              <View className="h-2 w-2 rounded-full" style={{ backgroundColor: i.c }} />
+              <Text className="text-[13px] text-slate-500">{i.t}</Text>
+            </View>
+          ))}
+        </View>
+      </View>
+    </View>
   );
 }

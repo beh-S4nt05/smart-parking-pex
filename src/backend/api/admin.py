@@ -5,6 +5,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 
+from core.config import settings
 from core.deps import get_usuario_admin, get_usuario_financeiro, get_usuario_gestor, permissao_necessaria, get_usuario_autenticado
 from models.database import get_db
 from models.db_models import Usuario, Estacionamento, Andar, Vaga, TipoUsuario, FechamentoCaixa
@@ -18,7 +19,7 @@ from models.schemas import (
     PagamentoResponse, RegistrarPagamentoRequest,
     ResumoFinanceiroResponse
 )
-from rules import admin_service, estacionamento_service, financeiro_service
+from rules import admin_service, estacionamento_service, financeiro_service, simulador_service, eventos_service
 
 router = APIRouter(prefix="/api/admin", tags=["Painel Administrativo"])
 
@@ -230,6 +231,85 @@ async def dashboard_admin(
         },
         "reservas_hoje": total_reservas_hoje
     }
+
+
+# ======================================================================
+# 📱 SIMULADOR DE SENSORES (QR Code / sessões via token)
+# ======================================================================
+class SimuladorSessaoCreate(BaseModel):
+    estacionamento_id: str
+    andar_numero: Optional[int] = None
+    expira_em_horas: Optional[int] = 12
+
+
+@router.post("/simulador/sessoes", status_code=201)
+async def criar_sessao_simulador(
+    dados: SimuladorSessaoCreate,
+    db: Session = Depends(get_db),
+    admin: Usuario = Depends(get_usuario_gestor),
+):
+    """
+    Gera uma sessão do simulador para um estacionamento (e andar opcional):
+    retorna URL tokenizada + QR Code em data-URL PNG, revogável e com expiração.
+    Acesso: Admin e Gestor.
+    """
+    return simulador_service.criar_sessao(
+        db,
+        estacionamento_id=dados.estacionamento_id,
+        andar_numero=dados.andar_numero,
+        expira_em_horas=dados.expira_em_horas or 12,
+        base_url=settings.SIMULADOR_BASE_URL,
+    )
+
+
+@router.get("/simulador/sessoes")
+async def listar_sessoes_simulador(
+    usuario: Usuario = Depends(get_usuario_gestor),
+):
+    """Lista as sessões ativas do simulador (expiração e local). Acesso: Admin/Gestor."""
+    return simulador_service.listar_sessoes_ativas()
+
+
+@router.delete("/simulador/sessoes/{token}")
+async def revogar_sessao_simulador(
+    token: str,
+    usuario: Usuario = Depends(get_usuario_gestor),
+):
+    """Revoga uma sessão do simulador (o link do celular para de funcionar)."""
+    return simulador_service.revogar_sessao(token)
+
+
+@router.get("/simulador/sessoes/{token}/validar")
+async def validar_sessao_simulador(token: str):
+    """
+    Consulta pública do estado da sessão (o token de 13 chars + expiração é o
+    segredo). As OPERAÇÕES do simulador continuam exigindo JWT de admin/gestor.
+    """
+    return simulador_service.validar_sessao(token)
+
+
+# ======================================================================
+#  FEED DE EVENTOS (dashboard "Últimos eventos de vagas")
+# ======================================================================
+@router.get("/eventos")
+async def eventos_recentes(
+    estacionamento_id: Optional[str] = None,
+    limite: int = 8,
+    db: Session = Depends(get_db),
+    usuario: Usuario = Depends(get_usuario_gestor),
+):
+    """Últimas movimentações de vagas com origem (sensor/simulador/app)."""
+    return eventos_service.listar_eventos_recentes(db, estacionamento_id, limite)
+
+
+@router.get("/ocupacao-andares/{estacionamento_id}")
+async def ocupacao_por_andar(
+    estacionamento_id: str,
+    db: Session = Depends(get_db),
+    usuario: Usuario = Depends(get_usuario_gestor),
+):
+    """Percentual de ocupação por andar — barras do dashboard."""
+    return eventos_service.ocupacao_por_andar(db, estacionamento_id)
 
 
 # ======================================================================

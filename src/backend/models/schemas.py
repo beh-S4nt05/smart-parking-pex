@@ -22,21 +22,35 @@ class UsuarioResponse(UsuarioBase):
     id: str
     is_ativo: bool
     role: str
+    estacionamento_id: Optional[str] = None
     criado_em: datetime
 
     model_config = {"from_attributes": True}
 
 
+class UsuarioMeResponse(UsuarioResponse):
+    """Resposta de /auth/me com o nome do estacionamento vinculado (painel web/mobile)"""
+
+    estacionamento_nome: Optional[str] = None
+
+
 # --- Schemas de Autenticação ---
 class LoginRequest(BaseModel):
-    email: EmailStr
-    senha: str
+    """
+    Aceita e-mail OU telefone como credencial de identificação.
+    Quando contém "@" é tratado como e-mail; caso contrário compara
+    apenas os dígitos com o telefone cadastrado.
+    """
+
+    email: str = Field(..., min_length=3, max_length=120)
+    senha: str = Field(..., min_length=1)
 
 
 class TokenResponse(BaseModel):
     access_token: str
     refresh_token: str
     token_type: str = "bearer"
+    user: Optional[UsuarioResponse] = None
 
 
 class RefreshRequest(BaseModel):
@@ -63,7 +77,8 @@ class EstacionamentoCreate(EstacionamentoBase):
 
 # --- Schemas de Andar ---
 class AndarBase(BaseModel):
-    numero_andar: int = Field(..., ge=0)
+    # aceita negativos porque estacionamentos costumam ter subsolos (ex.: -1, -2)
+    numero_andar: int = Field(..., ge=-10, le=50)
     capacidade: int = Field(..., ge=1)
 
 
@@ -104,6 +119,23 @@ class VagaCreate(VagaBase):
 
 class VagaAtualizaStatus(BaseModel):
     status: StatusVaga
+    origem: Optional[str] = Field(
+        None,
+        pattern="^(sensor|simulador|app_motorista|manual)$",
+        description="De onde veio a mudança (feed de eventos do dashboard)",
+    )
+
+
+class VagaLoteStatusUpdate(BaseModel):
+    """Atualização de status em lote (simulador de sensores / ações rápidas)"""
+
+    vaga_ids: List[str] = Field(..., min_length=1, max_length=500)
+    status: StatusVaga
+    origem: Optional[str] = Field(
+        None,
+        pattern="^(sensor|simulador|app_motorista|manual)$",
+        description="De onde veio a mudança (feed de eventos do dashboard)",
+    )
 
 
 class VagaResponse(VagaBase):
@@ -121,6 +153,15 @@ class MapaVagasResponse(BaseModel):
     estacionamento_nome: str
     andares: List[AndarResponse]
     vagas: List[VagaResponse]
+
+
+class VagaLoteResponse(BaseModel):
+    """Resultado de uma atualização de status em lote (simulador de sensores)"""
+
+    solicitadas: int
+    atualizadas: int
+    nao_encontradas: List[str] = []
+    vagas: List[VagaResponse] = []
 
 
 class ProximaVagaResponse(BaseModel):

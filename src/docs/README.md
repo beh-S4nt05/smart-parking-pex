@@ -2,6 +2,8 @@
 
 Projeto completo com backend em FastAPI (desacoplado) e frontend para React Native/Expo.
 
+**Equipe PEX:** Breno Santos (autor / liderança) · Gabriel Almeida (desenvolvimento) · Jonas Almeida (desenvolvimento de UI)
+
 ## Estrutura do projeto
 ```
 .

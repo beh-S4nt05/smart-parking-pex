@@ -1,32 +1,28 @@
 /**
- * Utilitário de assinatura HMAC de requisições para o SmartParking
- * Compatível com Expo SDK 54 + React Native / TypeScript
- * Protege contra replicação de requisições por Postman/navegador/scripts externos
+ * Assinatura HMAC de requisições do SmartParking.
+ *
+ * ⚠️ Paridade com o backend (core/request_validator.py):
+ *   X-Request-Signature = HMAC-SHA256(
+ *     APP_SIGNING_SECRET,
+ *     "METHOD\\nPATH?query\\nTIMESTAMP\\nNONCE\\nBODY"
+ *   )  -> hex minúsculo
+ *
+ * O app calcula a chave em cima da string com crypto-js — o backend valida
+ * com `hmac.new(secret, string, sha256)`. Qualquer divergência (ex.: usar
+ * apenas SHA256(string + secret), como a versão antiga fazia) quebraria as
+ * escritas em produção.
  */
-import * as Crypto from "expo-crypto";
-import { v4 as uuidv4 } from "uuid";
-import { AxiosRequestConfig, InternalAxiosRequestConfig } from "axios";
+import CryptoJS from "crypto-js";
+import { InternalAxiosRequestConfig } from "axios";
 
 /**
- * Chave secreta compartilhada com o backend.
- * ⚠️ DICA DE OFUSCAÇÃO EM PRODUÇÃO:
- * Divida a chave em várias partes e junte em tempo de execução para dificultar extração por engenharia reversa.
- * Gere uma chave forte para produção: openssl rand -hex 32
+ * Chave compartilhada com o backend (APP_SIGNING_SECRET).
+ * Em produção real: ofuscar/injetar via CI e rotacionar.
  */
-const APP_SECRET_PARTS: string[] = [
-  "smartparking_",
-  "default_",
-  "signing_",
-  "key_",
-  "change_in_production",
-];
-const APP_SECRET: string = APP_SECRET_PARTS.join("");
+const APP_SECRET = "smartparking_default_signing_key_change_in_production";
 
-/**
- * Tipos para configuração do interceptor
- */
-interface RequestSignerConfig {
-  /** Se deve assinar apenas requisições que modificam dados (padrão true) */
+export interface RequestSignerConfig {
+  /** Assinar apenas requisições que modificam dados (padrão true) */
   signWriteMethodsOnly: boolean;
 }
 
@@ -34,21 +30,21 @@ const DEFAULT_CONFIG: RequestSignerConfig = {
   signWriteMethodsOnly: true,
 };
 
-/**
- * Assina uma requisição Axios adicionando os headers de segurança:
- * - X-Request-Timestamp: Horário da requisição
- * - X-Request-Nonce: Identificador único por requisição
- * - X-Request-Signature: Assinatura HMAC-SHA256
- * - X-Client-Type: Identificação do cliente oficial
- */
-export async function signRequest(
+function gerarNonce(): string {
+  // 32 chars hex aleatórios — sem dependência externa
+  return (
+    CryptoJS.lib.WordArray.random(16).toString(CryptoJS.enc.Hex) +
+    Date.now().toString(16)
+  );
+}
+
+export function signRequest(
   config: InternalAxiosRequestConfig,
   customConfig: Partial<RequestSignerConfig> = {},
-): Promise<InternalAxiosRequestConfig> {
+): InternalAxiosRequestConfig {
   const mergedConfig = { ...DEFAULT_CONFIG, ...customConfig };
   const method = (config.method || "get").toUpperCase();
 
-  // Se configurado para assinar só métodos de escrita, pula requisições GET
   if (
     mergedConfig.signWriteMethodsOnly &&
     !["POST", "PUT", "PATCH", "DELETE"].includes(method)
@@ -56,16 +52,24 @@ export async function signRequest(
     return config;
   }
 
-  // Gera valores de cabeçalho
-  const timestamp: string = Math.floor(Date.now() / 1000).toString();
-  const nonce: string = uuidv4();
+  const timestamp = Math.floor(Date.now() / 1000).toString();
+  const nonce = gerarNonce();
 
-  // Monta a string que será assinada EXATAMENTE como no backend:
-  // METHOD + \n + PATH (com query string) + \n + TIMESTAMP + \n + NONCE + \n + BODY
-  const url = new URL(config.url || "/", config.baseURL);
-  const path: string = url.pathname + url.search;
+  // path com query string, exatamente como o servidor vê (request.url.path)
+  let path = config.url || "/";
+  if (config.params && Object.keys(config.params).length > 0) {
+    // axios serializa params internamente; replicamos o formato comum
+    const search = new URLSearchParams(
+      Object.entries(config.params as Record<string, unknown>)
+        .filter(([, v]) => v !== undefined && v !== null)
+        .map(([k, v]) => [k, String(v)]),
+    ).toString();
+    if (search) path += `?${search}`;
+  } else if (path.includes("?")) {
+    // mantém query já embutida na url
+  }
 
-  let bodyString: string = "";
+  let bodyString = "";
   if (config.data) {
     bodyString =
       typeof config.data === "string"
@@ -73,25 +77,15 @@ export async function signRequest(
         : JSON.stringify(config.data);
   }
 
-  const stringToSign: string = [
-    method,
-    path,
-    timestamp,
-    nonce,
-    bodyString,
-  ].join("\n");
+  const stringToSign = [method, path, timestamp, nonce, bodyString].join("\n");
 
-  // Calcula HMAC SHA256 usando a biblioteca nativa de criptografia do Expo
-  // NÃO enviamos a chave secreta pela rede!
-  const signature: string = await Crypto.digestStringAsync(
-    Crypto.CryptoDigestAlgorithm.SHA256,
-    stringToSign + APP_SECRET,
-    { encoding: Crypto.CryptoEncoding.HEX },
+  const signature = CryptoJS.HmacSHA256(stringToSign, APP_SECRET).toString(
+    CryptoJS.enc.Hex,
   );
 
-  // Adiciona os headers na requisição
   if (!config.headers) {
-    config.headers = {} as any;
+    // axios v1 usa AxiosHeaders; apenas garante objeto para atribuir
+    config.headers = {} as InternalAxiosRequestConfig["headers"];
   }
 
   config.headers["X-Request-Timestamp"] = timestamp;
@@ -103,69 +97,15 @@ export async function signRequest(
 }
 
 /**
- * Adiciona o interceptor de assinatura automática em uma instância do Axios.
- * Todas as requisições POST/PUT/PATCH/DELETE serão assinadas automaticamente sem trabalho adicional.
- *
- * @example
- * ```ts
- * import axios from 'axios';
- * import { addRequestSignerInterceptor } from './services/requestSigner';
- *
- * const api = axios.create({ baseURL: 'http://SEU_IP:8000' });
- * addRequestSignerInterceptor(api);
- *
- * // Use normalmente a instância do axios, todas requisições já saem assinadas:
- * const response = await api.post('/api/reservas', { vaga_id: '...' });
- * ```
+ * Instala o interceptor de assinatura em uma instância Axios.
+ * Todas as escritas saem assinadas automaticamente.
  */
 export function addRequestSignerInterceptor(
-  axiosInstance: any,
+  axiosInstance: { interceptors: { request: { use: Function } } },
   customConfig: Partial<RequestSignerConfig> = {},
 ): void {
   axiosInstance.interceptors.request.use(
-    async (config: InternalAxiosRequestConfig) => {
-      return await signRequest(config, customConfig);
-    },
-    (error: any) => {
-      return Promise.reject(error);
-    },
+    (config: InternalAxiosRequestConfig) => signRequest(config, customConfig),
+    (error: unknown) => Promise.reject(error),
   );
-}
-
-/**
- * ⚠️ Função auxiliar para testes - NÃO USAR EM PRODUÇÃO!
- * Gera a assinatura manualmente para depuração.
- */
-export async function debugSignRequest(
-  method: string,
-  path: string,
-  body?: object | string,
-  timestamp?: string,
-  nonce?: string,
-): Promise<{
-  timestamp: string;
-  nonce: string;
-  signature: string;
-  stringToSign: string;
-}> {
-  const ts = timestamp || Math.floor(Date.now() / 1000).toString();
-  const nc = nonce || uuidv4();
-  const bodyStr = body
-    ? typeof body === "string"
-      ? body
-      : JSON.stringify(body)
-    : "";
-  const stringToSign = [method.toUpperCase(), path, ts, nc, bodyStr].join("\n");
-  const signature = await Crypto.digestStringAsync(
-    Crypto.CryptoDigestAlgorithm.SHA256,
-    stringToSign + APP_SECRET,
-    { encoding: Crypto.CryptoEncoding.HEX },
-  );
-
-  return {
-    timestamp: ts,
-    nonce: nc,
-    signature,
-    stringToSign,
-  };
 }

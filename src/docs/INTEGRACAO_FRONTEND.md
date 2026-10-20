@@ -103,7 +103,7 @@ Retorna os dados do usuário cadastrado (sem a senha).
 
 ---
 
-### 2. 👤 Login com e-mail e senha
+### 2. 👤 Login com e-mail (ou telefone) e senha
 ```http
 POST /auth/login
 ```
@@ -114,14 +114,29 @@ POST /auth/login
   "senha": "minhasenha123"
 }
 ```
+> O campo `email` aceita **e-mail OU telefone** (com ou sem máscara — `(92) 99911-0000` funciona).
+> Se o telefone for único e o usuário tiver senha cadastrada, o login é realizado.
+
 ✅ **Resposta 200 OK (igual para TODOS os métodos de login):**
 ```json
 {
   "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
   "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "token_type": "bearer"
+  "token_type": "bearer",
+  "user": {
+    "id": "uuid",
+    "nome": "João",
+    "email": "joao@email.com",
+    "role": "usuario",
+    "estacionamento_id": null,
+    "placa_veiculo": "ABC1D23",
+    "is_ativo": true
+  }
 }
 ```
+> O `user` veio para ficar no login — o frontend não precisa chamar
+> `GET /auth/me` logo após autenticar (usa apenas ao reabrir o app com
+> token salvo, para validar a sessão).
 
 ---
 
@@ -165,16 +180,40 @@ Authorization: Bearer {access_token}
 
 ---
 
-### 5. ⚙️ Atualizar status de vaga (sensor/manual)
+### 5. ⚙️ Atualizar status de vaga (sensor/manual/simulador)
 ```http
 PATCH /api/vagas/{uuid-da-vaga}/status
 ```
 **Payload exato:**
 ```json
 {
-  "status": "ocupada"
+  "status": "ocupada",
+  "origem": "simulador"
 }
 ```
+`origem` (opcional): `"sensor"` · `"simulador"` · `"app_motorista"` · `"manual"` —
+fica registrado no histórico e aparece no feed de eventos do painel.
+
+### 5.1 ⚡ Lote de status (simulador — várias vagas em 1 request)
+```http
+PATCH /api/vagas/lote/status
+```
+```json
+{
+  "vaga_ids": ["uuid-1", "uuid-2"],
+  "status": "livre",
+  "origem": "simulador"
+}
+```
+Resposta: `{ "solicitadas": 2, "atualizadas": 2, "nao_encontradas": [], "vagas": [...] }` —
+somente o que **mudou de verdade** gera histórico/evento.
+
+### 5.2 🔎 Listar vagas com filtro (público)
+```http
+GET /api/vagas?estacionamento_id={uuid}&andar_id={uuid}&status=livre&tipo=pcd
+```
+Usado pelo painel para inspeção rápida; retorna as mesmas vagas do mapa
+(código, posição no grid, status, tipo, andar).
 ✅ **Status aceitos:**
 - `"livre"`: Vaga disponível
 - `"ocupada"`: Vaga com veículo
@@ -410,3 +449,49 @@ Login social é totalmente opcional: você pode deixar as chaves vazias no `.env
 | 💰 Financeiro | Ver relatórios financeiros do seu estacionamento, registrar pagamentos |
 | 🧑‍💼 Gestor | Tudo do financeiro + gerenciar vagas, andares e preços do seu estacionamento |
 | 🔴 Admin | TUDO na plataforma |
+
+---
+
+## 📲 Frontend real (Expo) — telas web + mobile na MESMA rota
+
+O app em `src/frontend/smart-parking` usa a API de ponta a ponta (sem mocks):
+
+| Camada | Arquivo | Papel |
+|---|---|---|
+| HTTP | `src/services/api.ts` | axios + refresh automático + `parkingApi` tipado por endpoint |
+| Assinatura | `src/services/requestSigner.ts` | HMAC `X-Request-*` exigido **só em produção** (ver `PROTECAO_REQUISICOES.md`) |
+| Sessão | `src/context/AuthContext.tsx` + `src/hooks/useAuth.ts` | guarda tokens/usuário no storage; restaura sessão no boot |
+| Dados | `src/hooks/useEstacionamentos.ts` · `useMapaVagas.ts` · `useReservas.ts` | polling (`pollingMs`) + cache de última resposta para offline |
+| Telas | `src/app/*.tsx` | responsivas: `useWindowDimensions()` escolhe layout web largo vs. stack mobile na mesma rota |
+
+**URL da API**: `.env` → `EXPO_PUBLIC_API_URL` (dev local: `http://localhost:8000`;
+Expo Go no celular: IP LAN; preview: URL pública do backend). O token é o mesmo
+entre web e mobile (mesma origem de storage por dispositivo).
+
+### Fluxo admin: QR do simulador
+1. Painel → aba **Simulador QR** (`/simulador-qr`): escolhe shopping + andar +
+   validade → `POST /api/admin/simulador/sessoes` retorna
+   `{ token, url, qr_png_base64, expira_em }` (QR pronto para `<Image>`).
+2. Admin escaneia no celular → `/simulador?s={token}` → o app valida com
+   `GET /api/admin/simulador/sessoes/{token}/validar` (pública; `410` =
+   expirada/revogada) e exige papel `admin`/`gestor` para operar.
+3. Toque na vaga / ações em lote → `PATCH /api/vagas/.../status` com
+   `origem: "simulador"`; o dashboard reflete via polling + `GET /api/admin/eventos`.
+4. `DELETE /api/admin/simulador/sessoes/{token}` revoga na hora.
+
+### Endpoints do painel (novos no contrato)
+```http
+GET  /auth/me                              → usuário + estacionamento_nome
+GET  /api/admin/dashboard                  → totais globais (admin)
+GET  /api/admin/eventos?estacionamento_id=&limite=20
+GET  /api/admin/ocupacao-andares/{est}     → [{andar_id, numero_andar, total_vagas, ocupadas, livres, percentual}]
+GET  /api/relatorios/fluxo?periodo=diario  → total_entradas/saidas, tempo_medio_permanencia_min, registros[]
+```
+O gráfico **"Fluxo de veículos por hora"** do dashboard é montado no cliente
+agrupando `registros[].entrada_em` por hora — não há endpoint por hora.
+
+### Login/redirect mesclado
+`/login` aceita **e-mail ou telefone**; após `POST /auth/login`, redireciona por
+papel (`admin|gestor|financeiro → /dashboard`, `usuario → /`). Cadastro:
+`POST /auth/registrar` (`nome`, `email`, `senha ≥ 6`, `telefone?`, `placa_veiculo?`)
+com auto-login em seguida.

@@ -34,6 +34,12 @@ class Settings(BaseSettings):
     # Chave de assinatura de requisições anti-replicação (deve ser a MESMA no frontend)
     APP_SIGNING_SECRET: str = "smartparking_default_signing_key_change_in_production"
 
+    # Simulador de sensores: base do app Expo usado para montar a URL do QR
+    SIMULADOR_BASE_URL: str = "http://localhost:8081"
+
+    # Popular o banco com os shoppings demo de Manaus ao iniciar (só em DEBUG e com banco vazio)
+    SEED_DEMO_ON_STARTUP: bool = True
+
     # OAuth Providers (autenticação social)
     GOOGLE_CLIENT_ID: Optional[str] = None
     GOOGLE_CLIENT_SECRET: Optional[str] = None

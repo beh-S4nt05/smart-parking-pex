@@ -1,107 +1,120 @@
-// src/app/explorar.tsx
-import { View, Text, Pressable, FlatList } from "react-native";
-import { Link, useRouter } from "expo-router";
-
-const PURPLE = "#6D28D9";
-
-type Shopping = {
-  id: string;
-  nome: string;
-  vagasLivres: number;
-  vagasTotais: number;
-};
-
-const SHOPPINGS: Shopping[] = [
-  { id: "1", nome: "Amazonas Shopping", vagasLivres: 32, vagasTotais: 60 },
-  { id: "2", nome: "Manauara Shopping", vagasLivres: 18, vagasTotais: 50 },
-  { id: "3", nome: "Ponta Negra Shopping", vagasLivres: 41, vagasTotais: 55 },
-  { id: "4", nome: "Sumaúma Park Shopping", vagasLivres: 24, vagasTotais: 45 },
-];
+/**
+ * "Lista de Shoppings" / "Reservar Vaga" — navegação do app: lista completa
+ * dos shoppings credenciados com busca, ocupação real da API e atualização
+ * automática a cada 15s. Clique abre o mapa de vagas do shopping.
+ */
+import { useMemo, useState } from "react";
+import {
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
+import { useRouter } from "expo-router";
+import Header from "../components/Header";
+import Footer from "../components/Footer";
+import ShoppingList from "../components/ShoppingList";
+import { useEstacionamentos } from "../hooks/useEstacionamentos";
+import { useAgora, desdeAte } from "../hooks/useAgora";
 
 export default function Explorar() {
   const router = useRouter();
+  const { estacionamentos, loading, erro, atualizadoEm, refresh } =
+    useEstacionamentos({ pollingMs: 15000 });
+  const [busca, setBusca] = useState("");
+  const agora = useAgora(5000);
+
+  const filtrados = useMemo(() => {
+    const termo = busca.trim().toLowerCase();
+    if (!termo) return estacionamentos;
+    return estacionamentos.filter(
+      (e) =>
+        e.nome.toLowerCase().includes(termo) ||
+        (e.endereco ?? "").toLowerCase().includes(termo),
+    );
+  }, [estacionamentos, busca]);
 
   return (
     <View className="flex-1 bg-slate-50">
-      {/* Topo */}
-      <View className="flex-row items-center justify-between px-6 py-5 md:px-12">
-        <View className="flex-row items-center gap-2">
-          <View className="h-9 w-9 items-center justify-center rounded-lg bg-slate-900">
-            <Text className="text-white">🚗</Text>
+      <Header rotaAtual="/explorar" />
+      <ScrollView
+        refreshControl={
+          <RefreshControl refreshing={loading} onRefresh={refresh} tintColor="#2563EB" />
+        }
+      >
+        <View className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6">
+          <View className="mb-5 flex-row flex-wrap items-end justify-between gap-3">
+            <View>
+              <Text className="text-2xl font-extrabold text-slate-900 sm:text-3xl">
+                Vagas disponíveis agora
+              </Text>
+              <Text className="mt-1 text-sm text-slate-500">
+                Visualização pública — atualizado {desdeAte(atualizadoEm, agora)} ·
+                entre para reservar.
+              </Text>
+            </View>
+            <View className="flex-row items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1">
+              <View className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+              <Text className="text-[11px] font-semibold text-emerald-700">
+                Ao vivo
+              </Text>
+            </View>
           </View>
-          <View>
-            <Text className="text-sm font-bold text-slate-900">Smart Parking</Text>
-            <Text className="text-xs text-slate-400">Shoppings</Text>
+
+          <TextInput
+            placeholder="Buscar por shopping ou bairro…"
+            placeholderTextColor="#94A3B8"
+            value={busca}
+            onChangeText={setBusca}
+            className="mb-5 rounded-xl border-2 border-slate-200 bg-white px-4 py-3 text-base text-slate-900 focus:border-blue-500"
+          />
+
+          {erro ? (
+            <View className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+              <Text className="text-[13px] font-medium text-amber-700">⚠️ {erro}</Text>
+            </View>
+          ) : null}
+
+          {filtrados.length === 0 && !loading ? (
+            <View className="items-center rounded-2xl border border-slate-200 bg-white p-10">
+              <Text className="text-3xl">🔍</Text>
+              <Text className="mt-2 text-base font-bold text-slate-900">
+                Nenhum shopping encontrado
+              </Text>
+              <Text className="mt-1 text-sm text-slate-500">
+                Ajuste a busca ou verifique se a API está no ar.
+              </Text>
+            </View>
+          ) : (
+            <ShoppingList
+              shoppings={filtrados}
+              onPress={(e) => router.push(`/shopping/${e.id}` as never)}
+            />
+          )}
+
+          {/* CTA de cadastro para reservar */}
+          <View className="mt-8 flex-row flex-wrap items-center justify-between gap-4 rounded-2xl bg-slate-900 p-6">
+            <View>
+              <Text className="text-lg font-bold text-white">
+                Quer garantir sua vaga antes de sair de casa?
+              </Text>
+              <Text className="mt-1 text-sm text-slate-300">
+                Crie sua conta e reserve pelo app — é grátis.
+              </Text>
+            </View>
+            <Pressable
+              onPress={() => router.push("/cadastro")}
+              className="rounded-xl bg-blue-600 px-6 py-3 active:bg-blue-700"
+            >
+              <Text className="text-sm font-bold text-white">Criar conta grátis</Text>
+            </Pressable>
           </View>
         </View>
 
-        <Link href="/" className="text-sm font-medium text-violet-700">
-          ← Voltar ao início
-        </Link>
-      </View>
-
-      {/* Título */}
-      <View className="px-6 pb-4 md:px-12">
-        <Text className="text-xl font-bold text-slate-900">
-          Vagas disponíveis agora
-        </Text>
-        <Text className="mt-1 text-sm text-slate-500">
-          Visualização pública — para reservar uma vaga, crie sua conta.
-        </Text>
-      </View>
-
-      {/* Lista de shoppings */}
-      <FlatList
-        data={SHOPPINGS}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 24, gap: 12 }}
-        renderItem={({ item }) => <ShoppingCard shopping={item} />}
-      />
-
-      {/* Rodapé fixo com CTA */}
-      <View className="border-t border-slate-200 bg-white px-6 py-4">
-        <Pressable
-          onPress={() => router.push("/cadastro")}
-          className="items-center rounded-xl py-3.5 active:opacity-90"
-          style={{ backgroundColor: PURPLE }}
-        >
-          <Text className="text-sm font-semibold text-white">
-            Criar conta para reservar
-          </Text>
-        </Pressable>
-      </View>
-    </View>
-  );
-}
-
-function ShoppingCard({ shopping }: { shopping: Shopping }) {
-  const ocupacao = Math.round(
-    ((shopping.vagasTotais - shopping.vagasLivres) / shopping.vagasTotais) * 100,
-  );
-
-  return (
-    <View className="rounded-2xl bg-white p-4 shadow-sm">
-      <View className="flex-row items-center justify-between">
-        <Text className="text-base font-semibold text-slate-900">
-          {shopping.nome}
-        </Text>
-        <View className="rounded-full bg-emerald-100 px-3 py-1">
-          <Text className="text-xs font-semibold text-emerald-700">
-            {shopping.vagasLivres} livres
-          </Text>
-        </View>
-      </View>
-
-      <View className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100">
-        <View
-          className="h-2 rounded-full bg-violet-600"
-          style={{ width: `${ocupacao}%` }}
-        />
-      </View>
-
-      <Text className="mt-2 text-xs text-slate-400">
-        {shopping.vagasTotais - shopping.vagasLivres} de {shopping.vagasTotais} vagas ocupadas
-      </Text>
+        <Footer />
+      </ScrollView>
     </View>
   );
 }

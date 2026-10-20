@@ -1,72 +1,129 @@
-import React, { createContext, useState, useEffect, ReactNode } from 'react';
-import { api } from '../services/api';
-import { storage } from '../services/storage';
+import React, {
+  createContext,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  ReactNode,
+} from "react";
+import { parkingApi } from "../services/api";
+import { storage } from "../services/storage";
+import type { Tokens, Usuario } from "../types/api";
 
-export interface User {
-  id: string;
-  nome: string;
-  email: string;
-  placa_veiculo?: string;
-  cargo?: string;
-}
+export type { Usuario };
+
+const ROLES_PAINEL = ["admin", "gestor", "financeiro"];
 
 export interface AuthContextData {
-  user: User | null;
+  user: Usuario | null;
   isAuthenticated: boolean;
+  /** admin, gestor ou financeiro — enxerga o painel/dashboard */
+  canAccessPanel: boolean;
+  isAdmin: boolean;
   loading: boolean;
-  signIn: (email: string, senha: string) => Promise<void>;
+  /** credencial = e-mail OU telefone (o backend aceita os dois) */
+  signIn: (credencial: string, senha: string) => Promise<Usuario>;
+  register: (payload: {
+    nome: string;
+    email: string;
+    senha: string;
+    telefone?: string;
+    placa_veiculo?: string;
+  }) => Promise<Usuario>;
   signOut: () => Promise<void>;
 }
 
-export const AuthContext = createContext<AuthContextData>({} as AuthContextData);
+export const AuthContext = createContext<AuthContextData | null>(null);
 
-export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
+export const AuthProvider: React.FC<{ children: ReactNode }> = ({
+  children,
+}) => {
+  const [user, setUser] = useState<Usuario | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
 
+  // Boot: restaura sessão gravada. Mostra o cache imediatamente (app usável
+  // offline) e revalida com /auth/me em seguida.
   useEffect(() => {
-    async function loadStorageData() {
+    let alive = true;
+    (async () => {
       try {
         const token = await storage.getAccessToken();
-        if (token) {
-          const response = await api.get('/auth/me');
-          setUser(response.data);
+        const cached = await storage.getUserCache();
+        if (cached) {
+          try {
+            setUser(JSON.parse(cached));
+          } catch {
+            /* cache corrompido — segue */
+          }
         }
-      } catch (error) {
-        await storage.clearTokens();
+        if (token) {
+          try {
+            const me = await parkingApi.me();
+            if (!alive) return;
+            setUser(me);
+            await storage.setUserCache(JSON.stringify(me));
+          } catch {
+            if (!alive) return;
+            // se o refresh automático do interceptor também falhou,
+            // a sessão expirou de vez → limpa credenciais
+            await storage.clearTokens();
+            setUser(null);
+          }
+        }
       } finally {
-        setLoading(false);
+        if (alive) setLoading(false);
       }
-    }
-
-    loadStorageData();
+    })();
+    return () => {
+      alive = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const signIn = async (email: string, senha: string) => {
-    const response = await api.post('/auth/login', { email, senha });
-    const { access_token, refresh_token, user: userData } = response.data;
+  const signIn = useCallback(async (credencial: string, senha: string) => {
+    const data: Tokens = await parkingApi.login(credencial, senha);
+    const usuario =
+      data.user ??
+      (await parkingApi.me().catch(() => null));
+    if (usuario) {
+      setUser(usuario);
+      await storage.setUserCache(JSON.stringify(usuario));
+    }
+    if (!usuario) throw new Error("Não foi possível carregar o perfil");
+    return usuario;
+  }, []);
 
-    await storage.setAccessToken(access_token);
-    await storage.setRefreshToken(refresh_token);
-    setUser(userData);
-  };
+  const register = useCallback(
+    async (payload: {
+      nome: string;
+      email: string;
+      senha: string;
+      telefone?: string;
+      placa_veiculo?: string;
+    }) => parkingApi.registrar(payload),
+    [],
+  );
 
-  const signOut = async () => {
-    await storage.clearTokens();
+  const signOut = useCallback(async () => {
+    await parkingApi.logout();
     setUser(null);
-  };
+  }, []);
+
+  const value = useMemo<AuthContextData>(
+    () => ({
+      user,
+      isAuthenticated: !!user,
+      canAccessPanel: !!user && ROLES_PAINEL.includes(user.role),
+      isAdmin: user?.role === "admin",
+      loading,
+      signIn,
+      register,
+      signOut,
+    }),
+    [user, loading, signIn, register, signOut],
+  );
 
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        isAuthenticated: !!user,
-        loading,
-        signIn,
-        signOut,
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
+    <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
   );
 };

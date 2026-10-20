@@ -20,6 +20,8 @@ from models.schemas import (
     StatusResponse,
     HealthCheckResponse,
     VagaAtualizaStatus,
+    VagaLoteStatusUpdate,
+    VagaLoteResponse,
 )
 from rules import (
     estacionamento_service,
@@ -156,6 +158,32 @@ async def listar_minhas_reservas(
 
 
 # --- Rotas de Vagas ---
+@router.get("/vagas", response_model=list[VagaResponse])
+async def listar_vagas(
+    estacionamento_id: Optional[str] = Query(None, description="Filtra por estacionamento"),
+    andar_id: Optional[str] = Query(None, description="Filtra por andar"),
+    status: Optional[str] = Query(None, description="livre, ocupada, reservada ou inativa"),
+    tipo: Optional[str] = Query(None, description="comum, idoso, pcd, moto ou eletrico"),
+    db: Session = Depends(get_db),
+):
+    """Lista vagas com filtros opcionais (consulta rápida para o mapa do app)"""
+    return vaga_service.listar_vagas(db, estacionamento_id, andar_id, status, tipo)
+
+
+# ATENÇÃO: a rota fixa /vagas/lote/status precisa ser declarada ANTES da
+# dinâmica /vagas/{id}/status — senão o FastAPI casa "lote" como {id} (404)
+@router.patch("/vagas/lote/status", response_model=VagaLoteResponse)
+async def atualizar_status_vagas_lote(
+    dados: VagaLoteStatusUpdate, db: Session = Depends(get_db)
+):
+    """
+    Atualiza o status de várias vagas de uma vez — usado pelas ações do
+    simulador de sensores (ex.: "ocupar 10 livres", "liberar andar inteiro").
+    Mantém o histórico de entrada/saída para cada transição válida.
+    """
+    return vaga_service.atualizar_status_vaga_lote(db, dados)
+
+
 @router.patch("/vagas/{id}/status", response_model=VagaResponse)
 async def atualizar_status_vaga(
     id: str, dados: VagaAtualizaStatus, db: Session = Depends(get_db)

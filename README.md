@@ -40,7 +40,7 @@ com dashboard, mapa de vagas por andar e simulador de sensores por QR Code.
   - [📁 Estrutura do repositório](#-estrutura-do-repositório)
   - [✅ Validação e testes](#-validação-e-testes)
   - [🗺️ Roadmap](#️-roadmap)
-  - [👤 Autor e licença](#-autor-e-licença)
+  - [👥 Equipe e licença](#-equipe-e-licença)
 
 ---
 
@@ -155,9 +155,15 @@ python main.py                                      # API em http://localhost:80
 cd src/frontend/smart-parking
 npm install
 # aponte para o IP da sua máquina (celular na mesma rede Wi-Fi):
-export EXPO_PUBLIC_API_URL=http://SEU_IP_LOCAL:8000
+echo "EXPO_PUBLIC_API_URL=http://SEU_IP_LOCAL:8000" > .env   # (ou export, à sua escolha)
 npx expo start          # pressione: w (web) · a (Android) · i (iOS) · ou escaneie o QR
 ```
+
+O **web e o mobile usam as mesmas rotas** (layout responsivo): `/` home ·
+`/login` (e-mail **ou** telefone) · `/cadastro` · `/explorar` ·
+`/shopping/{id}` mapa de vagas · `/reservas` · `/dashboard` painel ·
+`/simulador-qr` + `/simulador` (fluxo do QR). Contrato completo em
+[`src/docs/INTEGRACAO_FRONTEND.md`](src/docs/INTEGRACAO_FRONTEND.md).
 
 > 📖 **Documentação da API:** [http://localhost:8000/docs](http://localhost:8000/docs) (Swagger interativo)
 > 🐘 **PgAdmin:** [http://localhost:5050](http://localhost:5050) · `admin@admin.com` / `admin`
@@ -293,9 +299,15 @@ A conformidade do projeto é controlada pela **matriz de conformidade** em [`src
 
 ---
 
-## 👤 Autor e licença
+## 👥 Equipe e licença
 
-**Breno Santos** — Manaus, AM · <behsolutionsandautomations@gmail.com>
+| Papel no projeto PEX | Integrante(s) |
+|---|---|
+| ✍️ Autor / Liderança | **Breno Santos** |
+| 🛠️ Desenvolvimento | **Gabriel Almeida** · **Breno Santos** |
+| 🎨 Desenvolvimento de UI | **Jonas Almeida** |
+
+Projeto acadêmico PEX — Manaus/AM · contato: <behsolutionsandautomations@gmail.com>
 
 Distribuído sob licença **MIT** — veja [LICENSE](LICENSE).
 
