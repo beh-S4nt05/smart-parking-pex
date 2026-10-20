@@ -9,6 +9,7 @@ import { useReservas } from "../hooks/useReservas";
 import { apiErrorMessage } from "../services/api";
 import Header from "../components/Header";
 import {
+  AnimarEntrada,
   BlocoCarregando,
   BlocoErro,
   BlocoVazio,
@@ -46,6 +47,10 @@ export default function Reservas() {
           onPress: async () => {
             try {
               await cancelar(id);
+              Alert.alert(
+                "Reserva cancelada",
+                `A vaga ${codigo} voltou a ficar livre no mapa. ✅`,
+              );
             } catch (e) {
               Alert.alert("Erro", apiErrorMessage(e));
             }
@@ -95,11 +100,12 @@ export default function Reservas() {
                 onAcao={() => router.push("/explorar")}
               />
             ) : (
-              reservas.map((r) => {
+              reservas.map((r, idx) => {
                 const codigo = r.vaga?.codigo ?? "—";
                 const andar = r.vaga?.numero_andar;
                 return (
-                  <Card key={r.id} className="p-4">
+                  <AnimarEntrada key={r.id} delay={idx * 45}>
+                  <Card className="p-4">
                     <View className="flex-row items-center gap-4">
                       <View className="h-12 w-12 items-center justify-center rounded-xl bg-blue-600">
                         <Text className="text-[13px] font-extrabold text-white">
@@ -142,6 +148,7 @@ export default function Reservas() {
                       </View>
                     ) : null}
                   </Card>
+                  </AnimarEntrada>
                 );
               })
             )}

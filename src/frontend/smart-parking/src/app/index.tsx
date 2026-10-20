@@ -108,6 +108,7 @@ export default function Index() {
                 shoppings={estacionamentos}
                 selecionadoId={selecionado?.id}
                 onPress={(e) => abrirMapa(e.id)}
+                variante="lista"
               />
             )}
           </View>
