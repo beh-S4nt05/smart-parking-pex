@@ -40,7 +40,7 @@ com dashboard, mapa de vagas por andar e simulador de sensores por QR Code.
   - [📁 Estrutura do repositório](#-estrutura-do-repositório)
   - [✅ Validação e testes](#-validação-e-testes)
   - [🗺️ Roadmap](#️-roadmap)
-  - [👤 Autor e licença](#-autor-e-licença)
+  - [👥 Equipe e licença](#-equipe-e-licença)
 
 ---
 
@@ -299,9 +299,15 @@ A conformidade do projeto é controlada pela **matriz de conformidade** em [`src
 
 ---
 
-## 👤 Autor e licença
+## 👥 Equipe e licença
 
-**Breno Santos** — Manaus, AM · <behsolutionsandautomations@gmail.com>
+| Papel no projeto PEX | Integrante(s) |
+|---|---|
+| ✍️ Autor / Liderança | **Breno Santos** |
+| 🛠️ Desenvolvimento | **Gabriel Almeida** · **Breno Santos** |
+| 🎨 Desenvolvimento de UI | **Jonas Almeida** |
+
+Projeto acadêmico PEX — Manaus/AM · contato: <behsolutionsandautomations@gmail.com>
 
 Distribuído sob licença **MIT** — veja [LICENSE](LICENSE).
 
