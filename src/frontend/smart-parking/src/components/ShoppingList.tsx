@@ -1,16 +1,18 @@
 /**
  * "REDE CREDENCIADA — Shoppings Parceiros": cards por shopping com dados da
  * API (andares, total de vagas, badge de disponíveis colorida como no Figma).
- * No web vira grade (4 colunas); no mobile, lista vertical.
+ * variante "lista" = cards empilhados de cima para baixo (Home, como pedido);
+ * "auto" = grade responsiva no web e lista no mobile (Explorar).
  */
 import { Pressable, Text, View, useWindowDimensions } from "react-native";
-import { Card, Chip, Logo } from "./ui";
+import { AnimarEntrada, Card, Chip, Logo } from "./ui";
 import type { Estacionamento } from "../types/api";
 
 interface Props {
   shoppings: Estacionamento[];
   selecionadoId?: string | null;
   onPress: (est: Estacionamento) => void;
+  variante?: "lista" | "auto";
 }
 
 function tonePorDisponibilidade(est: Estacionamento): "verde" | "ambar" | "vermelho" {
@@ -30,9 +32,21 @@ function bairroDe(endereco?: string | null): string {
   return bairro ? `${bairro}, Manaus` : "Manaus, AM";
 }
 
-export default function ShoppingList({ shoppings, selecionadoId, onPress }: Props) {
+export default function ShoppingList({
+  shoppings,
+  selecionadoId,
+  onPress,
+  variante = "auto",
+}: Props) {
   const { width } = useWindowDimensions();
-  const colunas = width >= 1180 ? 4 : width >= 768 ? 2 : 1;
+  const colunas =
+    variante === "lista"
+      ? 1
+      : width >= 1180
+        ? 4
+        : width >= 768
+          ? 2
+          : 1;
 
   return (
     <View
@@ -46,12 +60,12 @@ export default function ShoppingList({ shoppings, selecionadoId, onPress }: Prop
           : { gap: 12 }
       }
     >
-      {shoppings.map((est) => {
+      {shoppings.map((est, i) => {
         const selecionado = est.id === selecionadoId;
         const livres = est.vagas_disponiveis_total ?? 0;
         return (
+          <AnimarEntrada key={est.id} delay={i * 60}>
           <View
-            key={est.id}
             style={
               colunas > 1
                 ? { width: `calc(${100 / colunas}% - ${14 * ((colunas - 1) / colunas)}px)` as unknown as import("react-native").DimensionValue }
@@ -112,6 +126,7 @@ export default function ShoppingList({ shoppings, selecionadoId, onPress }: Prop
               </Card>
             </Pressable>
           </View>
+          </AnimarEntrada>
         );
       })}
     </View>

@@ -35,7 +35,13 @@ import {
   formatarMoedaBR,
 } from "../../components/ui";
 import { colors } from "../../theme";
-import type { Estacionamento, ProximaVaga, Vaga, VagaTipo } from "../../types/api";
+import type {
+  Estacionamento,
+  ProximaVaga,
+  Reserva,
+  Vaga,
+  VagaTipo,
+} from "../../types/api";
 
 const FILTROS_TIPO: { id: VagaTipo | "todos"; label: string }[] = [
   { id: "todos", label: "Todas" },
@@ -62,6 +68,71 @@ export default function MapaVagas() {
   const [sugestao, setSugestao] = useState<ProximaVaga | null>(null);
   const [reservando, setReservando] = useState(false);
   const [shopping, setShopping] = useState<Estacionamento | null>(null);
+  const [minhasReservas, setMinhasReservas] = useState<Reserva[]>([]);
+
+  // reservas ativas do usuário — dão o botão "Cancelar reserva" no mapa
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setMinhasReservas([]);
+      return;
+    }
+    let alive = true;
+    parkingApi
+      .minhasReservas()
+      .then((r) => alive && setMinhasReservas(r))
+      .catch(() => alive && setMinhasReservas([]));
+    return () => {
+      alive = false;
+    };
+  }, [isAuthenticated, atualizadoEm]);
+
+  const reservaDestaVaga =
+    vagaSel != null
+      ? minhasReservas.find(
+          (r) => r.status === "confirmada" && r.vaga?.id === vagaSel.id,
+        ) ?? null
+      : null;
+
+  function pedirCancelamentoReserva(reservaId: string, codigo: string) {
+    Alert.alert(
+      "Cancelar reserva",
+      `A vaga ${codigo} volta a ficar livre no mapa imediatamente.`,
+      [
+        { text: "Manter", style: "cancel" },
+        {
+          text: "Cancelar reserva",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await parkingApi.cancelarReserva(reservaId);
+              setMinhasReservas((prev) =>
+                prev.map((x) =>
+                  x.id === reservaId ? { ...x, status: "cancelada" as never } : x,
+                ),
+              );
+              setMapa(
+                mapa
+                  ? {
+                      ...mapa,
+                      vagas: mapa.vagas.map((x) =>
+                        x.id === vagaSel?.id
+                          ? { ...x, status: "livre" as const }
+                          : x,
+                      ),
+                    }
+                  : mapa,
+              );
+              setVagaSel(null);
+              refresh();
+              Alert.alert("Reserva cancelada", `A vaga ${codigo} foi liberada. ✅`);
+            } catch (e) {
+              Alert.alert("Não foi possível cancelar", apiErrorMessage(e));
+            }
+          },
+        },
+      ],
+    );
+  }
 
   const andares = useMemo(() => {
     if (!mapa) return [];
@@ -309,6 +380,13 @@ export default function MapaVagas() {
               loading={reservando}
               className="mt-3 w-full"
             />
+          ) : reservaDestaVaga ? (
+            <Botao
+              label="Cancelar minha reserva"
+              variant="contorno"
+              className="mt-3 w-full border-red-300"
+              onPress={() => pedirCancelamentoReserva(reservaDestaVaga.id, vagaSel.codigo)}
+            />
           ) : (
             <Text className="mt-1 text-xs text-slate-500">
               Vaga indisponível para reserva neste momento.
@@ -389,6 +467,15 @@ export default function MapaVagas() {
                     onPress={() => reservar(vagaSel)}
                     loading={reservando}
                     className="mt-3 w-full"
+                  />
+                ) : reservaDestaVaga ? (
+                  <Botao
+                    label="Cancelar minha reserva"
+                    variant="contorno"
+                    className="mt-3 w-full border-red-300"
+                    onPress={() =>
+                      pedirCancelamentoReserva(reservaDestaVaga.id, vagaSel.codigo)
+                    }
                   />
                 ) : null}
               </Card>

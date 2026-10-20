@@ -472,9 +472,12 @@ entre web e mobile (mesma origem de storage por dispositivo).
 1. Painel → aba **Simulador QR** (`/simulador-qr`): escolhe shopping + andar +
    validade → `POST /api/admin/simulador/sessoes` retorna
    `{ token, url, qr_png_base64, expira_em }` (QR pronto para `<Image>`).
-2. Admin escaneia no celular → `/simulador?s={token}` → o app valida com
+2. Admin escaneia no celular (ou abre no navegador do computador — a mesma
+   rota é responsiva) → `/simulador?sessao={token}` → o app valida com
    `GET /api/admin/simulador/sessoes/{token}/validar` (pública; `410` =
-   expirada/revogada) e exige papel `admin`/`gestor` para operar.
+   expirada/revogada) e exige JWT de **administrador global** para operar —
+   gestor/financeiro NÃO acessam o simulador (nem as rotas de sessão
+   `POST/GET/DELETE /api/admin/simulador/sessoes`, agora `get_usuario_admin`).
 3. Toque na vaga / ações em lote → `PATCH /api/vagas/.../status` com
    `origem: "simulador"`; o dashboard reflete via polling + `GET /api/admin/eventos`.
 4. `DELETE /api/admin/simulador/sessoes/{token}` revoga na hora.
