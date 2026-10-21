@@ -28,6 +28,13 @@ export default function Login() {
   const isWide = width >= 900;
   const { signIn } = useAuth();
 
+  // "← Início" com destino garantido: router.back() sozinho é mudo quando se
+  // chega ao /login direto (URL digitada, redirecionamento 403 do painel)
+  const voltarInicio = () => {
+    if (router.canGoBack()) router.back();
+    else router.replace("/");
+  };
+
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
   const [senhaVisivel, setSenhaVisivel] = useState(false);
@@ -199,6 +206,14 @@ export default function Login() {
           }}
         >
           <View className="w-full max-w-[420px] px-8 py-10">
+            <Pressable
+              onPress={voltarInicio}
+              accessibilityRole="button"
+              className="mb-5 flex-row items-center gap-1.5 self-start rounded-full border border-slate-200 bg-white px-3.5 py-1.5 active:bg-slate-50"
+            >
+              <Text className="text-[15px] leading-5 text-blue-600">←</Text>
+              <Text className="text-[13px] font-semibold text-slate-600">Início</Text>
+            </Pressable>
             <Text className="text-3xl font-extrabold text-slate-900">Entrar</Text>
             <Text className="mb-5 mt-1.5 text-sm text-slate-500">
               Acesse sua conta para continuar
@@ -217,11 +232,12 @@ export default function Login() {
     >
       <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: "center" }}>
         <Pressable
-          onPress={() => router.back()}
+          onPress={voltarInicio}
           accessibilityRole="button"
-          className="absolute left-3 top-4 z-10 p-2"
+          className="absolute left-3 top-4 z-10 flex-row items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 active:bg-slate-50"
         >
-          <Text className="text-2xl text-slate-400">←</Text>
+          <Text className="text-[15px] leading-5 text-blue-600">←</Text>
+          <Text className="text-[13px] font-semibold text-slate-600">Início</Text>
         </Pressable>
         <View className="items-center">{formulario}</View>
       </ScrollView>

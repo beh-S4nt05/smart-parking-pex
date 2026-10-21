@@ -119,7 +119,16 @@ export default function AdminShell({
                 <Text className="text-[11px] text-slate-400">{user?.email}</Text>
               </View>
             </View>
-            <Pressable onPress={() => signOut()} className="mt-3">
+            <Pressable
+              onPress={() => router.push("/" as never)}
+              accessibilityRole="button"
+              className="mt-3 rounded-lg border border-slate-700 py-2 active:bg-slate-700"
+            >
+              <Text className="text-center text-xs font-semibold text-slate-200">
+                ← Voltar ao site
+              </Text>
+            </Pressable>
+            <Pressable onPress={() => signOut()} className="mt-2">
               <Text className="text-center text-xs font-semibold text-red-300">
                 Encerrar sessão
               </Text>
@@ -162,7 +171,24 @@ export default function AdminShell({
               <Text className="mt-0.5 text-xs text-slate-300">{subtitulo}</Text>
             ) : null}
           </View>
-          <SeloAoVivo />
+          <View className="flex-row items-center gap-2">
+            <SeloAoVivo />
+            {/* saída do painel no mobile — no web já existe na sidebar */}
+            <Pressable
+              onPress={() => router.push("/" as never)}
+              accessibilityRole="button"
+              className="rounded-full bg-slate-800 px-3 py-1.5 active:bg-slate-700"
+            >
+              <Text className="text-xs font-semibold text-slate-200">← Site</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => signOut()}
+              accessibilityRole="button"
+              className="rounded-full bg-red-500/20 px-3 py-1.5 active:bg-red-500/40"
+            >
+              <Text className="text-xs font-semibold text-red-200">Sair</Text>
+            </Pressable>
+          </View>
         </View>
         <ScrollView
           horizontal

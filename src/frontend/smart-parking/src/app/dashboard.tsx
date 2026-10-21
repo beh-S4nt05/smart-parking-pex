@@ -145,14 +145,10 @@ function SeletorEstacionamento({
   onChange: (id: string | null) => void;
   travado: boolean;
 }) {
-  const atual = estacionamentos.find((e) => e.id === valor);
+  // sem ScrollView: no web a roda do mouse não rola horizontal e no Android o
+  // scroll vertical pai "come" o gesto — wrap resolve nas duas plataformas
   return (
-    <ScrollView
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      style={{ maxWidth: 460 }}
-      contentContainerStyle={{ gap: 8 }}
-    >
+    <View style={{ maxWidth: 560, flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
       {!travado ? (
         <Pressable
           onPress={() => onChange(null)}
@@ -187,8 +183,7 @@ function SeletorEstacionamento({
           </Pressable>
         );
       })}
-      {atual ? null : null}
-    </ScrollView>
+    </View>
   );
 }
 

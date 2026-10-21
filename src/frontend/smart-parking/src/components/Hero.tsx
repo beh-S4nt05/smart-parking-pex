@@ -3,9 +3,11 @@
  * badge "Monitoramento em tempo real", título, seletor de shopping,
  * CTA "Ver Vagas Disponíveis →" e legenda de cores.
  */
+import { useState } from "react";
 import { Pressable, ScrollView, Text, View, useWindowDimensions } from "react-native";
 import { colors } from "../theme";
 import { Botao } from "./ui";
+import ShoppingList from "./ShoppingList";
 import type { Estacionamento } from "../types/api";
 
 interface Props {
@@ -18,6 +20,7 @@ interface Props {
 export default function Hero({ shoppings, selecionadoId, onSelect, onBuscar }: Props) {
   const { width } = useWindowDimensions();
   const isWide = width >= 768;
+  const [listaAberta, setListaAberta] = useState(false);
   const selecionado =
     shoppings.find((s) => s.id === selecionadoId) ?? shoppings[0];
 
@@ -50,46 +53,54 @@ export default function Hero({ shoppings, selecionadoId, onSelect, onBuscar }: P
             isWide ? "flex-row items-center gap-2.5" : "gap-3"
           }`}
         >
-          <View
-            className={`flex-1 flex-row items-center justify-between rounded-full bg-white px-4 ${
-              isWide ? "py-3.5" : "rounded-2xl py-3"
-            } border border-slate-200`}
-          >
-            <View className="h-2 w-2 rounded-full bg-blue-600" />
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              style={{ flexShrink: 1, marginHorizontal: 10 }}
+          {/* barra fechada = shopping atual; toque abre mini-lista de cards
+              (mesmo ShoppingList da seção "Rede credenciada", variante lista) */}
+          <View className="flex-1 relative">
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => shoppings.length > 0 && setListaAberta((v) => !v)}
+              className={`flex-row items-center justify-between rounded-full bg-white px-4 ${
+                isWide ? "py-3.5" : "rounded-2xl py-3"
+              } border border-slate-200`}
             >
-              <View className="flex-row items-center gap-2">
-                {shoppings.length === 0 ? (
-                  <Text className="text-sm font-semibold text-slate-700">
-                    Carregando shoppings…
-                  </Text>
-                ) : (
-                  shoppings.map((s) => (
-                    <Pressable
-                      key={s.id}
-                      onPress={() => onSelect(s.id)}
-                      className={`rounded-full px-3 py-1 ${
-                        (selecionado?.id === s.id ? "bg-blue-50" : "")
-                      }`}
-                    >
-                      <Text
-                        className={`text-sm font-semibold ${
-                          selecionado?.id === s.id
-                            ? "text-blue-700"
-                            : "text-slate-500"
-                        }`}
-                      >
-                        {s.nome} — Manaus, AM
-                      </Text>
-                    </Pressable>
-                  ))
-                )}
+              <View className="h-2 w-2 rounded-full bg-blue-600" />
+              <Text
+                numberOfLines={1}
+                className="mx-2 flex-1 text-sm font-semibold text-slate-700"
+              >
+                {shoppings.length === 0
+                  ? "Carregando shoppings…"
+                  : `${selecionado?.nome ?? ""} — Manaus, AM`}
+              </Text>
+              <Text className="text-base leading-5 text-blue-600">
+                {listaAberta ? "˄" : "⌄"}
+              </Text>
+            </Pressable>
+
+            {listaAberta && shoppings.length > 0 ? (
+              <View
+                className="absolute left-0 right-0 top-full z-20 mt-2 rounded-2xl border border-slate-200 bg-white p-2"
+                style={{
+                  elevation: 12,
+                  shadowColor: "#0F172A",
+                  shadowOpacity: 0.16,
+                  shadowRadius: 20,
+                  shadowOffset: { width: 0, height: 10 },
+                }}
+              >
+                <ScrollView style={{ maxHeight: 360 }}>
+                  <ShoppingList
+                    shoppings={shoppings}
+                    variante="lista"
+                    selecionadoId={selecionado?.id ?? null}
+                    onPress={(est) => {
+                      onSelect(est.id);
+                      setListaAberta(false);
+                    }}
+                  />
+                </ScrollView>
               </View>
-            </ScrollView>
-            <Text className="text-blue-600">⌄</Text>
+            ) : null}
           </View>
 
           <Botao

@@ -19,8 +19,11 @@ class Settings(BaseSettings):
     DEBUG: bool = True
     API_V2_PREFIX: str = "/api"
 
-    # Banco de dados (PostgreSQL padrão como no seu database.py)
-    DATABASE_URL: str = "postgresql://postgres:postgres@localhost:5432/smartparking"
+    # Banco de dados (PostgreSQL padrão como no seu database.py).
+    # Driver EXPLÍCITO psycopg2: sem o sufixo, SQLAlchemy>=2.1 procura o
+    # psycopg v3 (não instalado) e o app "cai" no SQLite achando que o
+    # Postgres morreu. Se trocar para psycopg[binary], use +psycopg.
+    DATABASE_URL: str = "postgresql+psycopg2://postgres:postgres@localhost:5432/smartparking"
 
     # JWT e Segurança (com a sua SECRET_KEY padrão)
     SECRET_KEY: str = "sua_chave_secreta_de_producao_aqui"
