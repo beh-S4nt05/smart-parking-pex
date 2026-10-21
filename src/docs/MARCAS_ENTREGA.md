@@ -9,9 +9,9 @@ banca fechar o ponto. Atualizar o "Status" a cada revisão.
 | # | Critério         | Deadline | Peso | Status                          |
 | - | ---------------- | -------- | ---- | ------------------------------- |
 | 1 | Banco modelado   | 10/09    | 1    | ✅ Entregue                     |
-| 2 | MVP operacional  | 22/10    | 2    | 🎯 **Desta entrega** (20/10)    |
+| 2 | MVP operacional  | 22/10    | 2    | ✅ **Entregue 20/10** (+ auditoria de acesso) |
 | 3 | Relatórios       | 02/11    | 1    | ⚠️ Fluxo+Ocupação prontos no back |
-| 4 | Testes & Docs    | 09/11    | 1    | ⚠️ Docs ✅, testes a escrever    |
+| 4 | Testes & Docs    | 09/11    | 1    | ⚠️ Docs + aceite E2E ✅; pytest ⬜ |
 | 5 | Entrega Integrada| 12/11    | 5    | ⬜ Plano de fechamento abaixo   |
 
 ---
@@ -52,15 +52,29 @@ entrega:
 - **Rota `GET /health`** + healthcheck real no compose (nginx só sobe com a API viva).
 - **`TRUSTED_HOSTS` configurável** (era hardcoded localhost-only; a banca por IP
   da LAN não funcionaria em produção).
-- **`scripts/smoke_mvp.sh`**: prova a cadeia em 1 comando (health → lista → login
-  admin → CRUD com cascata → bloqueio sem token), na 8000 direta ou via `BASE_URL=http://localhost` (nginx).
+- **`scripts/smoke_mvp.sh`** (10 checagens): prova a cadeia em 1 comando — e não
+  aceita "201 vazio": grava estacionamento→subsolo→lote G01..G03 e exige que
+  **G01 e a taxa voltem na leitura** (foi assim que a auditoria achou payload com
+  nomes de campo errados sendo engolido pelo schema).
+- **`scripts/smoke_acesso.sh`** (27 checagens): matriz rota × perfil com cenário
+  próprio (2 estacionamentos QA + gestor/financeiro/motorista, apagado no fim).
+  Achados JÁ corrigidos aqui: `PATCH /api/vagas/{id}/status` e do lote eram
+  **públicos** → exigem admin/gestor com escopo `vaga→andar→estacionamento`;
+  `GET /api/relatorios/fluxo` expunha `registros[]` (valores/placas) a qualquer
+  um → papel de painel + rota nova `/relatorios/fluxo/publico` só agregados p/
+  Home; `DELETE` de estacionamento/andar/vaga com histórico quebrava em
+  `IntegrityError` (SQLAlchemy nullifica FK NOT NULL) → purge
+  pagamentos→históricos→reservas antes do delete.
+- **`scripts/docker.sh`**: `up` (re)gera as imagens do zero (cenário "deletei o
+  docker"), `reset` = volume limpo p/ demo, `logs`/`status`/`acesso` p/ diagnóstico.
 
 **Como validar em 2 minutos:**
 
 ```bash
-cd src && docker compose up -d --build && cd ../..
-./scripts/smoke_mvp.sh                          # API direta
-BASE_URL=http://localhost ./scripts/smoke_mvp.sh # via nginx — cadeia completa
+./scripts/docker.sh up                            # rebuild do zero + smoke na API
+BASE_URL=http://localhost ./scripts/smoke_mvp.sh  # idem via nginx (cadeia completa)
+./scripts/docker.sh acesso                        # 27 checagens de controle de acesso
+BASE_URL=http://localhost ./scripts/smoke_acesso.sh  # ...agora através do nginx
 ```
 
 **Checklist do dia 22 (rodar na véspera na máquina da apresentação):**
@@ -97,9 +111,10 @@ Falta para fechar a marca:
   `src/backend/tests/`, rodando em SQLite (não exige Docker), com deps só de
   dev no requirements-dev. Cobertura-alvo (fluxos de peso): auth (login e-mail/
   telefone, refresh, bloqueado→401), cotação→reserva→saída (vaga livre→ocupada→
-  livre), permissões do admin (gestor pode o próprio parking, 403 fora dele),
-  cupom (válido/expirado/limite). O `scripts/smoke_mvp.sh` já serve de aceite
-  manual integrado.
+  livre), cupom (válido/expirado/limite). O **aceite integrado já existe**:
+  `scripts/smoke_mvp.sh` (10) cobre fluxo de dados, e `scripts/smoke_acesso.sh`
+  (27) cobre a matriz de permissões (anon/papel/escopo) — os testes unitários do
+  pytest vêm para rodar em CI sem servidor de pé, não para substituí-los.
 
 ## 5️⃣ Entrega do Projeto Integrado (Funcional) — 12/11 · peso 5 ⬜
 

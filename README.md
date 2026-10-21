@@ -139,9 +139,11 @@ com dashboard, mapa de vagas por andar e simulador de sensores por QR Code.
 ### 1️⃣ Backend + Banco (Docker)
 
 ```bash
-cd src
-docker compose up -d --build      # sobe nginx (80) · backend (8000) · postgres (5432) · pgadmin (5050)
-cd .. && ./scripts/smoke_mvp.sh   # cadeia viva: /health → login → CRUD admin → bloqueio sem token
+./scripts/docker.sh up            # (re)gera as imagens, sobe nginx (80) · backend (8000) ·
+                                  # postgres (5432) · pgadmin (5050) e roda o smoke da cadeia
+./scripts/docker.sh acesso        # auditoria de controle de acesso (27 checagens: anon/papéis/escopo)
+./scripts/docker.sh reset         # apaga volume + rebuilda + smoke — "dia de apresentação" limpo
+./scripts/docker.sh logs          # segue backend+nginx quando der 502/400 na banca
 ```
 
 > **Notas do stack Docker** (corrigido em 20/10 — antes dessas correções a cadeia

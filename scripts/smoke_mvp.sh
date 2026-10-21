@@ -39,7 +39,7 @@ jget() { # jget <json> <chave>
 }
 
 echo "🔌 Smoke MVP → $BASE"
-PAYLOAD='{"nome":"Smoke QA (apagar)","endereco":"Rua do Teste, 1","total_andares":1,"vagas_por_andar":2,"horario_abertura":"08:00","horario_fechamento":"20:00"}'
+PAYLOAD='{"nome":"Smoke QA (apagar)","endereco":"Rua do Teste, 1","total_andares":1,"total_vagas":3,"hora_abertura":"08:00","hora_fechamento":"20:00","taxa_hora":12.5}'
 
 echo "── 1. Infraestrutura"
 r=$(req GET /health)
@@ -62,18 +62,38 @@ else
     exit 1
 fi
 
-echo "── 3. Entrada e saída de dados (CRUD admin de ponta a ponta)"
+echo "── 3. Entrada e saída de dados (CRUD admin de ponta a ponta, com verificação no mapa)"
+# Sequência idêntica à do modal do painel: casca → andar → vagas em lote → o
+# dado precisa APARECER no mapa (senão é só um 200 vazio — passou assim numa
+# auditoria anterior e ninguém viu). Campos nos nomes reais de EstacionamentoBase.
+ID=""
 r=$(req POST /api/admin/estacionamentos "$PAYLOAD" "$TOKEN")
 s=$(status_of "$r")
 ID=$(jget "$(body_of "$r")" id)
 if [ "$s" = "201" ] && [ -n "$ID" ]; then
     pass "POST /api/admin/estacionamentos → 201 (id=$ID)"
-    r=$(req GET "/api/estacionamentos/$ID/vagas" "" "$TOKEN")
-    s=$(status_of "$r")
-    if [ "$s" = "200" ]; then pass "GET /api/estacionamentos/$ID/vagas → 200 (mapa com andares+vagas do lote)"; else fail "mapa de vagas → $s" "$(body_of "$r")"; fi
+    ra=$(req POST /api/admin/andares "{\"estacionamento_id\":\"$ID\",\"numero_andar\":-1,\"capacidade\":3}" "$TOKEN")
+    ANDAR_ID=$(jget "$(body_of "$ra")" id)
+    if [ "$(status_of "$ra")" = "201" ] && [ -n "$ANDAR_ID" ]; then
+        pass "POST /api/admin/andares (subsolo -1) → 201"
+        rl=$(req POST "/api/admin/vagas/lote" "{\"andar_id\":\"$ANDAR_ID\",\"quantidade\":3,\"prefixo_codigo\":\"G\"}" "$TOKEN")
+        [ "$(status_of "$rl")" = "201" ] && pass "POST /api/admin/vagas/lote (G01..G03) → 201" || fail "vagas em lote → $(status_of "$rl")" "$(body_of "$rl")"
+    else
+        fail "POST /api/admin/andares → $(status_of "$ra")" "$(body_of "$ra")"
+    fi
+    rm=$(req GET "/api/estacionamentos/$ID/vagas" "" "$TOKEN")
+    mb=$(body_of "$rm")
+    if grep -q '"codigo"[[:space:]]*:[[:space:]]*"G01"' <<<"$mb"; then
+        pass "mapa contém G01 (escrita chegou na leitura — dados REAIS)"
+    else
+        fail "mapa NÃO contém G01" "$(head -c 160 <<<"$mb")"
+    fi
+    rt=$(req GET "/api/estacionamentos" "" "$TOKEN")
+    grep -q '"taxa_hora"[[:space:]]*:[[:space:]]*12.5' <<<"$(body_of "$rt")" && pass "taxa_hora=12.5 persistida (lista pública)" || fail "taxa_hora não persistiu na lista"
     r=$(req DELETE "/api/admin/estacionamentos/$ID" "" "$TOKEN")
     s=$(status_of "$r")
     if [ "$s" = "200" ]; then pass "DELETE /api/admin/estacionamentos/$ID → 200 (cascata, lixo limpo)"; else fail "delete → $s" "$(body_of "$r")"; fi
+    ID=""
 else
     fail "POST /api/admin/estacionamentos → $s" "$(body_of "$r")"
 fi

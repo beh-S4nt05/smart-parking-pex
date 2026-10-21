@@ -457,8 +457,10 @@ export const parkingApi = {
   },
 
   // ---- Relatórios ----
+  // Home pública: usa a variante de agregados (sem registros/valores) — o
+  // fluxo detalhado exige papel de painel desde a auditoria de acesso de 20/10
   async fluxoHoje(estacionamentoId?: string) {
-    const { data } = await api.get("/api/relatorios/fluxo", {
+    const { data } = await api.get("/api/relatorios/fluxo/publico", {
       params: {
         periodo: "diario",
         ...(estacionamentoId ? { estacionamento_id: estacionamentoId } : {}),
