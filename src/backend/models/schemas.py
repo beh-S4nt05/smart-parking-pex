@@ -203,6 +203,16 @@ class FluxoResponse(BaseModel):
     registros: List[dict]
 
 
+class FluxoPublicoResponse(BaseModel):
+    """Versão sem `registros` para telas públicas (Home) — só agregados."""
+
+    periodo: str
+    estacionamento_id: Optional[str] = None
+    total_entradas: int
+    total_saidas: int
+    tempo_medio_permanencia_min: float
+
+
 class OcupacaoResponse(BaseModel):
     periodo: str
     estacionamento_id: Optional[str] = None

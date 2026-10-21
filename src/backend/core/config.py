@@ -31,6 +31,20 @@ class Settings(BaseSettings):
     # CORS
     CORS_ORIGINS: List[str] = ["*"]
 
+    # Hosts aceitos pelo TrustedHostMiddleware (só vale com ENVIRONMENT=production).
+    # Wildcards fnmatch funcionam; os padrões abaixo cobrem localhost, IP da LAN
+    # (banca/presentação) e containers na rede interna do Docker. Em produção com
+    # domínio próprio, acrescente via .env:
+    # TRUSTED_HOSTS='["meudominio.com","localhost","192.168.*.*"]'
+    TRUSTED_HOSTS: List[str] = [
+        "localhost",
+        "127.0.0.1",
+        "host.docker.internal",
+        "192.168.*.*",
+        "10.*.*.*",
+        "172.*.*.*",
+    ]
+
     # Chave de assinatura de requisições anti-replicação (deve ser a MESMA no frontend)
     APP_SIGNING_SECRET: str = "smartparking_default_signing_key_change_in_production"
 

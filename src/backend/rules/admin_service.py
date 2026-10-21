@@ -6,9 +6,45 @@ from sqlalchemy.orm import Session
 from core.security import criar_hash_senha
 from models.db_models import (
     Estacionamento, Andar, Vaga, Usuario,
-    StatusVaga, TipoUsuario
+    StatusVaga, TipoUsuario, Historico, Reserva, Pagamento
 )
 from models.schemas import EstacionamentoCreate, AndarCreate, VagaCreate, UsuarioAdminCreate, UsuarioAdminUpdate
+
+
+# --- Purga operacional compartilhada pelos "deletar_*" ---
+def _purgar_operacional(db: Session, estacionamento_id: Optional[str] = None,
+                        vaga_ids: Optional[List[str]] = None) -> None:
+    """
+    Apaga na ordem certa os dados OPERACIONAIS (pagamentos → históricos →
+    reservas) antes de deletar estacionamento/andar/vaga.
+
+    Por que isso existe: os FKs de `historicos`/`reservas`/`pagamentos` são
+    NOT NULL e SEM `ondelete` — o comportamento padrão do SQLAlchemy ao
+    deletar o pai é SET NULL nos filhos, e isso arrebenta o constraint
+    (500 IntegrityError no DELETE com qualquer histórico gravado). A
+    auditoria de 20/10 pegou isso ao deletar um estacionamento que tinha 1
+    transição de vaga. Aqui usamos DELETE em massa (não ORM), então o que
+    sobra (vagas→andares→config/cupom/fechamento) continua fluindo pelo
+    cascade delete-orphan já configurado nos relacionamentos.
+    """
+    if estacionamento_id is not None:
+        vaga_ids = [
+            vid for (vid,) in
+            db.query(Vaga.id)
+            .join(Andar, Vaga.andar_id == Andar.id)
+            .filter(Andar.estacionamento_id == estacionamento_id)
+        ]
+        db.query(Pagamento).filter(Pagamento.estacionamento_id == estacionamento_id).delete(synchronize_session=False)
+        # históricos DO estacionamento inteiro (pagamentos já fora do caminho)
+        db.query(Historico).filter(Historico.estacionamento_id == estacionamento_id).delete(synchronize_session=False)
+    if vaga_ids:
+        # pagamentos ATRAVÉS dos históricos destas vagas também (cobre o DELETE
+        # de andar/vaga isolado, onde o branch de estacionamento não rodou)
+        historicos_afetados = db.query(Historico.id).filter(Historico.vaga_id.in_(vaga_ids))
+        db.query(Pagamento).filter(Pagamento.historico_id.in_(historicos_afetados)).delete(synchronize_session=False)
+        db.query(Historico).filter(Historico.vaga_id.in_(vaga_ids)).delete(synchronize_session=False)
+        db.query(Reserva).filter(Reserva.vaga_id.in_(vaga_ids)).delete(synchronize_session=False)
+    db.flush()
 
 
 # --- Gerenciamento de Usuários ---
@@ -189,6 +225,7 @@ def deletar_estacionamento(db: Session, estacionamento_id: str):
             detail="Estacionamento não encontrado"
         )
 
+    _purgar_operacional(db, estacionamento_id=estacionamento_id)
     db.delete(est)
     db.commit()
     return {"mensagem": "Estacionamento removido com sucesso"}
@@ -220,6 +257,9 @@ def deletar_andar(db: Session, andar_id: str):
             detail="Andar não encontrado"
         )
 
+    # same IntegrityError guard as deletar_estacionamento: histórico/reserva
+    # apontando para as vagas deste andar precisam sair ANTES do andar
+    _purgar_operacional(db, vaga_ids=[vid for (vid,) in db.query(Vaga.id).filter(Vaga.andar_id == andar_id)])
     db.delete(andar)
     db.commit()
     return {"mensagem": "Andar removido com sucesso"}
@@ -280,6 +320,7 @@ def deletar_vaga(db: Session, vaga_id: str):
             detail="Vaga não encontrada"
         )
 
+    _purgar_operacional(db, vaga_ids=[vaga_id])
     db.delete(vaga)
     db.commit()
     return {"mensagem": "Vaga removida com sucesso"}

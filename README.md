@@ -121,6 +121,11 @@ com dashboard, mapa de vagas por andar e simulador de sensores por QR Code.
 
 **Modelo de dados:** `Estacionamento → Andar → Vaga`, com `Histórico` automático de entrada/saída, `Reserva`, `Pagamento`, `Cupom`, `FechamentoCaixa` e `Usuário` com papéis.
 
+> **📅 Marcas de entrega (PEX):** os 5 critérios oficiais — peso, deadline e status
+> item a item — estão em [src/docs/MARCAS_ENTREGA.md](src/docs/MARCAS_ENTREGA.md):
+> Banco modelado (10/09 ✅) · **MVP operacional (22/10 🎯)** · Relatórios (02/11) ·
+> Testes & Docs (09/11) · Entrega Integrada Funcional (12/11, peso 5).
+
 ---
 
 ## 🚀 Como executar
@@ -134,9 +139,26 @@ com dashboard, mapa de vagas por andar e simulador de sensores por QR Code.
 ### 1️⃣ Backend + Banco (Docker)
 
 ```bash
-cd src
-docker compose up -d --build      # sobe nginx (80) · backend (8000) · postgres (5432) · pgadmin (5050)
+./scripts/docker.sh up            # (re)gera as imagens, sobe nginx (80) · backend (8000) ·
+                                  # postgres (5432) · pgadmin (5050) e roda o smoke da cadeia
+./scripts/docker.sh acesso        # auditoria de controle de acesso (27 checagens: anon/papéis/escopo)
+./scripts/docker.sh reset         # apaga volume + rebuilda + smoke — "dia de apresentação" limpo
+./scripts/docker.sh logs          # segue backend+nginx quando der 502/400 na banca
 ```
+
+> **Notas do stack Docker** (corrigido em 20/10 — antes dessas correções a cadeia
+> Nginx→API **não podia** funcionar, dava 502/400 ou "Welcome to nginx" puro):
+> - `src/nginx/Dockerfile` agora instala o `default.conf` em **conf.d/** (o `COPY . /etc/nginx/`
+>   antigo deixava o arquivo onde o nginx nunca lê) e o `default.conf` declara as **zonas**
+>   `req_limit_per_ip`/`login_limit`/`conn_limit_per_ip` que antes eram usadas sem existir
+>   (`nginx -t` falhava → crash-loop). Editou conf? Rebuilde (`--build`) — a config vai **assa-
+>   da na imagem**, sem bind mount.
+> - `gunicorn_config.py`: bind `0.0.0.0:8000` (com `localhost` o nginx, de outro container,
+>   levava connection refused) e `GUNICORN_WORKERS=1` enquanto sessões do simulador/QR e o
+>   cache anti-replay forem memória de processo.
+> - Backend no container roda `ENVIRONMENT=staging` (assinatura HMAC/trusted-host liberados
+>   p/ demo por IP na LAN) e `DB_AUTO_SQLITE=false` (sem dados fantasmas em SQLite).
+>   Produção real = `production` + `TRUSTED_HOSTS` + segredos fortes — ver `.env.example`.
 
 ### 2️⃣ Backend local (alternativa sem Docker)
 

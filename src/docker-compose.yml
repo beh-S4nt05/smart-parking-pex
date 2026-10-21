@@ -5,27 +5,45 @@ services:
     restart: always
     ports:
       - "80:80"
-    # ❌ Removido COMPLETAMENTE todos os volumes de bind mount do host!
-    # As configurações já estão copiadas para dentro da imagem no build.
+    # Sem bind mount de config: a configuração é COPIADA no build (Dockerfile).
+    # Editou src/nginx/*.conf? rebuild obrigatório: docker compose up -d --build
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     networks:
       - smartparking-network
 
   backend:
     build: ./backend
+    container_name: smartparking-backend
     restart: always
     environment:
       - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/smartparking
-      - ENVIRONMENT=production
-      - SECRET_KEY=mude_esta_chave_secreta_em_producao
+      # "staging" desliga exigência de assinatura HMAC e mantém o resto — ideal
+      # para demo/banca por IP na LAN. Produção real: ENVIRONMENT=production +
+      # TRUSTED_HOSTS='["seu.dominio"]' e APP_SIGNING_SECRET fortes.
+      - ENVIRONMENT=staging
+      - SECRET_KEY=mude_efta_chave_secreta_em_producao
+      # Fallback SQLite silencioso desligado: se o Postgres falhar, o container
+      # mostra o erro na cara (evita apresentar "dados fantasmas" do .db local)
+      - DB_AUTO_SQLITE=false
+      # Estado do simulador/QR é memória por processo -> 1 worker (gunicorn_config.py)
+      - GUNICORN_WORKERS=1
     ports:
-    - "8000:8000"
+      - "8000:8000"
     expose:
       - "8000"
     depends_on:
       postgres:
         condition: service_healthy
+    healthcheck:
+      # python:3.11-slim não traz curl/wget; TCP basta para saber que o
+      # gunicorn aceitou conexões antes do nginx subir atrás dele
+      test: ["CMD", "python", "-c", "import socket;socket.create_connection(('127.0.0.1',8000),3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
     networks:
       - smartparking-network
 

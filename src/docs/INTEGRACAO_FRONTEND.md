@@ -490,6 +490,15 @@ GET  /api/admin/eventos?estacionamento_id=&limite=20
 GET  /api/admin/ocupacao-andares/{est}     → [{andar_id, numero_andar, total_vagas, ocupadas, livres, percentual}]
 GET  /api/relatorios/fluxo?periodo=diario  → total_entradas/saidas, tempo_medio_permanencia_min, registros[]
 ```
+⚠️ **Mudança de acesso (auditoria 20/10):** `/api/relatorios/fluxo` e
+`/api/relatorios/ocupacao` passaram a exigir token de **painel**
+(admin/financeiro/gestor; gestor/financeiro escopados no próprio
+estacionamento). Para a **Home pública** (visitante sem login) existe
+`GET /api/relatorios/fluxo/publico?periodo=diario[&estacionamento_id=]` com os
+mesmos agregados e **sem** `registros[]` (não expõe valores/placas) — é o que
+`parkingApi.fluxoHoje()` consome agora. As rotas `PATCH /api/vagas/*/status`
+também exigem admin/gestor (o app sempre chamou com token; integrações de
+sensor devem autenticar).
 O gráfico **"Fluxo de veículos por hora"** do dashboard é montado no cliente
 agrupando `registros[].entrada_em` por hora — não há endpoint por hora.
 

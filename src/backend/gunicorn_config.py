@@ -1,19 +1,22 @@
-# Configuração do Gunicorn para produção com Load Balancing
-import multiprocessing
+# Configuração do Gunicorn para produção
 import os
 
-# Número de workers: regra geral é (2 * núcleos_CPU) + 1
-# Cada worker é um processo separado que lida com requisições, distribuindo a carga automaticamente
-workers = int(os.getenv("GUNICORN_WORKERS", multiprocessing.cpu_count() * 2 + 1))
+# Workers: as sessões do simulador (QR) e o cache anti-replay da assinatura HMAC
+# moram em memória DENTRO de cada processo. Com 2+ workers a requisição cai num
+# processo que não conhece a sessão criada no outro e o QR "morre" sem motivo.
+# Mantemos 1 worker enquanto o estado for em memória; para escalar, antes mover
+# sessões para Redis/DB e só então subir GUNICORN_WORKERS=(2*CPU)+1 via .env.
+workers = int(os.getenv("GUNICORN_WORKERS", "1"))
 worker_class = "uvicorn.workers.UvicornWorker"
 
 # Carrega a aplicação UMA VEZ no processo master antes de criar os workers
 # Evita que cada worker execute código de inicialização (como criação de tabelas) em paralelo
 preload_app = True
 
-
-# Bind em todas as interfaces na porta 8000
-bind = os.getenv("GUNICORN_BIND", "localhost:8000")
+# Bind em TODAS as interfaces. Dentro de container, "localhost:8000" escuta só o
+# loopback do próprio container — o Nginx (outro container) recebe connection
+# refused e devolve 502. Este era o bug central da cadeia Docker→API.
+bind = os.getenv("GUNICORN_BIND", "0.0.0.0:8000")
 
 # Configurações de timeout
 timeout = 120
@@ -37,7 +40,7 @@ accesslog = "-"
 errorlog = "-"
 loglevel = os.getenv("LOG_LEVEL", "info")
 access_log_format = (
-    '%(h)s %(l)s %(u)s %(t)s "%(r)s" %(s)s %(b)s "%(f)s" "%(a)s" tempo=%(L)ss'
+    '%(h)s %(l)s %(u)s %(t)s "%(r)s" %(s)s %(b)s "%(f)s" tempo=%(L)ss'
 )
 
 # Previne que os workers travem em processamento longo
