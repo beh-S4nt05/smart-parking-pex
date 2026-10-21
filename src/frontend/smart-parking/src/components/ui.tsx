@@ -7,7 +7,9 @@ import {
   ActivityIndicator,
   Animated,
   Easing,
+  Modal,
   Pressable,
+  ScrollView,
   StyleProp,
   Text,
   TextInput,
@@ -342,6 +344,7 @@ export function BarraOcupacao({ percentual }: { percentual: number }) {
 // ---------------------------------------------------------------- Campo
 interface CampoProps extends TextInputProps {
   label: string;
+  helper?: string;
   erro?: string;
   senha?: boolean;
   opcional?: boolean;
@@ -352,6 +355,7 @@ interface CampoProps extends TextInputProps {
 export function Campo({
   label,
   erro,
+  helper,
   senha,
   opcional,
   visivel,
@@ -388,6 +392,9 @@ export function Campo({
           </Pressable>
         ) : null}
       </View>
+      {helper && !erro ? (
+        <Text className="mt-1 text-[11px] text-slate-400">{helper}</Text>
+      ) : null}
       <Text className="mt-1 min-h-[16px] text-xs text-red-600">{erro ?? ""}</Text>
     </View>
   );
@@ -526,4 +533,69 @@ export function formatarMinutos(min: number | undefined | null): string {
 export function formatarMoedaBR(valor: number | undefined | null): string {
   if (valor == null) return "—";
   return valor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+}
+
+// ---------------------------------------------------------------- Modal de formulário
+/**
+ * Modal genérico para cadastros do painel (novo estacionamento, andar, lote de
+ * vagas, usuário). Fundo tocável para fechar + footer padronizado com botão
+ * de confirmar (com estado de loading) — usa só o Modal do RN.
+ */
+export function ModalForma({
+  visivel,
+  titulo,
+  descricao,
+  aoFechar,
+  aoConfirmar,
+  rotuloConfirmar = "Salvar",
+  ocupado = false,
+  children,
+}: {
+  visivel: boolean;
+  titulo: string;
+  descricao?: string;
+  aoFechar: () => void;
+  aoConfirmar: () => void;
+  rotuloConfirmar?: string;
+  ocupado?: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <Modal
+      visible={visivel}
+      transparent
+      animationType="fade"
+      onRequestClose={aoFechar}
+      statusBarTranslucent
+    >
+      <View className="flex-1 items-center justify-center bg-black/50 p-4">
+        <Pressable accessibilityRole="button" onPress={aoFechar} className="absolute inset-0" />
+        <View className="w-full max-w-md">
+          <Card className="overflow-hidden p-5">
+            <Text className="text-lg font-extrabold text-slate-900">{titulo}</Text>
+            {descricao ? (
+              <Text className="mt-0.5 text-[13px] text-slate-500">{descricao}</Text>
+            ) : null}
+            <ScrollView style={{ maxHeight: 420 }} className="mt-4">
+              {children}
+            </ScrollView>
+            <View className="mt-5 flex-row gap-2">
+              <Botao
+                label="Cancelar"
+                variant="contorno"
+                onPress={aoFechar}
+                className="flex-1"
+              />
+              <Botao
+                label={rotuloConfirmar}
+                onPress={aoConfirmar}
+                loading={ocupado}
+                className="flex-1"
+              />
+            </View>
+          </Card>
+        </View>
+      </View>
+    </Modal>
+  );
 }

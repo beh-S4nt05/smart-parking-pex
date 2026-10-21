@@ -7,6 +7,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Pressable,
   ScrollView,
   Text,
@@ -24,7 +25,9 @@ import {
   BarraOcupacao,
   Botao,
   Card,
+  Campo,
   Chip,
+  ModalForma,
   StatTile,
   StatusVagaChip,
   formatarMinutos,
@@ -54,9 +57,8 @@ export default function Dashboard() {
   const [aba, setAba] = useState<AbaPainel>("dashboard");
   const [estSel, setEstSel] = useState<string | null>(null); // null = todos (admin)
 
-  const { estacionamentos, loading: estLoading } = useEstacionamentos({
-    pollingMs: 30000,
-  });
+  const { estacionamentos, loading: estLoading, refresh: recarregarEstacionamentos } =
+    useEstacionamentos({ pollingMs: 30000 });
 
   useEffect(() => {
     if (!authLoading && (!isAuthenticated || !canAccessPanel)) {
@@ -115,11 +117,18 @@ export default function Dashboard() {
         <AbaDashboard estacionamentos={estacionamentos} estSel={estSel} isAdmin={isAdmin} />
       )}
       {aba === "estacionamentos" && (
-        <AbaEstacionamentos estacionamentos={estacionamentos} onAbrir={(id) => router.push(`/shopping/${id}` as never)} />
+        <AbaEstacionamentos
+          estacionamentos={estacionamentos}
+          onAbrir={(id) => router.push(`/shopping/${id}` as never)}
+          podeGerenciar={isAdmin}
+          onChanged={recarregarEstacionamentos}
+        />
       )}
       {aba === "andares" && <AbaAndares estacionamentos={estacionamentos} estSel={estSel} />}
       {aba === "relatorios" && <AbaRelatorios estSel={estSel} />}
-      {aba === "usuarios" && <AbaUsuarios isAdmin={isAdmin} />}
+      {aba === "usuarios" && (
+        <AbaUsuarios isAdmin={isAdmin} estacionamentos={estacionamentos} onChanged={recarregarEstacionamentos} />
+      )}
     </AdminShell>
   );
 }
@@ -518,12 +527,136 @@ function HeaderCol({ t, w, flex }: { t: string; w: number; flex?: boolean }) {
 function AbaEstacionamentos({
   estacionamentos,
   onAbrir,
+  podeGerenciar,
+  onChanged,
 }: {
   estacionamentos: Estacionamento[];
   onAbrir: (id: string) => void;
+  podeGerenciar: boolean;
+  onChanged: () => void;
 }) {
+  type ModalEst =
+    | { tipo: "novo" }
+    | { tipo: "andar"; est: Estacionamento }
+    | { tipo: "vagas"; est: Estacionamento }
+    | null;
+  const [modal, setModal] = useState<ModalEst>(null);
+  const [ocupado, setOcupado] = useState(false);
+  const [novo, setNovo] = useState({
+    nome: "",
+    endereco: "",
+    andares: "2",
+    vagas: "60",
+    abertura: "06:00",
+    fechamento: "23:00",
+    taxa: "8",
+  });
+  const [andarF, setAndarF] = useState({ numero: "1", capacidade: "60" });
+  const [loteF, setLoteF] = useState({ andarId: "", quantidade: "40", prefixo: "A" });
+
+  const num = (v: string, fb = 0) => {
+    const n = Number(v.replace(",", "."));
+    return Number.isFinite(n) ? n : fb;
+  };
+
+  function erroSalvar(e: unknown) {
+    Alert.alert(
+      "Não foi possível salvar",
+      e instanceof Error ? e.message : apiErrorMessage(e),
+    );
+  }
+
+  async function salvar() {
+    if (!modal) return;
+    setOcupado(true);
+    try {
+      if (modal.tipo === "novo") {
+        if (novo.nome.trim().length < 2) throw new Error("Informe o nome do estacionamento");
+        await parkingApi.criarEstacionamento({
+          nome: novo.nome.trim(),
+          endereco: novo.endereco.trim() || undefined,
+          total_andares: Math.max(1, Math.round(num(novo.andares, 1))),
+          total_vagas: Math.max(0, Math.round(num(novo.vagas, 0))),
+          hora_abertura: novo.abertura || "06:00",
+          hora_fechamento: novo.fechamento || "23:00",
+          taxa_hora: Math.max(0, num(novo.taxa, 0)),
+        });
+        Alert.alert(
+          "Estacionamento criado ✅",
+          "Agora adicione os andares e gere as vagas em lote para o mapa funcionar.",
+        );
+      } else if (modal.tipo === "andar") {
+        await parkingApi.criarAndar({
+          estacionamento_id: modal.est.id,
+          numero_andar: Math.round(num(andarF.numero, 1)),
+          capacidade: Math.max(1, Math.round(num(andarF.capacidade, 10))),
+        });
+        Alert.alert("Andar criado ✅", "Use “Vagas em lote” para popular o mapa dele.");
+      } else {
+        if (!loteF.andarId) throw new Error("Escolha o andar que vai receber as vagas");
+        const criadas = await parkingApi.criarVagasEmLote({
+          andar_id: loteF.andarId,
+          quantidade: Math.min(500, Math.max(1, Math.round(num(loteF.quantidade, 10)))),
+          prefixo_codigo: (loteF.prefixo || "A").toUpperCase().slice(0, 2),
+        });
+        Alert.alert("Vagas geradas ✅", `${criadas.length} vagas criadas com códigos em sequência.`);
+      }
+      setModal(null);
+      onChanged();
+    } catch (e) {
+      erroSalvar(e);
+    } finally {
+      setOcupado(false);
+    }
+  }
+
+  function excluir(est: Estacionamento) {
+    Alert.alert(
+      "Excluir estacionamento",
+      `Remove ${est.nome} com TODOS os andares, vagas e históricos. Não tem volta.`,
+      [
+        { text: "Cancelar", style: "cancel" },
+        {
+          text: "Excluir definitivamente",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await parkingApi.excluirEstacionamento(est.id);
+              Alert.alert("Removido", `${est.nome} saiu da rede credenciada.`);
+              onChanged();
+            } catch (e) {
+              Alert.alert("Erro", apiErrorMessage(e));
+            }
+          },
+        },
+      ],
+    );
+  }
+
+  const andaresDoLote = modal?.tipo === "vagas" ? modal.est.andares : [];
+
   return (
     <View className="gap-3">
+      {podeGerenciar ? (
+        <View className="flex-row justify-end">
+          <Botao
+            label="＋ Novo estacionamento"
+            onPress={() => {
+              setNovo({
+                nome: "",
+                endereco: "",
+                andares: "2",
+                vagas: "60",
+                abertura: "06:00",
+                fechamento: "23:00",
+                taxa: "8",
+              });
+              setModal({ tipo: "novo" });
+            }}
+          />
+        </View>
+      ) : null}
+
       {estacionamentos.map((e) => {
         const pct =
           e.total_vagas > 0
@@ -543,10 +676,7 @@ function AbaEstacionamentos({
                   <View className="flex-1">
                     <BarraOcupacao percentual={pct} />
                   </View>
-                  <Text
-                    className="text-[13px] font-extrabold"
-                    style={{ color: ocupacaoColor(pct) }}
-                  >
+                  <Text className="text-[13px] font-extrabold" style={{ color: ocupacaoColor(pct) }}>
                     {pct}%
                   </Text>
                 </View>
@@ -556,17 +686,133 @@ function AbaEstacionamentos({
                   label={`${e.vagas_disponiveis_total ?? 0} livres`}
                   tone={pct >= 90 ? "vermelho" : pct >= 70 ? "ambar" : "verde"}
                 />
-                <Botao
-                  label="Abrir mapa"
-                  variant="contorno"
-                  className="px-4 py-2"
-                  onPress={() => onAbrir(e.id)}
-                />
+                <Botao label="Abrir mapa" variant="contorno" className="px-4 py-2" onPress={() => onAbrir(e.id)} />
               </View>
             </View>
+
+            {podeGerenciar ? (
+              <View className="mt-3 flex-row flex-wrap gap-2 border-t border-slate-100 pt-3">
+                <Botao
+                  label="＋ Andar"
+                  variant="contorno"
+                  className="px-3.5 py-1.5"
+                  onPress={() => {
+                    setAndarF({ numero: String(e.andares.length + 1), capacidade: "60" });
+                    setModal({ tipo: "andar", est: e });
+                  }}
+                />
+                <Botao
+                  label="Vagas em lote"
+                  variant="contorno"
+                  className="px-3.5 py-1.5"
+                  onPress={() => {
+                    setLoteF({
+                      andarId: e.andares[0]?.id ?? "",
+                      quantidade: "40",
+                      prefixo: "A",
+                    });
+                    setModal({ tipo: "vagas", est: e });
+                  }}
+                />
+                <Botao
+                  label="Excluir"
+                  variant="contorno"
+                  className="border-red-300 px-3.5 py-1.5"
+                  onPress={() => excluir(e)}
+                />
+              </View>
+            ) : null}
           </Card>
         );
       })}
+
+      <ModalForma
+        visivel={modal != null}
+        titulo={
+          modal?.tipo === "novo"
+            ? "Novo estacionamento"
+            : modal?.tipo === "andar"
+              ? `Novo andar — ${modal.est.nome}`
+              : "Gerar vagas em lote"
+        }
+        descricao={
+          modal?.tipo === "novo"
+            ? "Entra na rede imediatamente — depois cadastre andares e vagas."
+            : modal?.tipo === "andar"
+              ? "Andares negativos viram subsolo (ex.: -1 = G)."
+              : "Cria vagas com códigos sequenciais (A01, A02…) no andar escolhido."
+        }
+        aoFechar={() => setModal(null)}
+        aoConfirmar={salvar}
+        ocupado={ocupado}
+        rotuloConfirmar={modal?.tipo === "novo" ? "Criar estacionamento" : "Criar"}
+      >
+        {modal?.tipo === "novo" ? (
+          <>
+            <Campo label="Nome *" placeholder="Ex.: Shopping Via Norte" value={novo.nome} onChangeText={(v) => setNovo((f) => ({ ...f, nome: v }))} />
+            <Campo label="Endereço" placeholder="Av. X, 123 - Bairro, Manaus/AM" value={novo.endereco} onChangeText={(v) => setNovo((f) => ({ ...f, endereco: v }))} />
+            <View className="flex-row gap-3">
+              <View className="flex-1">
+                <Campo label="Nº de andares" keyboardType="numeric" value={novo.andares} onChangeText={(v) => setNovo((f) => ({ ...f, andares: v }))} />
+              </View>
+              <View className="flex-1">
+                <Campo label="Vagas (total)" keyboardType="numeric" value={novo.vagas} onChangeText={(v) => setNovo((f) => ({ ...f, vagas: v }))} />
+              </View>
+            </View>
+            <View className="flex-row gap-3">
+              <View className="flex-1">
+                <Campo label="Abre às" placeholder="06:00" value={novo.abertura} onChangeText={(v) => setNovo((f) => ({ ...f, abertura: v }))} />
+              </View>
+              <View className="flex-1">
+                <Campo label="Fecha às" placeholder="23:00" value={novo.fechamento} onChangeText={(v) => setNovo((f) => ({ ...f, fechamento: v }))} />
+              </View>
+            </View>
+            <Campo label="Taxa por hora (R$)" keyboardType="numeric" value={novo.taxa} onChangeText={(v) => setNovo((f) => ({ ...f, taxa: v }))} />
+          </>
+        ) : null}
+
+        {modal?.tipo === "andar" ? (
+          <>
+            <Campo label="Número do andar" keyboardType="numbers-and-punctuation" helper="Use negativo para subsolo (-1 = G)" value={andarF.numero} onChangeText={(v) => setAndarF((f) => ({ ...f, numero: v }))} />
+            <Campo label="Capacidade (vagas)" keyboardType="numeric" value={andarF.capacidade} onChangeText={(v) => setAndarF((f) => ({ ...f, capacidade: v }))} />
+          </>
+        ) : null}
+
+        {modal?.tipo === "vagas" ? (
+          <>
+            {andaresDoLote.length === 0 ? (
+              <Text className="mb-3 text-[13px] text-amber-700">
+                Este estacionamento ainda não tem andares — crie um antes de gerar vagas.
+              </Text>
+            ) : (
+              <View className="mb-1 flex-row flex-wrap gap-2">
+                {andaresDoLote.map((a) => {
+                  const ativo = a.id === loteF.andarId;
+                  return (
+                    <Pressable
+                      key={a.id}
+                      onPress={() => setLoteF((f) => ({ ...f, andarId: a.id }))}
+                      className={`rounded-full border px-3.5 py-1.5 ${ativo ? "border-blue-600 bg-blue-50" : "border-slate-200 bg-white"}`}
+                    >
+                      <Text className={`text-[13px] font-semibold ${ativo ? "text-blue-700" : "text-slate-600"}`}>
+                        {a.numero_andar}º andar
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            )}
+            <View className="flex-row gap-3">
+              <View className="flex-1">
+                <Campo label="Quantidade" keyboardType="numeric" value={loteF.quantidade} onChangeText={(v) => setLoteF((f) => ({ ...f, quantidade: v }))} />
+              </View>
+              <View className="flex-1">
+                <Campo label="Prefixo dos códigos" autoCapitalize="characters" maxLength={2} value={loteF.prefixo} onChangeText={(v) => setLoteF((f) => ({ ...f, prefixo: v }))} />
+              </View>
+            </View>
+          </>
+        ) : null}
+      </ModalForma>
     </View>
   );
 }
@@ -704,10 +950,26 @@ function AbaRelatorios({ estSel }: { estSel: string | null }) {
 }
 
 // ==================================================== aba usuários
-function AbaUsuarios({ isAdmin }: { isAdmin: boolean }) {
+function AbaUsuarios({
+  isAdmin,
+  estacionamentos,
+}: {
+  isAdmin: boolean;
+  estacionamentos: Estacionamento[];
+  onChanged?: () => void;
+}) {
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(true);
+  const [modal, setModal] = useState(false);
+  const [ocupado, setOcupado] = useState(false);
+  const [f, setF] = useState({
+    nome: "",
+    email: "",
+    senha: "",
+    role: "usuario" as "usuario" | "gestor" | "financeiro" | "admin",
+    estacionamento_id: null as string | null,
+  });
 
   const carregar = useCallback(async () => {
     try {
@@ -735,6 +997,37 @@ function AbaUsuarios({ isAdmin }: { isAdmin: boolean }) {
     );
   }
 
+  const exigeVinculo = f.role === "gestor" || f.role === "financeiro";
+
+  async function criar() {
+    if (f.nome.trim().length < 2 || !f.email.includes("@") || f.senha.length < 6) {
+      Alert.alert("Confira os campos", "Nome (mín. 2), e-mail válido e senha com 6+ caracteres.");
+      return;
+    }
+    if (exigeVinculo && !f.estacionamento_id) {
+      Alert.alert("Vínculo obrigatório", "gestor e financeiro precisam estar ligados a um estacionamento.");
+      return;
+    }
+    setOcupado(true);
+    try {
+      const novo = await parkingApi.criarUsuario({
+        nome: f.nome.trim(),
+        email: f.email.trim().toLowerCase(),
+        senha: f.senha,
+        role: f.role,
+        estacionamento_id: exigeVinculo ? (f.estacionamento_id ?? undefined) : undefined,
+      });
+      setUsuarios((prev) => [novo, ...prev]);
+      setModal(false);
+      setF({ nome: "", email: "", senha: "", role: "usuario", estacionamento_id: null });
+      Alert.alert("Usuário criado ✅", `${novo.nome} já pode entrar com a senha cadastrada.`);
+    } catch (e) {
+      Alert.alert("Não foi possível criar", apiErrorMessage(e));
+    } finally {
+      setOcupado(false);
+    }
+  }
+
   async function alternar(u: Usuario) {
     try {
       const novo = await parkingApi.alternarUsuario(u.id);
@@ -746,6 +1039,13 @@ function AbaUsuarios({ isAdmin }: { isAdmin: boolean }) {
 
   return (
     <View className="gap-3">
+      <View className="flex-row items-center justify-between">
+        <Text className="text-sm text-slate-500">
+          {usuarios.length} conta(s) · níveis controlam o que cada um vê no painel
+        </Text>
+        <Botao label="＋ Novo usuário" onPress={() => setModal(true)} />
+      </View>
+
       {erro ? (
         <View className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
           <Text className="text-[13px] text-amber-700">⚠️ {erro}</Text>
@@ -776,6 +1076,67 @@ function AbaUsuarios({ isAdmin }: { isAdmin: boolean }) {
           />
         </Card>
       ))}
+
+      <ModalForma
+        visivel={modal}
+        titulo="Novo usuário"
+        descricao="A senha é armazenada com bcrypt; o primeiro login já funciona."
+        aoFechar={() => setModal(false)}
+        aoConfirmar={criar}
+        ocupado={ocupado}
+        rotuloConfirmar="Criar usuário"
+      >
+        <Campo label="Nome completo *" value={f.nome} onChangeText={(v) => setF((p) => ({ ...p, nome: v }))} autoCapitalize="words" />
+        <Campo label="E-mail *" placeholder="pessoa@empresa.com" value={f.email} onChangeText={(v) => setF((p) => ({ ...p, email: v }))} autoCapitalize="none" keyboardType="email-address" />
+        <Campo label="Senha *" senha value={f.senha} onChangeText={(v) => setF((p) => ({ ...p, senha: v }))} />
+        <Text className="mb-1.5 mt-1 text-xs font-semibold text-slate-500">Nível de acesso</Text>
+        <View className="mb-3 flex-row flex-wrap gap-2">
+          {(
+            [
+              ["usuario", "🚗 Motorista"],
+              ["gestor", "🏬 Gestor de shopping"],
+              ["financeiro", "💰 Financeiro"],
+              ["admin", "👑 Admin global"],
+            ] as const
+          ).map(([role, label]) => {
+            const ativo = f.role === role;
+            return (
+              <Pressable
+                key={role}
+                onPress={() => setF((p) => ({ ...p, role }))}
+                className={`rounded-full border px-3.5 py-1.5 ${ativo ? "border-blue-600 bg-blue-50" : "border-slate-200 bg-white"}`}
+              >
+                <Text className={`text-[12px] font-semibold ${ativo ? "text-blue-700" : "text-slate-500"}`}>
+                  {label}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+        {exigeVinculo ? (
+          <>
+            <Text className="mb-1.5 text-xs font-semibold text-slate-500">
+              Estacionamento vinculado * (painel limitado a ele)
+            </Text>
+            <View className="mb-2 flex-row flex-wrap gap-2">
+              {estacionamentos.map((e) => {
+                const ativo = e.id === f.estacionamento_id;
+                return (
+                  <Pressable
+                    key={e.id}
+                    onPress={() => setF((p) => ({ ...p, estacionamento_id: e.id }))}
+                    className={`rounded-full border px-3.5 py-1.5 ${ativo ? "border-blue-600 bg-blue-50" : "border-slate-200 bg-white"}`}
+                  >
+                    <Text className={`text-[12px] font-semibold ${ativo ? "text-blue-700" : "text-slate-500"}`}>
+                      {e.nome}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </>
+        ) : null}
+      </ModalForma>
     </View>
   );
 }

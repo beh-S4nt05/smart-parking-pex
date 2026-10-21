@@ -40,6 +40,14 @@ class Settings(BaseSettings):
     # Popular o banco com os shoppings demo de Manaus ao iniciar (só em DEBUG e com banco vazio)
     SEED_DEMO_ON_STARTUP: bool = True
 
+    # Rede do uvicorn (python main.py): mude com PORT=8010 no .env quando a 8000 estiver ocupada
+    HOST: str = "0.0.0.0"
+    PORT: int = 8000
+
+    # true: se o PostgreSQL estiver fora do ar, cai para SQLite de dev (.smartparking.db).
+    # Em time, deixe false para o erro aparecer na cara — evita "dados fantasmas" no SQLite
+    DB_AUTO_SQLITE: bool = True
+
     # OAuth Providers (autenticação social)
     GOOGLE_CLIENT_ID: Optional[str] = None
     GOOGLE_CLIENT_SECRET: Optional[str] = None

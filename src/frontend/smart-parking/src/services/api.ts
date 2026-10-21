@@ -8,6 +8,7 @@
  * ✅ Assinatura HMAC de escrita (paridade com core/request_validator.py)
  * ✅ Funções tipadas por endpoint — telas não montam URL na mão
  */
+import { Platform } from "react-native";
 import axios, {
   AxiosError,
   AxiosInstance,
@@ -34,14 +35,30 @@ import type {
 } from "../types/api";
 
 // URL base da API.
-// - Dev web local: http://localhost:8000
-// - Celular (Expo Go): EXPO_PUBLIC_API_URL=http://SEU_IP:8000
-const DEFAULT_API_URL = __DEV__
-  ? "http://localhost:8000"
-  : "http://localhost:8000";
+// - Com .env: usa EXPO_PUBLIC_API_URL (o valor que mandar).
+// - Web sem .env: auto-detecta o HOST atual na porta 8000 — abrir o preview no
+//   celular ou noutro PC da rede já aponta para a máquina certa sozinha
+//   (ex.: http://192.168.0.42:8000). OBS: o app NÃO tem env "DEFAULT_API_URL"
+//   — se você precisa de outra porta (ex.: 8010), defina EXPO_PUBLIC_API_URL.
+// - Nativo (Expo Go): localhost não existe no celular → configure o IP LAN.
+const DEFAULT_API_URL = (() => {
+  if (Platform.OS === "web" && typeof window !== "undefined") {
+    const host = window.location?.hostname;
+    if (host && host !== "localhost" && host !== "127.0.0.1") {
+      return `http://${host}:8000`;
+    }
+  }
+  return "http://localhost:8000";
+})();
 
 export const API_URL: string =
-  process.env.EXPO_PUBLIC_API_URL || DEFAULT_API_URL;
+  (process.env.EXPO_PUBLIC_API_URL || DEFAULT_API_URL).replace(/\/+$/, "");
+
+if (__DEV__) {
+  // trilha de depuração: qual URL o app está usando (aparece no console do navegador/Metro)
+  // eslint-disable-next-line no-console
+  console.log(`[smart-parking] API_URL = ${API_URL}`);
+}
 
 const api: AxiosInstance = axios.create({
   baseURL: API_URL,
@@ -167,7 +184,7 @@ export function apiErrorMessage(err: unknown, fallback = "Algo deu errado. Tente
     if (first?.msg) return humanizeValidationMessage(first.msg);
   }
   if (e?.code === "ERR_NETWORK" || !e?.response) {
-    return "Não foi possível conectar ao servidor. Verifique sua internet ou se a API está no ar.";
+    return `Não foi possível alcançar a API em ${API_URL} — confira se o backend está rodando nessa porta (src/backend/.env → PORT) e se o .env do app aponta para o mesmo endereço.`;
   }
   return fallback;
 }
@@ -377,6 +394,60 @@ export const parkingApi = {
   // ---- Usuários (painel, admin) ----
   async listarUsuarios(): Promise<Usuario[]> {
     const { data } = await api.get<Usuario[]>("/api/admin/usuarios");
+    return data;
+  },
+
+  // ---- Cadastros do painel (admin global) ----
+  async criarEstacionamento(payload: {
+    nome: string;
+    endereco?: string;
+    total_andares: number;
+    total_vagas: number;
+    hora_abertura?: string;
+    hora_fechamento?: string;
+    taxa_hora: number;
+    telefone?: string;
+    latitude?: number;
+    longitude?: number;
+  }): Promise<Estacionamento> {
+    const { data } = await api.post<Estacionamento>(
+      "/api/admin/estacionamentos",
+      payload,
+    );
+    return data;
+  },
+
+  async excluirEstacionamento(id: string): Promise<void> {
+    await api.delete(`/api/admin/estacionamentos/${id}`);
+  },
+
+  async criarAndar(payload: {
+    estacionamento_id: string;
+    numero_andar: number;
+    capacidade: number;
+  }): Promise<{ id: string; numero_andar: number; capacidade: number }> {
+    const { data } = await api.post("/api/admin/andares", payload);
+    return data;
+  },
+
+  async criarVagasEmLote(payload: {
+    andar_id: string;
+    quantidade: number;
+    prefixo_codigo: string;
+  }): Promise<{ id: string }[]> {
+    const { data } = await api.post("/api/admin/vagas/lote", payload);
+    return data;
+  },
+
+  async criarUsuario(payload: {
+    nome: string;
+    email: string;
+    senha: string;
+    role: "usuario" | "gestor" | "financeiro" | "admin" | "publico";
+    estacionamento_id?: string;
+    telefone?: string;
+  }): Promise<Usuario> {
+    const { data } = await api.post<Usuario>("/api/admin/usuarios", payload);
     return data;
   },
 
