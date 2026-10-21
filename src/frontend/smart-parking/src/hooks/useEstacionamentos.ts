@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { parkingApi } from "../services/api";
+import { API_URL, parkingApi } from "../services/api";
 import type { Estacionamento } from "../types/api";
 
 interface Options {
@@ -38,7 +38,7 @@ export function useEstacionamentos({ pollingMs = 0 }: Options = {}) {
       setErro(
         estacionamentos.length > 0
           ? "Sem conexão com a API — mostrando a última leitura."
-          : "API indisponível. Verifique o backend (porta 8000).",
+          : `API indisponível em ${API_URL} — verifique se o backend está nessa porta.`,
       );
     } finally {
       if (mounted.current) setLoading(false);

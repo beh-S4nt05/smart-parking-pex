@@ -154,10 +154,21 @@ python main.py                                      # API em http://localhost:80
 ```bash
 cd src/frontend/smart-parking
 npm install
-# aponte para o IP da sua máquina (celular na mesma rede Wi-Fi):
-echo "EXPO_PUBLIC_API_URL=http://SEU_IP_LOCAL:8000" > .env   # (ou export, à sua escolha)
+cp .env.example .env    # opcional: só defina EXPO_PUBLIC_API_URL se a API não estiver
+                        # em localhost:8000 (celular → IP da LAN; porta diferente → ajuste)
 npx expo start          # pressione: w (web) · a (Android) · i (iOS) · ou escaneie o QR
 ```
+
+> **Achas de configuração (importante pro time todo):**
+> - O **único** env do app é `EXPO_PUBLIC_API_URL`. Env chamada `DEFAULT_API_URL`
+>   **não existe** — se alguém colocar no `.env`, é ignorada. Sem env, o web usa o
+>   próprio host atual na porta 8000; nativo usa `localhost:8000` (no celular isso
+>   aponta para o próprio celular — por isso o IP LAN é obrigatório lá).
+> - Backend: o `.env` vive em `src/backend/` (`cp .env.example .env`). Porta 8000
+>   ocupada? `PORT=8010` lá **e** no env do front, com `npx expo start -c`.
+> - Se o Postgres cair e `DB_AUTO_SQLITE=true`, o app **silencia** e usa um SQLite
+>   oculto — os dados entram num banco e você olha noutro. Em dupla/trio, prefira
+>   `DB_AUTO_SQLITE=false` para o erro aparecer na hora.
 
 O **web e o mobile usam as mesmas rotas** (layout responsivo): `/` home ·
 `/login` (e-mail **ou** telefone) · `/cadastro` · `/explorar` ·

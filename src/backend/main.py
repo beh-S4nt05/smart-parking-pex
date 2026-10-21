@@ -131,11 +131,34 @@ async def root():
 
 
 if __name__ == "__main__":
+    import socket
+
+    def _ip_lan() -> str:
+        """Descobre o IP desta máquina na rede local (para o celular alcançar a API)."""
+        try:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            sock.connect(("8.8.8.8", 80))
+            ip = sock.getsockname()[0]
+            sock.close()
+            return ip
+        except OSError:
+            return "127.0.0.1"
+
+    ip_lan = _ip_lan()
+
+    print("─" * 60)
+    print(f"🌐 SmartParking API — porta {settings.PORT}")
+    print(f"   neste computador   : http://localhost:{settings.PORT}/docs")
+    print(f"   celular / outra rede: http://{ip_lan}:{settings.PORT}")
+    print(f'   no app, use no .env : EXPO_PUBLIC_API_URL="http://{ip_lan}:{settings.PORT}"')
+    print("   porta ocupada?       → PORT=8010 no src/backend/.env (e ajuste o .env do front)")
+    print("─" * 60)
+
     uvicorn.run(
         "main:app",
         # 0.0.0.0 para que o celular (Expo Go) e outros dispositivos da rede
         # consigam alcançar a API — "localhost" só funciona na própria máquina
-        host="0.0.0.0",
-        port=8000,
+        host=settings.HOST,
+        port=settings.PORT,
         reload=settings.DEBUG,
     )
