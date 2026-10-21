@@ -100,6 +100,12 @@ export function LogoBlox({ compact }: { compact?: boolean }) {
 }
 
 // ---------------------------------------------------------------- Botões
+// Animated.Value SÓ pode viver no style de um componente Animated. Num
+// <Pressable> comum, o objeto passa cru para o nativo e o Fabric derruba a
+// tela com "Transform with key of 'scale' must be a number" (a web ignora e
+// esconde o bug). createAnimatedComponent faz o wiring do driver nativo.
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+
 type BotaoProps = {
   label: string;
   onPress?: () => void;
@@ -147,7 +153,7 @@ export function Botao({
     sucesso: "text-white",
   };
   return (
-    <Pressable
+    <AnimatedPressable
       accessibilityRole="button"
       onPress={onPress}
       onPressIn={() => apertar(true)}
@@ -171,7 +177,7 @@ export function Botao({
           </Text>
         </>
       )}
-    </Pressable>
+    </AnimatedPressable>
   );
 }
 

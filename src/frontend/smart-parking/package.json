@@ -4,13 +4,13 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "start": "expo start",
-    "android": "expo start --android",
-    "ios": "expo start --ios",
-    "web": "expo start --web",
-    "clean": "expo start -c",
-    "doctor": "expo-doctor",
-    "check-deps": "expo install --check",
+    "start": "npx expo start",
+    "android": "npx expo start --android",
+    "ios": "npx expo start --ios",
+    "web": "npx expo start --web",
+    "clean": "npx expo start -c",
+    "doctor": "npx -y expo-doctor",
+    "check-deps": "npx expo install --check",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

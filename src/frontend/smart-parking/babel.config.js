@@ -1,6 +1,6 @@
-// SDK 54 + NativeWind v4.2 + Reanimated 4
+// SDK 57 + NativeWind v4.2 (sem Reanimated — animações usam só Animated do RN core)
 // IMPORTANTE: NÃO adicione "react-native-reanimated/plugin" nem
-// "react-native-worklets/plugin" aqui. O babel-preset-expo do SDK 54 detecta o
+// "react-native-worklets/plugin" aqui. O babel-preset-expo do SDK 57 detecta o
 // react-native-worklets instalado e configura o plugin sozinho. Colocar na mão
 // gera o erro clássico:
 //   "Duplicate plugin/preset detected" /
