@@ -199,6 +199,30 @@ O **web e o mobile usam as mesmas rotas** (layout responsivo): `/` home ·
 > 📖 **Documentação da API:** [http://localhost:8000/docs](http://localhost:8000/docs) (Swagger interativo)
 > 🐘 **PgAdmin:** [http://localhost:5050](http://localhost:5050) · `admin@admin.com` / `admin`
 
+#### 📱 Expo Go no celular: "Failed to download remote update"
+
+Esse erro **não é do código do app** — o projeto não usa OTA/EAS Update (não há
+`expo-updates` nem `eas.json`); é o Expo Go tentando baixar o bundle do servidor
+da Expo em vez de conectar ao Metro do PC. Cheque nesta ordem:
+
+1. **Expo Go compatível com o SDK 57 do projeto** — atualize o Expo Go na Play
+   Store. Um Expo Go de versão antiga não abre o SDK novo e "cai" na tentativa de
+   update remoto (a `IOException`).
+2. **Abra pelo QR do terminal**, não pela aba "Projects/Recentes" do Expo Go (esse
+   caminho vai no expo.dev, que exige projeto publicado → update remoto → falha).
+   Rode `npx expo start` no terminal e escaneie o QR dali (ou digite
+   `exp://IP-DO-PC:8081` no Expo Go → "Enter URL").
+3. **Wi-Fi que isola dispositivos** (comum em rede de campus/hotel — "AP
+   isolation"): o Metro na 8081 nunca responde e o Expo Go desiste para o remoto.
+   Teste no navegador do celular: `http://IP-DO-PC:8081/status` deve responder
+   qualquer coisa (ex.: `Bundler activity: none`). Se não abre, sua rede isola →
+   use túnel, que não exige nada novo no projeto: `npx expo start --tunnel`
+   (o `npx` baixa o `@expo/ngrok` sob demanda).
+
+E depois que o app carregar: para a **API** funcionar no celular,
+`EXPO_PUBLIC_API_URL` precisa apontar para o IP do PC (ver `.env.example`) — com
+qualquer mudança no `.env`, reinicie com `npx expo start -c`.
+
 ---
 
 ## 📱 Como usar a aplicação
