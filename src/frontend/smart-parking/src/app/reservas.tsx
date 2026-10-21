@@ -137,7 +137,9 @@ export default function Reservas() {
                       </View>
                     </View>
 
-                    {r.status === "confirmada" ? (
+                    {/* O backend só bloqueia cancelar reserva já CANCELADA (400) —
+                        então o botão vale para qualquer status ativo, não só "confirmada". */}
+                    {r.status !== "cancelada" ? (
                       <View className="mt-3 flex-row justify-end gap-2">
                         <Botao
                           label="Cancelar"

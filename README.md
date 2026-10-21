@@ -223,6 +223,22 @@ E depois que o app carregar: para a **API** funcionar no celular,
 `EXPO_PUBLIC_API_URL` precisa apontar para o IP do PC (ver `.env.example`) — com
 qualquer mudança no `.env`, reinicie com `npx expo start -c`.
 
+#### ⚠️ "expo config"/"expo start" falhando com stack de OUTRA pasta? É o CLI global legado
+
+Se o erro apontar caminhos como `~/.nvm/.../node_modules/expo-cli` (e o banner
+*"The legacy expo-cli does not support Node +17"*), **não é o projeto** quem está
+rodando — é o `expo-cli` global deprecado sequestrando o `npx expo` porque o
+binário local está ausente/quebrado. Conserto na ordem:
+
+1. `npm rm -g expo-cli` (só este pacote; se existir `expo-doctor` global antigo, remova também);
+2. dentro de `src/frontend/smart-parking`: `rm -rf node_modules .expo && npm ci`;
+3. confira `ls node_modules/.bin/expo`. Se o `npm ci` termina bem mas o `.bin`
+   some, o filesystem não cria symlinks — clone em HD/partição **NTFS/exFAT**
+   (comum em dual boot, pasta montada em `/media/...`) → mova o repositório para
+   a partição Linux (ext4) e reinstale lá.
+
+Os scripts do projeto já chamam `npx expo ...`, que prioriza o binário local.
+
 ---
 
 ## 📱 Como usar a aplicação
