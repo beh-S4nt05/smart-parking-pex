@@ -51,7 +51,6 @@ com dashboard, mapa de vagas por andar e simulador de sensores por QR Code.
 **Solução:** o Smart Parking centraliza o **monitoramento inteligente de vagas** de uma rede de shoppings (Manaus/AM):
 
 | Para o público | Para o estacionamento |
-
 |---|---|
 | Ver vagas disponíveis **em tempo real**, por shopping e andar | **Dashboard** com ocupação geral, por andar e por shopping |
 | Consultar a **próxima vaga livre** (com prioridade por tipo: PCD, idoso, moto…) | **Simulador de sensores por QR Code** — entrada/saída de veículos em lote |
@@ -82,7 +81,6 @@ com dashboard, mapa de vagas por andar e simulador de sensores por QR Code.
 ## 💡 Habilidades demonstradas
 
 | Área | Habilidades | Onde aplicado no código |
-
 |---|---|---|
 | **Arquitetura de software** | Arquitetura limpa e desacoplada (API → regras → dados), SOLID, separação de responsabilidades | `api/` só trata HTTP · `rules/` concentra a lógica · `models/` cuida da persistência |
 | **API REST** | Design RESTful, documentação OpenAPI/Swagger automática, códigos HTTP corretos, validação de contratos | `api/api.py`, `api/admin.py` · `/docs` |
@@ -227,7 +225,6 @@ O **web e o mobile usam as mesmas rotas** (layout responsivo): `/` home ·
 ### 🔑 Usuários de demonstração (criados pelo seed)
 
 | Papel | E-mail | Senha | Pode |
-
 |---|---|---|---|
 | Administrador | `admin@smartparking.com` | `admin123` | tudo (inclui gerar QR do simulador) |
 | Gestor | `gestor@smartparking.com` | `gestor123` | gerenciar o estacionamento vinculado |
@@ -242,7 +239,6 @@ O **web e o mobile usam as mesmas rotas** (layout responsivo): `/` home ·
 Rotas autenticadas usam `Authorization: Bearer <access_token>`.
 
 | Método | Rota | Descrição | Auth |
-
 |---|---|---|---|
 | GET | `/api/estacionamentos` | Lista shoppings com vagas disponíveis | — |
 | GET | `/api/estacionamentos/{id}/vagas` | Mapa de vagas por andar | — |
@@ -323,7 +319,6 @@ A conformidade do projeto é controlada pela **matriz de conformidade** em [`src
 ## 🗺️ Roadmap
 
 | Data | Marco |
-
 |---|---|
 | 28/09–09/10/2026 | Execução das frentes: Frontend · Backend · Integração · Segurança · Simulador QR |
 | 10–11/10/2026 | Folga para ajustes e ensaio |
