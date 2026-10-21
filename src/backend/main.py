@@ -96,14 +96,13 @@ app.add_middleware(RequestValidationMiddleware)
 app.add_middleware(SecurityHeadersMiddleware, environment=settings.ENVIRONMENT)
 
 # 2. Middleware de hosts confiáveis (bloqueia acessos com Host header falso em produção)
+# A lista vem de TRUSTED_HOSTS (config/.env) — mantida hardcoded só para localhost,
+# o acesso via Nginx ou IP da LAN levava "400 Invalid host header" e o app
+# parecia caído para quem não estivesse na máquina do servidor.
 if settings.ENVIRONMENT == "production":
     app.add_middleware(
         TrustedHostMiddleware,
-        allowed_hosts=[
-            "localhost",
-            "127.0.0.1",
-            # Adicione aqui seu domínio de produção
-        ],
+        allowed_hosts=settings.TRUSTED_HOSTS,
     )
 
 # 3. CORS
@@ -127,6 +126,18 @@ async def root():
     return {
         "status": "SmartParking API está rodando perfeitamente!",
         "version": settings.APP_VERSION,
+    }
+
+
+@app.get("/health", tags=["Infra"])
+async def health():
+    """Ping barato de infraestrutura: healthcheck do Docker (compose), balanceamento
+    do Nginx e smoke test dos dias de apresentação (scripts/smoke_mvp.sh).
+    É GET e não modifica nada — funciona em qualquer ENVIRONMENT."""
+    return {
+        "status": "ok",
+        "version": settings.APP_VERSION,
+        "environment": settings.ENVIRONMENT,
     }
 
 
