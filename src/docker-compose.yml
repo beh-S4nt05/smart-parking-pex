@@ -18,7 +18,9 @@ services:
     container_name: smartparking-backend
     restart: always
     environment:
-      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/smartparking
+      # driver +psycopg2 explícito: com SQLAlchemy>=2.1 a URL sem sufixo
+      # procura psycopg v3 e o container morria em "unhealthy" (visto na V-02)
+      - DATABASE_URL=postgresql+psycopg2://postgres:postgres@postgres:5432/smartparking
       # "staging" desliga exigência de assinatura HMAC e mantém o resto — ideal
       # para demo/banca por IP na LAN. Produção real: ENVIRONMENT=production +
       # TRUSTED_HOSTS='["seu.dominio"]' e APP_SIGNING_SECRET fortes.
