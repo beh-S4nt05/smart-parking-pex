@@ -196,8 +196,8 @@ Status vem de leitura de código. Coluna **Marca** indica onde o item fecha.
 | RF-03 | Mapa de vagas por andar, com status, tipo e filtro por tipo | ✅ | `GET /api/estacionamentos/{id}/vagas`; `VagaMapa` | 2 |
 | RF-04 | Sugerir a próxima vaga (prioriza o tipo pedido; senão qualquer livre) | ✅ | `.../proxima-vaga` | 2 |
 | RF-05 | Atualização automática (polling 8–25 s conforme a tela) | ✅ | hooks `useEstacionamentos`, `useMapaVagas` | 2 |
-| RF-06 | Última leitura disponível offline (cache persistido) | 🟡 | hoje só estado em memória | 4 |
-| RF-07 | "Como chegar" (abrir mapas com lat/long do seed) | ⬜ | — | 5 |
+| RF-06 | Última leitura disponível offline (cache persistido) | ✅ 22/10 noite: Home e mapa gravam a última leitura no AsyncStorage e reabrem com banner de horário | 4 |
+| RF-07 | "Como chegar" (abrir mapas com lat/long do seed) | ✅ 22/10 — botão 📍 no shopping (Google Maps; cai para o endereço sem coordenada) | 5 |
 
 **M2 — Conta e acesso**
 
@@ -206,9 +206,9 @@ Status vem de leitura de código. Coluna **Marca** indica onde o item fecha.
 | RF-10 | Cadastro em 2 etapas (dados + veículo opcional) com auto-login | ✅ | 2 |
 | RF-11 | Login por e-mail **ou** telefone | ✅ | 2 |
 | RF-12 | Refresh transparente do access token (fila de requisições) | ✅ | 2 |
-| RF-13 | Logout (limpa tokens localmente; sem revogação no servidor) | 🟡 | 5 |
-| RF-14 | Recuperar senha (hoje `mailto:`) | ⬜ | 5 |
-| RF-15 | Perfil: editar nome, telefone, placa, trocar senha | ⬜ | 5 |
+| RF-13 | Logout (limpa tokens localmente; sem revogação no servidor) | ✅ 22/10 — `POST /auth/logout` revoga jti (access) + cadeia de refresh; `revogacoes_token` no banco | 5 |
+| RF-14 | Recuperar senha (hoje `mailto:`) | ✅ 22/10 (sem SMTP por decisão) — "Reset senha" do admin gera temporária de balcão e derruba sessões; login mostra o fluxo | 5 |
+| RF-15 | Perfil: editar nome, telefone, placa, trocar senha | ✅ 22/10 — tela /perfil (Header → Minha conta) + PUT /auth/me e /auth/senha; troca de senha religa a sessão atual | 5 |
 | RF-16 | RBAC com 5 papéis e vínculo gestor/financeiro → estacionamento | ✅ | 2 |
 | RF-17 | Login social | ✅ (flag `LOGIN_SOCIAL_ENABLED=false` por padrão; rotas → 404) | 2 |
 
@@ -228,10 +228,10 @@ Status vem de leitura de código. Coluna **Marca** indica onde o item fecha.
 | ID | Requisito | Status | Marca |
 |---|---|---|---|
 | RF-30 | Dashboard: KPIs, ocupação por andar, fluxo por hora, últimos eventos | ✅ | 2 |
-| RF-31 | Estacionamento: criar ✅ · excluir ✅ · **editar (API ✅, UI ⬜)** | 🟡 | 3 |
-| RF-32 | Andar: criar ✅ · **excluir (API ✅, UI ⬜)** | 🟡 | 3 |
-| RF-33 | Vagas: lote ✅ · **editar tipo/excluir (UI ⬜)** · tipo no lote ✅ (ACH-17: API aceita `tipo` e atualiza capacidade/total) | 🟡 | 3 |
-| RF-34 | Usuários: criar/listar/ativar-desativar ✅ · **editar/promover (UI ⬜)** | 🟡 | 3 |
+| RF-31 | Estacionamento: criar ✅ · excluir ✅ · editar (API ✅ · UI ✅ 22/10) | ✅ | 3 |
+| RF-32 | Andar: criar ✅ · excluir ✅ · **editar nº/capacidade (API+UI ✅ 22/10)** | ✅ | 3 |
+| RF-33 | Vagas: lote ✅ · editar tipo/código ✅ · excluir ✅ · criar avulsa ✅ · tipo no lote ✅ — tudo na aba Andares e Vagas | ✅ | 3 |
+| RF-34 | Usuários: criar/listar/ativar-desativar ✅ · editar nome/nível/vínculo ✅ (modal 22/10) · reset de senha ✅ | ✅ | 3 |
 
 **M5 — Simulador e sensores**
 
@@ -242,7 +242,7 @@ Status vem de leitura de código. Coluna **Marca** indica onde o item fecha.
 | RF-42 | Operar vagas: alternar, selecionar, ações rápidas, lote | ✅ | 2 |
 | RF-43 | Acesso exclusivo do admin (login + `role=admin`) | ✅ | 2 |
 | RF-44 | Feed de eventos com origem (sensor/simulador/app/manual) | ✅ | 2 |
-| RF-45 | Sensor real: chave por dispositivo + contrato idempotente (§10) | ⬜ | 5 |
+| RF-45 | Sensor real: chave por dispositivo + contrato idempotente (§10) | ✅ 22/10 — `sensores`+`sensor_eventos`, `X-Device-Key` (SHA-256 no banco), `POST /api/sensores/eventos` com (sensor,seq), emissão/revogação só admin | 5 |
 | RF-46 | Check-in/out por QR com a câmera do celular | ⬜ | 5 |
 
 **M6 — Relatórios**
@@ -398,12 +398,11 @@ Interceptors do axios, em ordem: (1) anexa `Bearer`; (2) em `401` faz refresh co
 
 ### 5.6 Decisões de arquitetura (ADRs) — ✅ validadas pelo autor em 22/10 (ordem da sessão: executar conforme explicado)
 
-Implementadas: ADR-01 (polling mantido), ADR-02 (1 worker no compose já era), ADR-04 ⬜
-(pendente — exige base Alembic em Postgres, fica para 09–12/11), ADR-05 ✅, ADR-06 ✅ (SQLi regex
+Implementadas: ADR-01 (polling mantido), ADR-02 (1 worker no compose já era), ADR-04 ✅ (baseline `3c79cee6fe1f` + `src/docs/MIGRACOES.md` com fluxo de stamp para bancos existentes), ADR-05 ✅, ADR-06 ✅ (SQLi regex
 removido, flag social, admin só fora de produção), ADR-07 ✅ (`garantir_escopo_estacionamento` +
 `garantir_escopo_relatorio`), ADR-08 ✅ (financeiro consolidado em `pagamento_service`), ADR-09 ✅
 (histórico derivado), ADR-10 ✅ (pytest+CI), ADR-11 ✅ (deploy LAN por IP mantido), ADR-03 ⬜
-(sensor `X-Device-Key` — marca 5).
+(sensor `X-Device-Key` ✅ 22/10; check-in por câmera segue ⬜ — ver §12).
 
 | ADR | Decisão proposta | Alternativa | Justificativa | Impacto |
 |---|---|---|---|---|
@@ -444,3 +443,17 @@ Maestro), Alembic (ADR-04/M4-02), sessões Postgres (H-01), sensores com `X-Devi
 (H-02), check-in por câmera (RF-46), logout com revogação (RF-13), recuperar senha (RF-14),
 perfil (RF-15), cache offline persistido (RF-06), "como chegar" (RF-07), UI de edição
 RF-31..34, RF-24 `[decisão Q-08 — texto da decisão não veio no upload]`, TLS no nginx.
+
+### Repeteco de evidências — 22/10 (2ª rodada do dia)
+
+| Evidência | Resultado |
+|---|---|
+| `pytest tests -q` | **31/31** (+6: revogação access/refresh, compat jti-legado, perfil/senha, reset do admin, PUT andar/vaga, ingestão de sensor com idempotência e revogação de chave) |
+| Runtime httpx contra uvicorn | **15/15**: logout→401 immediate, senha antiga morre no reset, sensor vira vaga `ocupada` de verdade no mapa, reenvio = `duplicados:1`, fluxo diário conta a entrada do sensor |
+| `smoke_mvp` / `smoke_acesso` | **10/10 · 27/27** com revogação/limitadores/sensores no meio do caminho |
+| Alembic (novo) | `revision --autogenerate` → baseline 13 tabelas; `upgrade head` em banco vazio cria as 14 (13+alembic_version); `alembic check` → *no divergence* |
+| `tsc --noEmit` / `expo export --platform web` | limpos — abas novas do painel (editar estacionamento/andar/vaga/usuário), tela /perfil, cache persistido e botão "como chegar" compilando para web |
+
+Pendências que restam do documento (marca 5): H-01 sessões QR em Postgres, RF-46 câmera
+(exige `expo-camera` no `node_modules` da máquina de demo — adiado para não quebrar o dia),
+RF-24 `[Q-08]` sem texto da decisão, TLS no nginx, pgadmin fora do ar em produção.

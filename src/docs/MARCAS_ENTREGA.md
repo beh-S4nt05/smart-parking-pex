@@ -11,8 +11,8 @@ banca fechar o ponto. Atualizar o "Status" a cada revisão.
 | 1 | Banco modelado   | 10/09    | 1    | ✅ Entregue                     |
 | 2 | MVP operacional  | 22/10    | 2    | ✅ **Entregue 20/10** (+ auditoria de acesso) |
 | 3 | Relatórios       | 02/11    | 1    | ✅ **Entregue 22/10** (back+CSV+aba no painel) |
-| 4 | Testes & Docs    | 09/11    | 1    | 🟡 pytest 25✅ + CI ✅; SDD/README ✅; aceite E2E ✅ |
-| 5 | Entrega Integrada| 12/11    | 5    | ⬜ Plano de fechamento abaixo   |
+| 4 | Testes & Docs    | 09/11    | 1    | ✅ **Entregue 22/10** (31 testes, CI, SDD v0.2, Alembic baseline) |
+| 5 | Entrega Integrada| 12/11    | 5    | 🟡 Chave de sensor ✅ 22/10; sessões-Postgres/câmera/TLS abaixo |
 
 ---
 
@@ -109,12 +109,16 @@ denominador, heat, giro, cartão P16 e a matriz BOLA dos CSVs.
 
 ## 4️⃣ Testes & Documentação — 09/11 · peso 1 🟡
 
-- **pytest (✅ 25 testes, roda sem Docker):** `src/backend/tests/` com `TestClient` + SQLite
+- **pytest (✅ 31 testes, roda sem Docker):** `src/backend/tests/` com `TestClient` + SQLite
   isolado (`.pytest_smartparking.db`, criado pelo `conftest.py` ANTES do import do app).
-  Grupos: `test_core_timeutils`/`test_core_guards` (fuso, produção-recusa-chave-padrão, chave do
-  limiter, flag social 404), `test_relatorios` (RN-10/ADR-09/giro), `test_reserva_vaga`
-  (expiração RF-23, RF-25, lote ACH-17), `test_financeiro` (tarifa RN-05/06, cupom não-consome,
-  P16), `test_escopo_api` (matriz BOLA + CSV + 401). Rodar: `cd src/backend && pytest tests -q`.
+  Grupos: timeutils/guards (produção recusa chave padrão, flag social, chave do limiter),
+  relatórios (fuso, denominador, heat, giro), reserva/vaga (RF-23/25, lote ACH-17),
+  financeiro (tarifa RN-05/06, cupom, P16), **sessões** (logout revoga access+refresh,
+  compat com token pré-jti, perfil, reset do admin), **sensores** (chave, idempotência,
+  revogação) e a matriz BOLA/401/403. Rodar: `cd src/backend && pytest tests -q`.
+- **Alembic (✅ M4-02):** baseline `3c79cee6fe1f` gerada dos modelos (13 tabelas),
+  `upgrade head` + `alembic check` validados em banco limpo; fluxo de *stamp* para os
+  bancos já existentes em `src/docs/MIGRACOES.md`.
 - **CI (✅):** `.github/workflows/ci.yml` roda `pytest` (py 3.12) e `tsc --noEmit` (node 24 +
   `NPM_CONFIG_ENGINE_STRICT=false`) a cada push/PR — M4-01/ADR-10 fechado.
 - **Docs (✅ desta rodada):** SDD completo em `src/docs/SDD.md` com status ✅/⬜ por item e
@@ -130,7 +134,10 @@ denominador, heat, giro, cartão P16 e a matriz BOLA dos CSVs.
 ## 5️⃣ Entrega do Projeto Integrado (Funcional) — 12/11 · peso 5 ⬜
 
 Fecha o sistema inteiro funcionando de ponta a ponta (mobile + web + painel +
-relatórios + testes). Hardening programado — parte já preparada nesta entrega:
+relatórios + testes). Andamento em 22/10: **chave de dispositivo + ingestão idempotente
+de sensores (RF-45/ADR-03) ✅**, edições de cadastro do painel (RF-31..34) ✅, sessão com
+revogação real (RF-13) ✅, perfil/recuperação (RF-14/15) ✅ e cache offline persistido
+(RF-06) ✅. Hardening que resta:
 
 - `ENVIRONMENT=production` de verdade: TLS no nginx (guia em
   `SEGURANCA_TLS_WIRESHARK.md`), `TRUSTED_HOSTS` com o domínio, `SECRET_KEY` e

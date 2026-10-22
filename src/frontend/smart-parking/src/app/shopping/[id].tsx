@@ -17,6 +17,7 @@ import {
   ScrollView,
   Text,
   View,
+  Linking,
   useWindowDimensions,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -548,7 +549,26 @@ export default function MapaVagas() {
               <Text className="text-3xl font-extrabold text-slate-900">{titulo}</Text>
               <Text className="mt-1 text-sm text-slate-500">{subtitulo}</Text>
             </View>
-            <SeloAoVivo />
+            <View className="flex-row items-center gap-2">
+              <Pressable
+                onPress={() => {
+                  const q =
+                    shopping?.latitude && shopping?.longitude
+                      ? `${shopping.latitude},${shopping.longitude}`
+                      : shopping?.endereco;
+                  if (q) {
+                    Linking.openURL(
+                      `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`,
+                    );
+                  }
+                }}
+                disabled={!shopping?.latitude && !shopping?.endereco}
+                className="flex-row items-center gap-1.5 rounded-full border border-blue-200 bg-blue-50 px-4 py-2 active:bg-blue-100"
+              >
+                <Text className="text-[13px] font-bold text-blue-700">📍 Como chegar</Text>
+              </Pressable>
+              <SeloAoVivo />
+            </View>
           </View>
           {erro ? (
             <View className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">

@@ -1,3 +1,4 @@
+import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any, Union
 
@@ -49,6 +50,8 @@ def criar_token(
         "type": tipo_token,
         "iat": now,
         "exp": expira,
+        # RF-13: jti permite revogar UM token específico no logout
+        "jti": uuid.uuid4().hex,
     }
 
     return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)

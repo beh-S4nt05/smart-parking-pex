@@ -100,6 +100,11 @@ export default function Header({ rotaAtual = "/" }: { rotaAtual?: string }) {
                   </Pressable>
                 </Link>
               )}
+              <Link href="/perfil">
+                <Pressable className="px-1">
+                  <Text className="text-sm font-semibold text-blue-700">Minha conta</Text>
+                </Pressable>
+              </Link>
               <Pressable onPress={() => signOut()} className="px-1">
                 <Text className="text-sm font-medium text-slate-400">Sair</Text>
               </Pressable>

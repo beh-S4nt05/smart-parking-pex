@@ -341,13 +341,21 @@ smart-parking-pex/
 ## ✅ Validação e testes
 
 ```bash
-# Backend — suíte pytest (25 testes: fuso/tarifa/cupom/relatórios/expiração de
+# Backend — suíte pytest (31 testes: fuso/tarifa/cupom/relatórios/expiração de
 # reserva/matriz BOLA/guards de produção). SQLite isolado, SEM Docker, SEM servidor:
 cd src/backend && pip install -r requirements-dev.txt && pytest tests -q
 
 # Backend — aceite E2E contra a API viva (com o servidor de pé):
 ./scripts/smoke_mvp.sh    http://localhost:8000   # 10 checks de fluxo de dados
 ./scripts/smoke_acesso.sh http://localhost:8000   # 27 checks de papel × recurso (BOLA)
+
+# Sensores IoT (RF-45): emite uma chave pelo admin e fala com a API sem JWT
+curl -s -X POST http://localhost:8000/api/admin/sensores \
+  -H "Authorization: Bearer $ADMIN_TOKEN" -H "Content-Type: application/json" \
+  -d '{"estacionamento_id":"E0","codigo":"SNS-A01"}'
+curl -s -X POST http://localhost:8000/api/sensores/eventos \
+  -H "X-Device-Key: SPK-..." -H "Content-Type: application/json" \
+  -d '{"eventos":[{"seq":1,"codigo_vaga":"A01","status":"ocupada"}]}'
 
 # Stack completo com Postgres + smoke da cadeia:
 ./scripts/docker.sh up      # sobe db+api+nginx e roda os dois smokes

@@ -35,11 +35,13 @@ import {
 } from "../components/ui";
 import { ORIGEM_LABEL, ocupacaoColor } from "../theme";
 import type {
+  Andar,
   DashboardAdmin,
   EventoVaga,
   Estacionamento,
   OcupacaoAndar,
   Usuario,
+  Vaga,
 } from "../types/api";
 
 const ROLE_LABEL: Record<string, string> = {
@@ -532,6 +534,7 @@ function AbaEstacionamentos({
 }) {
   type ModalEst =
     | { tipo: "novo" }
+    | { tipo: "editar"; est: Estacionamento }
     | { tipo: "andar"; est: Estacionamento }
     | { tipo: "vagas"; est: Estacionamento }
     | null;
@@ -547,7 +550,7 @@ function AbaEstacionamentos({
     taxa: "8",
   });
   const [andarF, setAndarF] = useState({ numero: "1", capacidade: "60" });
-  const [loteF, setLoteF] = useState({ andarId: "", quantidade: "40", prefixo: "A" });
+  const [loteF, setLoteF] = useState({ andarId: "", quantidade: "40", prefixo: "A", tipo: "comum" });
 
   const num = (v: string, fb = 0) => {
     const n = Number(v.replace(",", "."));
@@ -587,12 +590,23 @@ function AbaEstacionamentos({
           capacidade: Math.max(1, Math.round(num(andarF.capacidade, 10))),
         });
         Alert.alert("Andar criado ✅", "Use “Vagas em lote” para popular o mapa dele.");
+      } else if (modal.tipo === "editar") {
+        if (novo.nome.trim().length < 2) throw new Error("Informe o nome do estacionamento");
+        await parkingApi.atualizarEstacionamento(modal.est.id, {
+          nome: novo.nome.trim(),
+          endereco: novo.endereco.trim(),
+          hora_abertura: novo.abertura || "06:00",
+          hora_fechamento: novo.fechamento || "23:00",
+          taxa_hora: Math.max(0, num(novo.taxa, 0)),
+        });
+        Alert.alert("Alterações salvas ✅", modal.est.nome + " foi atualizado.");
       } else {
         if (!loteF.andarId) throw new Error("Escolha o andar que vai receber as vagas");
         const criadas = await parkingApi.criarVagasEmLote({
           andar_id: loteF.andarId,
           quantidade: Math.min(500, Math.max(1, Math.round(num(loteF.quantidade, 10)))),
           prefixo_codigo: (loteF.prefixo || "A").toUpperCase().slice(0, 2),
+          tipo: loteF.tipo as "comum" | "pcd" | "idoso" | "moto" | "eletrico",
         });
         Alert.alert("Vagas geradas ✅", `${criadas.length} vagas criadas com códigos em sequência.`);
       }
@@ -705,8 +719,26 @@ function AbaEstacionamentos({
                       andarId: e.andares[0]?.id ?? "",
                       quantidade: "40",
                       prefixo: "A",
+                      tipo: "comum",
                     });
                     setModal({ tipo: "vagas", est: e });
+                  }}
+                />
+                <Botao
+                  label="✎ Editar"
+                  variant="contorno"
+                  className="px-3.5 py-1.5"
+                  onPress={() => {
+                    setNovo({
+                      nome: e.nome,
+                      endereco: e.endereco ?? "",
+                      andares: String(e.total_andares),
+                      vagas: String(e.total_vagas),
+                      abertura: e.hora_abertura ?? "06:00",
+                      fechamento: e.hora_fechamento ?? "23:00",
+                      taxa: String(e.taxa_hora ?? 0),
+                    });
+                    setModal({ tipo: "editar", est: e });
                   }}
                 />
                 <Botao
@@ -726,34 +758,42 @@ function AbaEstacionamentos({
         titulo={
           modal?.tipo === "novo"
             ? "Novo estacionamento"
-            : modal?.tipo === "andar"
-              ? `Novo andar — ${modal.est.nome}`
-              : "Gerar vagas em lote"
+            : modal?.tipo === "editar"
+              ? `Editar — ${modal.est.nome}`
+              : modal?.tipo === "andar"
+                ? `Novo andar — ${modal.est.nome}`
+                : "Gerar vagas em lote"
         }
         descricao={
-          modal?.tipo === "novo"
-            ? "Entra na rede imediatamente — depois cadastre andares e vagas."
-            : modal?.tipo === "andar"
-              ? "Andares negativos viram subsolo (ex.: -1 = G)."
-              : "Cria vagas com códigos sequenciais (A01, A02…) no andar escolhido."
+          modal?.tipo === "editar"
+            ? "Nome, endereço, horários e taxa. Capacidade real vem dos andares/vagas."
+            : modal?.tipo === "novo"
+              ? "Entra na rede imediatamente — depois cadastre andares e vagas."
+              : modal?.tipo === "andar"
+                ? "Andares negativos viram subsolo (ex.: -1 = G)."
+                : "Cria vagas com códigos sequenciais (A01, A02…) no andar escolhido."
         }
         aoFechar={() => setModal(null)}
         aoConfirmar={salvar}
         ocupado={ocupado}
-        rotuloConfirmar={modal?.tipo === "novo" ? "Criar estacionamento" : "Criar"}
+        rotuloConfirmar={
+          modal?.tipo === "novo" ? "Criar estacionamento" : modal?.tipo === "editar" ? "Salvar alterações" : "Criar"
+        }
       >
-        {modal?.tipo === "novo" ? (
+        {(modal?.tipo === "novo" || modal?.tipo === "editar") ? (
           <>
             <Campo label="Nome *" placeholder="Ex.: Shopping Via Norte" value={novo.nome} onChangeText={(v) => setNovo((f) => ({ ...f, nome: v }))} />
             <Campo label="Endereço" placeholder="Av. X, 123 - Bairro, Manaus/AM" value={novo.endereco} onChangeText={(v) => setNovo((f) => ({ ...f, endereco: v }))} />
-            <View className="flex-row gap-3">
-              <View className="flex-1">
-                <Campo label="Nº de andares" keyboardType="numeric" value={novo.andares} onChangeText={(v) => setNovo((f) => ({ ...f, andares: v }))} />
+            {modal?.tipo === "novo" ? (
+              <View className="flex-row gap-3">
+                <View className="flex-1">
+                  <Campo label="Nº de andares" keyboardType="numeric" value={novo.andares} onChangeText={(v) => setNovo((f) => ({ ...f, andares: v }))} />
+                </View>
+                <View className="flex-1">
+                  <Campo label="Vagas (total)" keyboardType="numeric" value={novo.vagas} onChangeText={(v) => setNovo((f) => ({ ...f, vagas: v }))} />
+                </View>
               </View>
-              <View className="flex-1">
-                <Campo label="Vagas (total)" keyboardType="numeric" value={novo.vagas} onChangeText={(v) => setNovo((f) => ({ ...f, vagas: v }))} />
-              </View>
-            </View>
+            ) : null}
             <View className="flex-row gap-3">
               <View className="flex-1">
                 <Campo label="Abre às" placeholder="06:00" value={novo.abertura} onChangeText={(v) => setNovo((f) => ({ ...f, abertura: v }))} />
@@ -805,6 +845,29 @@ function AbaEstacionamentos({
                 <Campo label="Prefixo dos códigos" autoCapitalize="characters" maxLength={2} value={loteF.prefixo} onChangeText={(v) => setLoteF((f) => ({ ...f, prefixo: v }))} />
               </View>
             </View>
+            <Text className="mb-1.5 mt-1 text-xs font-semibold text-slate-500">Tipo das vagas do lote (ACH-17)</Text>
+            <View className="flex-row flex-wrap gap-2">
+              {(
+                [
+                  ["comum", "Comum"],
+                  ["pcd", "PCD"],
+                  ["idoso", "Idoso"],
+                  ["moto", "Moto"],
+                  ["eletrico", "Elétrica"],
+                ] as const
+              ).map(([tipo, label]) => {
+                const ativo = loteF.tipo === tipo;
+                return (
+                  <Pressable
+                    key={tipo}
+                    onPress={() => setLoteF((f) => ({ ...f, tipo }))}
+                    className={`rounded-full border px-3.5 py-1.5 ${ativo ? "border-blue-600 bg-blue-50" : "border-slate-200 bg-white"}`}
+                  >
+                    <Text className={`text-[12px] font-semibold ${ativo ? "text-blue-700" : "text-slate-500"}`}>{label}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
           </>
         ) : null}
       </ModalForma>
@@ -822,8 +885,17 @@ function AbaAndares({
 }) {
   const [est, setEst] = useState<string | null>(estSel);
   useEffect(() => setEst(estSel), [estSel]);
-  const { mapa, loading } = useMapaVagas(est ?? undefined, {});
+  const { mapa, loading, refresh } = useMapaVagas(est ?? undefined, {});
   const [andar, setAndar] = useState<number | null>(null);
+  const [modal, setModal] = useState<
+    | { tipo: "andarNovo" }
+    | { tipo: "andarEditar"; a: Andar }
+    | { tipo: "vagaNova" }
+    | { tipo: "vagaEditar"; v: Vaga }
+    | null
+  >(null);
+  const [f, setF] = useState({ numero: "1", capacidade: "40", codigo: "", tipo: "comum" });
+  const [ocupado, setOcupado] = useState(false);
 
   if (!est) {
     return (
@@ -835,43 +907,238 @@ function AbaAndares({
     );
   }
 
+  const num = (v: string, fb = 0) => {
+    const n = Number(v.replace(",", "."));
+    return Number.isFinite(n) ? n : fb;
+  };
   const andares = mapa ? [...mapa.andares].sort((a, b) => a.numero_andar - b.numero_andar) : [];
   const andarAtual = andares.find((a) => a.numero_andar === andar) ?? andares[0];
-  const vagas = andarAtual
-    ? mapa!.vagas.filter((v) => v.andar_id === andarAtual.id)
-    : [];
+  const vagas = andarAtual ? mapa!.vagas.filter((v) => v.andar_id === andarAtual.id) : [];
+
+  async function salvar() {
+    if (!modal) return;
+    setOcupado(true);
+    try {
+      if (modal.tipo === "andarNovo") {
+        await parkingApi.criarAndar({
+          estacionamento_id: est!,
+          numero_andar: Math.round(num(f.numero, 1)),
+          capacidade: Math.max(1, Math.round(num(f.capacidade, 10))),
+        });
+      } else if (modal.tipo === "andarEditar") {
+        await parkingApi.atualizarAndar(modal.a.id, {
+          numero_andar: Math.round(num(f.numero, modal.a.numero_andar)),
+          capacidade: Math.max(1, Math.round(num(f.capacidade, modal.a.capacidade))),
+        });
+      } else if (modal.tipo === "vagaNova") {
+        if (!andarAtual) throw new Error("Crie um andar antes de cadastrar vagas");
+        await parkingApi.criarVaga({
+          andar_id: andarAtual.id,
+          codigo: f.codigo.trim().toUpperCase() || `A${String(andarAtual.capacidade + 1).padStart(2, "0")}`,
+          tipo: f.tipo as "comum" | "pcd" | "idoso" | "moto" | "eletrico",
+        });
+      } else if (modal.tipo === "vagaEditar") {
+        await parkingApi.atualizarVaga(modal.v.id, {
+          codigo: f.codigo.trim().toUpperCase() || undefined,
+          tipo: f.tipo as "comum" | "pcd" | "idoso" | "moto" | "eletrico",
+        });
+      }
+      await refresh();
+      setModal(null);
+    } catch (e) {
+      Alert.alert("Não foi possível salvar", apiErrorMessage(e));
+    } finally {
+      setOcupado(false);
+    }
+  }
+
+  function excluirAndar(a: Andar) {
+    Alert.alert(
+      "Excluir andar",
+      `Remove o andar ${a.numero_andar} com as ${mapa?.vagas.filter((v) => v.andar_id === a.id).length ?? 0} vagas dele — e qualquer reserva ativa dessas vagas.`,
+      [
+        { text: "Cancelar", style: "cancel" },
+        {
+          text: "Excluir",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await parkingApi.excluirAndar(a.id);
+              await refresh();
+            } catch (e) {
+              Alert.alert("Erro", apiErrorMessage(e));
+            }
+          },
+        },
+      ],
+    );
+  }
+
+  function excluirVaga(v: Vaga) {
+    Alert.alert("Excluir vaga", `${v.codigo} sai do mapa (histórico e reservas dela são purgados).`, [
+      { text: "Cancelar", style: "cancel" },
+      {
+        text: "Excluir",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            await parkingApi.excluirVaga(v.id);
+            await refresh();
+          } catch (e) {
+            Alert.alert("Erro", apiErrorMessage(e));
+          }
+        },
+      },
+    ]);
+  }
+
+  function abrir(tipo: NonNullable<typeof modal>["tipo"], alvo?: Andar | Vaga) {
+    if (tipo === "andarEditar" && alvo) {
+      const a = alvo as Andar;
+      setF({ numero: String(a.numero_andar), capacidade: String(a.capacidade), codigo: "", tipo: "comum" });
+    } else if (tipo === "vagaEditar" && alvo) {
+      const v = alvo as Vaga;
+      setF({ numero: "", capacidade: "", codigo: v.codigo, tipo: v.tipo ?? "comum" });
+    } else if (tipo === "vagaNova") {
+      setF({ numero: "", capacidade: "", codigo: "", tipo: "comum" });
+    } else {
+      setF({ numero: String(andares.length + 1), capacidade: "40", codigo: "", tipo: "comum" });
+    }
+    setModal({ tipo, ...(alvo ? { [tipo.startsWith("andar") ? "a" : "v"]: alvo } : {}) } as NonNullable<typeof modal>);
+  }
+
+  const TIPS_VAGA = [
+    ["comum", "Comum"],
+    ["pcd", "PCD"],
+    ["idoso", "Idoso"],
+    ["moto", "Moto"],
+    ["eletrico", "Elétrica"],
+  ] as const;
 
   return (
-    <Card className="p-5">
-      <View className="mb-4 flex-row flex-wrap gap-2">
-        {andares.map((a) => {
-          const ativo = andarAtual?.id === a.id;
-          return (
-            <Pressable
-              key={a.id}
-              onPress={() => setAndar(a.numero_andar)}
-              className={`rounded-full px-4 py-2 ${ativo ? "bg-blue-600" : "border border-slate-200 bg-white"}`}
-            >
-              <Text
-                className={`text-[13px] font-semibold ${ativo ? "text-white" : "text-slate-600"}`}
+    <View className="gap-4">
+      <Card className="p-5">
+        <View className="mb-4 flex-row flex-wrap items-center gap-2">
+          {andares.map((a) => {
+            const ativo = andarAtual?.id === a.id;
+            return (
+              <Pressable
+                key={a.id}
+                onPress={() => setAndar(a.numero_andar)}
+                className={`rounded-full px-4 py-2 ${ativo ? "bg-blue-600" : "border border-slate-200 bg-white"}`}
               >
-                {a.numero_andar}º andar
+                <Text className={`text-[13px] font-semibold ${ativo ? "text-white" : "text-slate-600"}`}>
+                  {a.numero_andar >= 0 ? `P${a.numero_andar}` : `B${-a.numero_andar}`} · {a.capacidade}
+                </Text>
+              </Pressable>
+            );
+          })}
+          <Botao label="＋ Andar" variant="contorno" className="px-3.5 py-1.5" onPress={() => abrir("andarNovo")} />
+          {loading && andares.length === 0 ? <ActivityIndicator color="#2563EB" /> : null}
+        </View>
+
+        {andarAtual ? (
+          <>
+            <View className="mb-3 flex-row flex-wrap items-center justify-between gap-2">
+              <Text className="text-[13px] text-slate-500">
+                {vagas.length} vaga(s) · capacidade {andarAtual.capacidade}
               </Text>
-            </Pressable>
-          );
-        })}
-        {loading && andares.length === 0 ? <ActivityIndicator color="#2563EB" /> : null}
-      </View>
-      <Text className="mb-3 text-[13px] text-slate-500">
-        {andarAtual ? `${andarAtual.capacidade} vagas configuradas` : "—"}
-      </Text>
-      <VagaMapa vagas={vagas.slice(0, 96)} />
-      {vagas.length > 96 ? (
-        <Text className="mt-3 text-xs text-slate-400">
-          + {vagas.length - 96} vagas não exibidas aqui — use o mapa completo.
-        </Text>
+              <View className="flex-row gap-2">
+                <Botao label="✎ Andar" variant="contorno" className="px-3.5 py-1.5" onPress={() => abrir("andarEditar", andarAtual)} />
+                <Botao label="Excluir andar" variant="contorno" className="border-red-300 px-3.5 py-1.5" onPress={() => excluirAndar(andarAtual)} />
+                <Botao label="＋ Vaga" className="px-3.5 py-1.5" onPress={() => abrir("vagaNova")} />
+              </View>
+            </View>
+            <VagaMapa vagas={vagas.slice(0, 96)} />
+            {vagas.length > 96 ? (
+              <Text className="mt-3 text-xs text-slate-400">
+                + {vagas.length - 96} vagas não exibidas aqui — edite pela lista abaixo.
+              </Text>
+            ) : null}
+          </>
+        ) : (
+          <Text className="text-center text-[13px] text-slate-400">
+            Este estacionamento ainda não tem andares — crie o primeiro acima.
+          </Text>
+        )}
+      </Card>
+
+      {andarAtual && vagas.length > 0 ? (
+        <Card className="p-5">
+          <Text className="mb-1 text-[15px] font-bold text-slate-800">Editar vagas (RF-33)</Text>
+          <Text className="mb-3 text-xs text-slate-500">
+            Ajuste código/tipo sem quebrar o status — as 24 primeiras deste andar.
+          </Text>
+          <View className="gap-1.5">
+            {vagas.slice(0, 24).map((v) => (
+              <View key={v.id} className="flex-row flex-wrap items-center gap-2">
+                <Text className="w-16 text-[13px] font-bold text-slate-700">{v.codigo}</Text>
+                <Chip label={v.tipo ?? "comum"} tone={v.tipo === "comum" ? "vaga" : "azul"} />
+                <StatusVagaChip status={v.status} />
+                <View className="ml-auto flex-row gap-2">
+                  <Botao label="✎" variant="contorno" className="px-3 py-1" onPress={() => abrir("vagaEditar", v)} />
+                  <Botao label="🗑" variant="contorno" className="border-red-300 px-3 py-1" onPress={() => excluirVaga(v)} />
+                </View>
+              </View>
+            ))}
+          </View>
+        </Card>
       ) : null}
-    </Card>
+
+      <ModalForma
+        visivel={modal != null}
+        titulo={
+          modal?.tipo === "andarNovo"
+            ? "Novo andar"
+            : modal?.tipo === "andarEditar"
+              ? `Editar andar ${modal.a.numero_andar}`
+              : modal?.tipo === "vagaNova"
+                ? "Nova vaga avulsa"
+                : modal
+                  ? `Editar vaga ${modal.v.codigo}`
+                  : "Editar"
+        }
+        descricao={
+          modal?.tipo?.startsWith("andar")
+            ? "Número negativo vira subsolo; capacidade não pode ficar abaixo das vagas reais do andar."
+            : "Código único por andar; o tipo muda a tarifa aplicada no fechamento."
+        }
+        aoFechar={() => setModal(null)}
+        aoConfirmar={salvar}
+        ocupado={ocupado}
+        rotuloConfirmar={modal?.tipo === "andarEditar" || modal?.tipo === "vagaEditar" ? "Salvar" : "Criar"}
+      >
+        {modal?.tipo === "andarNovo" || modal?.tipo === "andarEditar" ? (
+          <View className="flex-row gap-3">
+            <View className="flex-1">
+              <Campo label="Número do andar" keyboardType="numbers-and-punctuation" value={f.numero} onChangeText={(v) => setF((p) => ({ ...p, numero: v }))} />
+            </View>
+            <View className="flex-1">
+              <Campo label="Capacidade" keyboardType="numeric" value={f.capacidade} onChangeText={(v) => setF((p) => ({ ...p, capacidade: v }))} />
+            </View>
+          </View>
+        ) : (
+          <>
+            <Campo label="Código" placeholder="Ex.: A21" autoCapitalize="characters" value={f.codigo} onChangeText={(v) => setF((p) => ({ ...p, codigo: v }))} />
+            <Text className="mb-1.5 mt-1 text-xs font-semibold text-slate-500">Tipo</Text>
+            <View className="flex-row flex-wrap gap-2">
+              {TIPS_VAGA.map(([tipo, label]) => {
+                const ativo = f.tipo === tipo;
+                return (
+                  <Pressable
+                    key={tipo}
+                    onPress={() => setF((p) => ({ ...p, tipo }))}
+                    className={`rounded-full border px-3.5 py-1.5 ${ativo ? "border-blue-600 bg-blue-50" : "border-slate-200 bg-white"}`}
+                  >
+                    <Text className={`text-[12px] font-semibold ${ativo ? "text-blue-700" : "text-slate-500"}`}>{label}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </>
+        )}
+      </ModalForma>
+    </View>
   );
 }
 
@@ -1129,6 +1396,8 @@ function AbaUsuarios({
   const [carregando, setCarregando] = useState(true);
   const [modal, setModal] = useState(false);
   const [ocupado, setOcupado] = useState(false);
+  const [editando, setEditando] = useState<Usuario | null>(null);
+  const [ocupadoEd, setOcupadoEd] = useState(false);
   const [f, setF] = useState({
     nome: "",
     email: "",
@@ -1194,6 +1463,60 @@ function AbaUsuarios({
     }
   }
 
+  function abrirEdicao(u: Usuario) {
+    setEditando(u);
+    setF({
+      nome: u.nome,
+      email: u.email,
+      senha: "",
+      role: (u.role === "gestor" || u.role === "financeiro" || u.role === "admin" ? u.role : "usuario") as typeof f.role,
+      estacionamento_id: u.estacionamento_id ?? null,
+    });
+    setModal(true);
+  }
+
+  async function salvarEdicao() {
+    if (!editando) return;
+    setOcupadoEd(true);
+    try {
+      const novo = await parkingApi.atualizarUsuario(editando.id, {
+        nome: f.nome.trim(),
+        role: f.role,
+        estacionamento_id:
+          f.role === "gestor" || f.role === "financeiro" ? f.estacionamento_id : null,
+      });
+      setUsuarios((prev) => prev.map((x) => (x.id === novo.id ? novo : x)));
+      setModal(false);
+      setEditando(null);
+    } catch (e) {
+      Alert.alert("Não foi possível salvar", apiErrorMessage(e));
+    } finally {
+      setOcupadoEd(false);
+    }
+  }
+
+  function resetSenha(u: Usuario) {
+    Alert.alert(
+      "Resetar senha (balcão)",
+      `Gera uma senha temporária para ${u.nome} e derruba as sessões dele. Entregue em mãos — ele deve trocar em "Minha conta".`,
+      [
+        { text: "Cancelar", style: "cancel" },
+        {
+          text: "Gerar agora",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              const r = await parkingApi.resetSenhaUsuario(u.id);
+              Alert.alert("Senha temporária gerada", `${r.senha_temporaria}\n\n${r.aviso}`);
+            } catch (e) {
+              Alert.alert("Erro", apiErrorMessage(e));
+            }
+          },
+        },
+      ],
+    );
+  }
+
   async function alternar(u: Usuario) {
     try {
       const novo = await parkingApi.alternarUsuario(u.id);
@@ -1235,6 +1558,18 @@ function AbaUsuarios({
           />
           {u.placa_veiculo ? <Chip label={u.placa_veiculo} tone="vaga" /> : null}
           <Botao
+            label="✎ Editar"
+            variant="contorno"
+            className="px-4 py-2"
+            onPress={() => abrirEdicao(u)}
+          />
+          <Botao
+            label="Reset senha"
+            variant="contorno"
+            className="px-4 py-2"
+            onPress={() => resetSenha(u)}
+          />
+          <Botao
             label={u.is_ativo ? "Desativar" : "Reativar"}
             variant="contorno"
             className={`px-4 py-2 ${u.is_ativo ? "border-red-300" : "border-emerald-300"}`}
@@ -1245,16 +1580,29 @@ function AbaUsuarios({
 
       <ModalForma
         visivel={modal}
-        titulo="Novo usuário"
-        descricao="A senha é armazenada com bcrypt; o primeiro login já funciona."
-        aoFechar={() => setModal(false)}
-        aoConfirmar={criar}
-        ocupado={ocupado}
-        rotuloConfirmar="Criar usuário"
+        titulo={editando ? `Editar ${editando.nome}` : "Novo usuário"}
+        descricao={
+          editando
+            ? "E-mail não é editável. Trocar o nível/vínculo vale no próximo login do usuário."
+            : "A senha é armazenada com bcrypt; o primeiro login já funciona."
+        }
+        aoFechar={() => {
+          setModal(false);
+          setEditando(null);
+        }}
+        aoConfirmar={editando ? salvarEdicao : criar}
+        ocupado={editando ? ocupadoEd : ocupado}
+        rotuloConfirmar={editando ? "Salvar alterações" : "Criar usuário"}
       >
         <Campo label="Nome completo *" value={f.nome} onChangeText={(v) => setF((p) => ({ ...p, nome: v }))} autoCapitalize="words" />
         <Campo label="E-mail *" placeholder="pessoa@empresa.com" value={f.email} onChangeText={(v) => setF((p) => ({ ...p, email: v }))} autoCapitalize="none" keyboardType="email-address" />
-        <Campo label="Senha *" senha value={f.senha} onChangeText={(v) => setF((p) => ({ ...p, senha: v }))} />
+        {editando ? (
+          <Text className="text-xs text-slate-400">
+            Senha só se altera por aqui via “Reset senha” (balcão) ou pelo próprio usuário em “Minha conta”.
+          </Text>
+        ) : (
+          <Campo label="Senha *" senha value={f.senha} onChangeText={(v) => setF((p) => ({ ...p, senha: v }))} />
+        )}
         <Text className="mb-1.5 mt-1 text-xs font-semibold text-slate-500">Nível de acesso</Text>
         <View className="mb-3 flex-row flex-wrap gap-2">
           {(
