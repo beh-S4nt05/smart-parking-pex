@@ -1,17 +1,15 @@
-from logging.config import fileConfig
 import os
 import sys
-
-from sqlalchemy import engine_from_config
-from sqlalchemy import pool
+from logging.config import fileConfig
 
 from alembic import context
+from sqlalchemy import engine_from_config, pool
 
 # garante o import do projeto quando chamado pela raiz do backend
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from models.database import Base  # noqa: E402
-from models import db_models  # noqa: F401,E402  (registra todas as tabelas)
+from models import db_models  # noqa: F401  (registra todas as tabelas)
+from models.database import Base
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

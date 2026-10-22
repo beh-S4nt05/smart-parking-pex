@@ -1,15 +1,14 @@
-from datetime import datetime, time, timedelta, timezone
-from typing import Optional
+from datetime import UTC, datetime, time, timedelta
 
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 from core.timeutils import FUSO_MANAUS, janela_manaus, normalizar
-from models.db_models import Historico, Vaga, StatusVaga, Estacionamento, Andar
+from models.db_models import Estacionamento, Historico, StatusVaga, Vaga
 
 # Dia local de referência (Manaus) para a UI exibir em qual dia o "hoje" bate
 FUSO_REPORT = "America/Manaus"
-_UTC = timezone.utc
+_UTC = UTC
 
 
 def _calcular_periodo(periodo: str) -> tuple[datetime, datetime]:
@@ -51,7 +50,7 @@ def _vagas_ativas_por_andar(db: Session, andar_id: str) -> int:
 def gerar_relatorio_fluxo(
     db: Session,
     periodo: str,
-    estacionamento_id: Optional[str] = None
+    estacionamento_id: str | None = None
 ) -> dict:
     """Gera relatório de entradas e saídas no período solicitado"""
     data_inicio, data_fim = _calcular_periodo(periodo)
@@ -101,7 +100,7 @@ def gerar_relatorio_fluxo(
 def gerar_relatorio_ocupacao(
     db: Session,
     periodo: str,
-    estacionamento_id: Optional[str] = None
+    estacionamento_id: str | None = None
 ) -> dict:
     """Taxa de ocupação atual por andar (snapshot), com inativas fora do denominador."""
     _calcular_periodo(periodo)  # valida o período mesmo sendo snapshot
@@ -162,7 +161,7 @@ def gerar_relatorio_ocupacao(
     }
 
 
-def _estacionamentos_alvo(db: Session, estacionamento_id: Optional[str]):
+def _estacionamentos_alvo(db: Session, estacionamento_id: str | None):
     if estacionamento_id:
         return db.query(Estacionamento).filter(Estacionamento.id == estacionamento_id).all()
     return db.query(Estacionamento).all()
@@ -178,7 +177,7 @@ def _sobreposicao_minutos(ent: datetime, sai: datetime, j0: datetime, j1: dateti
 def gerar_relatorio_ocupacao_historica(
     db: Session,
     periodo: str = "semanal",
-    estacionamento_id: Optional[str] = None,
+    estacionamento_id: str | None = None,
 ) -> dict:
     """
     RF-52 (marca 3 · ADR-09): ocupação histórica em matriz hora × andar.
@@ -257,7 +256,7 @@ def gerar_relatorio_ocupacao_historica(
 def gerar_relatorio_rotacao(
     db: Session,
     periodo: str = "diario",
-    estacionamento_id: Optional[str] = None,
+    estacionamento_id: str | None = None,
 ) -> dict:
     """
     RF-54 (marca 3): giro e tempo médio por andar no período.

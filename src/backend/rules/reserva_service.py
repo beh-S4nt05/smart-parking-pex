@@ -1,10 +1,9 @@
-from typing import List, Optional
 
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
 from core.timeutils import utc_agora
-from models.db_models import Reserva, Vaga, StatusVaga, StatusReserva, Usuario, Andar
+from models.db_models import Andar, Reserva, StatusReserva, StatusVaga, Usuario, Vaga
 from models.schemas import ReservaCreate
 
 
@@ -128,7 +127,7 @@ def cancelar_reserva(db: Session, reserva_id: str, usuario_logado: Usuario) -> R
     return reserva
 
 
-def listar_reservas_usuario(db: Session, usuario_id: str) -> List[Reserva]:
+def listar_reservas_usuario(db: Session, usuario_id: str) -> list[Reserva]:
     """Lista todas as reservas de um usuário específico (expira as vencidas antes)."""
     expirar_reservas_vencidas(db)
     reservas = db.query(Reserva).filter(Reserva.usuario_id == usuario_id).all()

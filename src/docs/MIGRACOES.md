@@ -51,3 +51,22 @@ qualquer banco dos modelos.
 
 - Dados demo/seed continuam no `seed_demo.py` (idempotente) — não viraram data migration.
 - O `create_all` do boot permanece; quando a equipe confiar 100% no Alembic, remova-o e o esquema passa a ser só migrations.
+
+---
+
+## Nota (22/10-rod.4) — `ondelete` nos modelos
+
+Os modelos ganharam `ondelete` defensivo em 13 FKs que não tinham (sensores,
+pagamentos→usuários, histórico→pagamento, caixas→filial, cupons→filial).
+Efeito prático:
+
+- **bancos novos / SQLite de dev** (`create_all`): o constraint chega ao schema;
+- **bancos existentes (Postgres)**: nada muda sozinhos — `alembic check`
+  **não** compara `ondelete`, e é intencional: a linha de frente de exclusão é
+  o serviço (`admin_service._purgar_operacional`, que já apaga na ordem
+  certa). Quem quiser alinhar o banco ao modelo, gere uma revisão com
+  `alembic revision --autogenerate -m "fk ondelete"` e EDITE à mão (troca de
+  FK exige `batch_alter_table` em SQLite; em Postgres use drop+add com
+  `ON CONSTRAINT`).
+- Banco de produção da equipe: **stamp-only até 02/11** (política da
+  disciplina) — este parágrafo é o registro do porquê.

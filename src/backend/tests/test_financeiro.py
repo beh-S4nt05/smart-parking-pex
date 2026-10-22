@@ -3,6 +3,7 @@
 from datetime import timedelta
 
 import pytest
+
 from core.timeutils import utc_agora
 from models.db_models import CupomDesconto, Historico, Pagamento, StatusPagamento
 from rules import financeiro_service, pagamento_service
@@ -26,10 +27,10 @@ def _com_estadia(db, fab, minutos=75, tipo_vaga="comum", est=None):
 def _preco(db, est, **kw):
     from models.db_models import ConfiguracaoPreco
 
-    base = dict(
-        estacionamento_id=est.id, tipo_vaga="comum", valor_hora=10.0,
-        valor_diaria=80.0, tolerancia_minutos=15,
-    )
+    base = {
+        "estacionamento_id": est.id, "tipo_vaga": "comum", "valor_hora": 10.0,
+        "valor_diaria": 80.0, "tolerancia_minutos": 15,
+    }
     base.update(kw)
     p = ConfiguracaoPreco(**base)
     db.add(p); db.commit()

@@ -1,25 +1,24 @@
-from typing import List, Optional
 
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
 from core.timeutils import utc_agora
-from models.db_models import Vaga, StatusVaga, Historico, Andar
-from models.schemas import VagaCreate, VagaAtualizaStatus, VagaLoteStatusUpdate
+from models.db_models import Andar, Historico, StatusVaga, Vaga
+from models.schemas import VagaAtualizaStatus, VagaCreate, VagaLoteStatusUpdate
 
 
-def buscar_vaga_por_id(db: Session, vaga_id: str) -> Optional[Vaga]:
+def buscar_vaga_por_id(db: Session, vaga_id: str) -> Vaga | None:
     """Busca uma vaga pelo ID UUID"""
     return db.query(Vaga).filter(Vaga.id == vaga_id).first()
 
 
 def listar_vagas(
     db: Session,
-    estacionamento_id: Optional[str] = None,
-    andar_id: Optional[str] = None,
-    status_vaga: Optional[str] = None,
-    tipo: Optional[str] = None,
-) -> List[Vaga]:
+    estacionamento_id: str | None = None,
+    andar_id: str | None = None,
+    status_vaga: str | None = None,
+    tipo: str | None = None,
+) -> list[Vaga]:
     """
     Lista vagas com filtros opcionais (shopping, andar, status e tipo),
     já anotando o número do andar em cada vaga para o mapa do app.
@@ -61,7 +60,7 @@ def criar_vaga(db: Session, dados: VagaCreate) -> Vaga:
 
 
 def _registrar_transicao(
-    db: Session, vaga: Vaga, novo_status: str, origem: Optional[str] = None
+    db: Session, vaga: Vaga, novo_status: str, origem: str | None = None
 ) -> None:
     """
     Aplica o novo status na vaga e mantém o histórico de entrada/saída

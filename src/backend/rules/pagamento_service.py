@@ -1,21 +1,23 @@
-from datetime import datetime, timedelta
 from math import ceil
 
-from core.timeutils import normalizar, utc_agora
-from typing import Optional
-
-from fastapi import HTTPException, status
-from sqlalchemy import func
+from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
+from core.timeutils import normalizar, utc_agora
 from models.db_models import (
-    Historico, Vaga, ConfiguracaoPreco, Pagamento,
-    CupomDesconto, FechamentoCaixa,
-    StatusPagamento, MetodoPagamento, TipoDesconto, TipoUsuario
+    ConfiguracaoPreco,
+    CupomDesconto,
+    FechamentoCaixa,
+    Historico,
+    MetodoPagamento,
+    Pagamento,
+    StatusPagamento,
+    TipoDesconto,
+    Vaga,
 )
 
 
-def calcular_tarifa_estadia(db: Session, historico_id: str, cupom_codigo: Optional[str] = None):
+def calcular_tarifa_estadia(db: Session, historico_id: str, cupom_codigo: str | None = None):
     """
     Calcula o valor total da estadia automaticamente baseado:
     - Tempo de permanência
@@ -121,8 +123,8 @@ def registrar_pagamento(
     db: Session,
     historico_id: str,
     metodo_pagamento: str,
-    valor_recebido: Optional[float] = None,
-    observacoes: Optional[str] = None,
+    valor_recebido: float | None = None,
+    observacoes: str | None = None,
     usuario_operador=None
 ):
     """
@@ -233,7 +235,7 @@ def gerar_pagamento_pix(db: Session, historico_id: str):
         status_pagamento=StatusPagamento.PENDENTE,
         gateway_pagamento="pix_simulado",
         copia_cola_pix=f"PIX_SIMULADO_{historico.id}_VALOR_{historico.valor_total}",
-        qr_code_pix=f"data:image/png;base64,QRCODE_SIMULADO",
+        qr_code_pix="data:image/png;base64,QRCODE_SIMULADO",
         link_pagamento=f"https://seupagamento.com/pay/{historico.id}"
     )
     db.add(novo_pagamento)
@@ -287,7 +289,7 @@ def abrir_caixa(db: Session, estacionamento_id: str, valor_inicial: float, usuar
     return novo_caixa
 
 
-def fechar_caixa(db: Session, caixa_id: str, valor_sangria: float, observacoes: Optional[str], usuario_operador):
+def fechar_caixa(db: Session, caixa_id: str, valor_sangria: float, observacoes: str | None, usuario_operador):
     """Fecha o caixa do turno, consolida todos valores"""
     caixa = db.query(FechamentoCaixa).filter(FechamentoCaixa.id == caixa_id).first()
     if not caixa:

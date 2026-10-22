@@ -1,42 +1,66 @@
-from typing import Optional, List
+from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
-from sqlalchemy.orm import Session
 from sqlalchemy import func
+from sqlalchemy.orm import Session
 
 from core.config import settings
-from core.deps import get_usuario_admin, get_usuario_financeiro, get_usuario_gestor, permissao_necessaria, get_usuario_autenticado
-from core.deps import garantir_escopo_estacionamento
-from models.database import get_db
-from models.db_models import Usuario, Estacionamento, Andar, Vaga, TipoUsuario, FechamentoCaixa, Historico, Pagamento
-from models.schemas import (
-    EstacionamentoDetalhadoResponse as EstacionamentoResponse,
-    EstacionamentoCreate,
-    AndarResponse, AndarCreate,
-    VagaResponse, VagaCreate,
-    UsuarioResponse, UsuarioAdminCreate, UsuarioAdminUpdate,
-    ConfiguracaoPrecoResponse, ConfiguracaoPrecoCreate,
-    PagamentoResponse,
-    ResumoFinanceiroResponse
+from core.deps import (
+    garantir_escopo_estacionamento,
+    get_usuario_admin,
+    get_usuario_autenticado,
+    get_usuario_financeiro,
+    get_usuario_gestor,
 )
-from rules import admin_service, estacionamento_service, financeiro_service, simulador_service, eventos_service
+from models.database import get_db
+from models.db_models import (
+    Andar,
+    Estacionamento,
+    FechamentoCaixa,
+    Historico,
+    Pagamento,
+    TipoUsuario,
+    Usuario,
+    Vaga,
+)
+from models.schemas import (
+    AndarCreate,
+    AndarResponse,
+    ConfiguracaoPrecoCreate,
+    ConfiguracaoPrecoResponse,
+    EstacionamentoCreate,
+    PagamentoResponse,
+    ResumoFinanceiroResponse,
+    UsuarioAdminCreate,
+    UsuarioAdminUpdate,
+    UsuarioResponse,
+    VagaCreate,
+    VagaResponse,
+)
+from models.schemas import EstacionamentoDetalhadoResponse as EstacionamentoResponse
+from rules import (
+    admin_service,
+    eventos_service,
+    financeiro_service,
+    simulador_service,
+)
 
 router = APIRouter(prefix="/api/admin", tags=["Painel Administrativo"])
 
 
 # Schemas para atualizações do admin
 class EstacionamentoUpdate(BaseModel):
-    nome: Optional[str] = None
-    endereco: Optional[str] = None
-    total_andares: Optional[int] = None
-    total_vagas: Optional[int] = None
-    hora_abertura: Optional[str] = None
-    hora_fechamento: Optional[str] = None
-    taxa_hora: Optional[float] = None
-    telefone: Optional[str] = None
-    latitude: Optional[float] = None
-    longitude: Optional[float] = None
+    nome: str | None = None
+    endereco: str | None = None
+    total_andares: int | None = None
+    total_vagas: int | None = None
+    hora_abertura: str | None = None
+    hora_fechamento: str | None = None
+    taxa_hora: float | None = None
+    telefone: str | None = None
+    latitude: float | None = None
+    longitude: float | None = None
 
 
 class LoteVagasCreate(BaseModel):
@@ -107,8 +131,8 @@ async def deletar_andar(
 # ROTAS DE VAGAS (admin)
 # ======================================================================
 class AndarUpdate(BaseModel):
-    numero_andar: Optional[int] = None
-    capacidade: Optional[int] = Field(None, ge=1, le=2000)
+    numero_andar: int | None = None
+    capacidade: int | None = Field(None, ge=1, le=2000)
 
 
 @router.put("/andares/{id}", response_model=AndarResponse)
@@ -123,10 +147,10 @@ async def atualizar_andar(
 
 
 class VagaAdminUpdate(BaseModel):
-    codigo: Optional[str] = None
-    tipo: Optional[str] = None
-    posicao_x: Optional[int] = None
-    posicao_y: Optional[int] = None
+    codigo: str | None = None
+    tipo: str | None = None
+    posicao_x: int | None = None
+    posicao_y: int | None = None
 
 
 @router.put("/vagas/{id}", response_model=VagaResponse)
@@ -157,13 +181,13 @@ async def reset_senha_usuario(
 
 
 # ------------------- Sensores físicos (RF-45 · ADR-03) — emissão só admin -------------------
-from rules import sensor_service  # noqa: E402
+from rules import sensor_service
 
 
 class SensorCreate(BaseModel):
     estacionamento_id: str
     codigo: str
-    nome: Optional[str] = None
+    nome: str | None = None
 
 
 @router.post("/sensores", status_code=201)
@@ -185,7 +209,7 @@ async def emitir_sensor(
 
 @router.get("/sensores")
 async def listar_sensores(
-    estacionamento_id: Optional[str] = None,
+    estacionamento_id: str | None = None,
     db: Session = Depends(get_db),
     admin: Usuario = Depends(get_usuario_admin),
 ):
@@ -227,7 +251,7 @@ async def criar_vaga(
     return admin_service.criar_vaga(db, dados)
 
 
-@router.post("/vagas/lote", response_model=List[VagaResponse], status_code=201)
+@router.post("/vagas/lote", response_model=list[VagaResponse], status_code=201)
 async def criar_vagas_em_lote(
     dados: LoteVagasCreate,
     db: Session = Depends(get_db),
@@ -280,7 +304,7 @@ async def atualizar_usuario(
     return admin_service.atualizar_usuario_admin(db, id, dados)
 
 
-@router.get("/usuarios", response_model=List[UsuarioResponse])
+@router.get("/usuarios", response_model=list[UsuarioResponse])
 async def listar_todos_usuarios(
     db: Session = Depends(get_db),
     admin: Usuario = Depends(get_usuario_admin)
@@ -322,7 +346,7 @@ async def dashboard_admin(
     total_usuarios = db.query(Usuario).filter(Usuario.role == "usuario").count()
     total_andares = db.query(Andar).count()
 
-    from models.db_models import Vaga, StatusVaga, Reserva
+    from models.db_models import Reserva, StatusVaga, Vaga
     total_vagas = db.query(Vaga).count()
     vagas_ocupadas = db.query(Vaga).filter(Vaga.status == StatusVaga.OCUPADA).count()
     vagas_reservadas = db.query(Vaga).filter(Vaga.status == StatusVaga.RESERVADA).count()
@@ -352,8 +376,8 @@ async def dashboard_admin(
 # ======================================================================
 class SimuladorSessaoCreate(BaseModel):
     estacionamento_id: str
-    andar_numero: Optional[int] = None
-    expira_em_horas: Optional[int] = 12
+    andar_numero: int | None = None
+    expira_em_horas: int | None = 12
 
 
 @router.post("/simulador/sessoes", status_code=201)
@@ -409,7 +433,7 @@ async def validar_sessao_simulador(token: str):
 # ======================================================================
 @router.get("/eventos")
 async def eventos_recentes(
-    estacionamento_id: Optional[str] = None,
+    estacionamento_id: str | None = None,
     limite: int = 8,
     db: Session = Depends(get_db),
     usuario: Usuario = Depends(get_usuario_gestor),
@@ -450,7 +474,7 @@ async def configurar_preco_vaga(
     return financeiro_service.criar_configuracao_preco(db, dados)
 
 
-@router.get("/financeiro/precos/{estacionamento_id}", response_model=List[ConfiguracaoPrecoResponse])
+@router.get("/financeiro/precos/{estacionamento_id}", response_model=list[ConfiguracaoPrecoResponse])
 async def listar_precos_estacionamento(
     estacionamento_id: str,
     db: Session = Depends(get_db),
@@ -471,7 +495,7 @@ async def listar_precos_estacionamento(
 #  com 500. O fluxo real e testável de pagamento é POST /financeiro/pagamento/registrar)
 
 
-@router.get("/financeiro/pagamentos/{estacionamento_id}", response_model=List[PagamentoResponse])
+@router.get("/financeiro/pagamentos/{estacionamento_id}", response_model=list[PagamentoResponse])
 async def listar_pagamentos(
     estacionamento_id: str,
     periodo: str = "diario",
@@ -491,7 +515,7 @@ async def listar_pagamentos(
 @router.get("/financeiro/resumo", response_model=ResumoFinanceiroResponse)
 async def resumo_financeiro(
     periodo: str = "diario",
-    estacionamento_id: Optional[str] = None,
+    estacionamento_id: str | None = None,
     db: Session = Depends(get_db),
     usuario: Usuario = Depends(get_usuario_financeiro)
 ):
@@ -567,12 +591,18 @@ async def dashboard_gestor(
 # 💰 ROTAS DO MÓDULO DE PAGAMENTOS E FATURAMENTO
 # ======================================================================
 from models.schemas import (
-    TarifaResponse, CalcularTarifaRequest,
-    PagamentoRequest, PagamentoResponse as PagamentoResponseSchema,
-    CupomCreate, CupomResponse,
-    AbrirCaixaRequest, FecharCaixaRequest, FechamentoCaixaResponse
+    AbrirCaixaRequest,
+    CalcularTarifaRequest,
+    CupomCreate,
+    CupomResponse,
+    FechamentoCaixaResponse,
+    FecharCaixaRequest,
+    PagamentoRequest,
+    TarifaResponse,
 )
+from models.schemas import PagamentoResponse as PagamentoResponseSchema
 from rules import pagamento_service
+
 
 @router.post("/financeiro/calcular-tarifa", response_model=TarifaResponse)
 async def calcular_tarifa(
@@ -712,7 +742,7 @@ async def criar_cupom_desconto(
     return pagamento_service.criar_cupom(db, dados.model_dump())
 
 
-@router.get("/financeiro/cupons/{estacionamento_id}", response_model=List[CupomResponse])
+@router.get("/financeiro/cupons/{estacionamento_id}", response_model=list[CupomResponse])
 async def listar_cupons(
     estacionamento_id: str,
     db: Session = Depends(get_db),

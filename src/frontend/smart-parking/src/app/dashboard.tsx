@@ -27,6 +27,7 @@ import {
   Card,
   Campo,
   Chip,
+  FadeTroca,
   ModalForma,
   StatTile,
   StatusVagaChip,
@@ -115,6 +116,7 @@ export default function Dashboard() {
       }
       direita={seletor}
     >
+      <FadeTroca chave={aba}>
       {aba === "dashboard" && (
         <AbaDashboard estacionamentos={estacionamentos} estSel={estSel} isAdmin={isAdmin} />
       )}
@@ -131,6 +133,7 @@ export default function Dashboard() {
       {aba === "usuarios" && (
         <AbaUsuarios isAdmin={isAdmin} estacionamentos={estacionamentos} onChanged={recarregarEstacionamentos} />
       )}
+      </FadeTroca>
     </AdminShell>
   );
 }
@@ -675,8 +678,8 @@ function AbaEstacionamentos({
           <Card key={e.id} className="p-4">
             <View className="flex-row flex-wrap items-center justify-between gap-3">
               <View className="flex-1" style={{ minWidth: 220 }}>
-                <Text className="text-base font-bold text-slate-900">{e.nome}</Text>
-                <Text className="mt-0.5 text-[13px] text-slate-500">{e.endereco}</Text>
+                <Text className="text-base font-bold text-slate-900" numberOfLines={1}>{e.nome}</Text>
+                <Text className="mt-0.5 text-[13px] text-slate-500" numberOfLines={1}>{e.endereco}</Text>
                 <Text className="mt-0.5 text-xs text-slate-400">
                   {e.total_andares} andares · {e.total_vagas} vagas ·{" "}
                   {e.hora_abertura}–{e.hora_fechamento} · {formatarMoedaBR(e.taxa_hora)}/h
@@ -1549,8 +1552,8 @@ function AbaUsuarios({
             </Text>
           </View>
           <View className="min-w-[160px] flex-1">
-            <Text className="text-sm font-bold text-slate-900">{u.nome}</Text>
-            <Text className="text-xs text-slate-500">{u.email}</Text>
+            <Text className="text-sm font-bold text-slate-900" numberOfLines={1}>{u.nome}</Text>
+            <Text className="text-xs text-slate-500" numberOfLines={1} ellipsizeMode="middle">{u.email}</Text>
           </View>
           <Chip
             label={ROLE_LABEL[u.role] ?? u.role}
