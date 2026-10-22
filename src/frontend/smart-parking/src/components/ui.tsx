@@ -6,8 +6,11 @@ import { ReactNode, useEffect, useRef } from "react";
 import {
   ActivityIndicator,
   Animated,
+  Dimensions,
   Easing,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleProp,
@@ -59,6 +62,30 @@ export function AnimarEntrada({
 }
 
 // ---------------------------------------------------------------- Logo
+/**
+ * Fade rapido (130ms) para TROCA de conteudo — abas do painel etc. Mais seco
+ * que AnimarEntrada de proposito: trocar aba e acao repetitiva.
+ */
+export function FadeTroca({
+  children,
+  chave,
+}: {
+  children: ReactNode;
+  chave: string;
+}) {
+  const anim = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    anim.setValue(0);
+    Animated.timing(anim, {
+      toValue: 1,
+      duration: 130,
+      easing: Easing.out(Easing.quad),
+      useNativeDriver: true,
+    }).start();
+  }, [anim, chave]);
+  return <Animated.View style={{ opacity: anim }}>{children}</Animated.View>;
+}
+
 export function Logo({
   size = 40,
   tone = "blue",
@@ -132,8 +159,10 @@ export function Botao({
   const apertar = (paraDentro: boolean) =>
     Animated.spring(escala, {
       toValue: paraDentro ? 0.96 : 1,
-      friction: 5,
-      tension: 120,
+      // calibrado p/ ~140ms de feedback (auditoria de animacao 22/10):
+      // wobble longo atrasa a percepcao de resposta ao toque
+      friction: 7,
+      tension: 180,
       useNativeDriver: true,
     }).start();
 
@@ -566,6 +595,18 @@ export function ModalForma({
   ocupado?: boolean;
   children: ReactNode;
 }) {
+  const surg = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    if (visivel) {
+      surg.setValue(0);
+      Animated.timing(surg, {
+        toValue: 1,
+        duration: 170,
+        easing: Easing.out(Easing.quad),
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [visivel, surg]);
   return (
     <Modal
       visible={visivel}
@@ -574,9 +615,23 @@ export function ModalForma({
       onRequestClose={aoFechar}
       statusBarTranslucent
     >
+      <KeyboardAvoidingView
+        className="flex-1"
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+      >
       <View className="flex-1 items-center justify-center bg-black/50 p-4">
         <Pressable accessibilityRole="button" onPress={aoFechar} className="absolute inset-0" />
-        <View className="w-full max-w-md">
+        <Animated.View
+          style={{
+            width: "100%",
+            maxWidth: 448,
+            maxHeight: Math.round(Dimensions.get("window").height * 0.88),
+            opacity: surg,
+            transform: [
+              { scale: surg.interpolate({ inputRange: [0, 1], outputRange: [0.95, 1] }) },
+            ],
+          }}
+        >
           <Card className="overflow-hidden p-5">
             <Text className="text-lg font-extrabold text-slate-900">{titulo}</Text>
             {descricao ? (
@@ -600,8 +655,9 @@ export function ModalForma({
               />
             </View>
           </Card>
-        </View>
+        </Animated.View>
       </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
