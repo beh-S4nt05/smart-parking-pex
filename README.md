@@ -174,16 +174,20 @@ python main.py                                      # API em http://localhost:80
 ```bash
 cd src/frontend/smart-parking
 npm install
-cp .env.example .env    # opcional: só defina EXPO_PUBLIC_API_URL se a API não estiver
-                        # em localhost:8000 (celular → IP da LAN; porta diferente → ajuste)
+cp .env.example .env    # opcional: o app resolve a URL sozinho por plataforma
+                        # (web → host atual; Expo Go → IP do "npx expo start");
+                        # o .env só p/ porta != 8000, túnel ou produção
 npx expo start          # pressione: w (web) · a (Android) · i (iOS) · ou escaneie o QR
 ```
 
 > **Achas de configuração (importante pro time todo):**
 > - O **único** env do app é `EXPO_PUBLIC_API_URL`. Env chamada `DEFAULT_API_URL`
->   **não existe** — se alguém colocar no `.env`, é ignorada. Sem env, o web usa o
->   próprio host atual na porta 8000; nativo usa `localhost:8000` (no celular isso
->   aponta para o próprio celular — por isso o IP LAN é obrigatório lá).
+>   **não existe** — se alguém colocar no `.env`, é ignorada. Sem env, o app resolve
+>   sozinho (ACH-21): **web** usa o próprio host (`:80`/`:443` = same-origin; dev
+>   `:8081` → mesma máquina na `:8000`); **Expo Go** usa o IP LAN que o próprio
+>   `npx expo start` publica (`hostUri`); **emulador Android** → `10.0.2.2`. Uma
+>   API só — **não** existe "API da web" e "API do mobile": o que muda é a
+>   resolução do host no cliente.
 > - Backend: o `.env` vive em `src/backend/` (`cp .env.example .env`). Porta 8000
 >   ocupada? `PORT=8010` lá **e** no env do front, com `npx expo start -c`.
 > - Se o Postgres cair e `DB_AUTO_SQLITE=true`, o app **silencia** e usa um SQLite
@@ -219,9 +223,10 @@ da Expo em vez de conectar ao Metro do PC. Cheque nesta ordem:
    use túnel, que não exige nada novo no projeto: `npx expo start --tunnel`
    (o `npx` baixa o `@expo/ngrok` sob demanda).
 
-E depois que o app carregar: para a **API** funcionar no celular,
-`EXPO_PUBLIC_API_URL` precisa apontar para o IP do PC (ver `.env.example`) — com
-qualquer mudança no `.env`, reinicie com `npx expo start -c`.
+Desde a correção de 22/10 **não precisa configurar nada** para o celular achar a
+API: o Expo Go resolve o IP do PC sozinho (QR do `npx expo start`). Se um dia o
+`.env` fixar `EXPO_PUBLIC_API_URL`, ele passa a mandar em tudo — trocas no `.env`
+exigem `npx expo start -c`.
 
 #### ⚠️ "expo config"/"expo start" falhando com stack de OUTRA pasta? É o CLI global legado
 
