@@ -12,10 +12,6 @@ from sqlalchemy.exc import IntegrityError, ProgrammingError
 from api.admin import router as admin_router
 from api.api import router as api_router
 from api.auth import router as auth_router
-<<<<<<< HEAD
-from api.admin import router as admin_router
-from api.sensores import router as sensores_router
-=======
 from api.sensores import router as sensores_router
 from core.config import settings
 from core.rate_limiter import limiter, rate_limit_exceeded_handler
@@ -24,7 +20,6 @@ from core.security import criar_hash_senha
 from core.security_middleware import SecurityHeadersMiddleware
 from models.database import Base, SessionLocal, engine
 from models.db_models import Estacionamento, TipoUsuario, Usuario
->>>>>>> eb64687f68d74c589beca0aaf9d41bbce94aeffd
 
 # Cria todas as tabelas no banco de dados automaticamente
 with contextlib.suppress(ProgrammingError, IntegrityError):

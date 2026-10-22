@@ -51,8 +51,6 @@ qualquer banco dos modelos.
 
 - Dados demo/seed continuam no `seed_demo.py` (idempotente) — não viraram data migration.
 - O `create_all` do boot permanece; quando a equipe confiar 100% no Alembic, remova-o e o esquema passa a ser só migrations.
-<<<<<<< HEAD
-=======
 
 ---
 
@@ -72,4 +70,3 @@ Efeito prático:
   `ON CONSTRAINT`).
 - Banco de produção da equipe: **stamp-only até 02/11** (política da
   disciplina) — este parágrafo é o registro do porquê.
->>>>>>> eb64687f68d74c589beca0aaf9d41bbce94aeffd

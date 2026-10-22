@@ -3,14 +3,9 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-<<<<<<< HEAD
-from core.deps import get_usuario_logado, oauth2_scheme
-from core.rate_limiter import limiter, LIMITS
-=======
 from core.config import settings
 from core.deps import get_usuario_logado, oauth2_scheme
 from core.rate_limiter import LIMITS, limiter
->>>>>>> eb64687f68d74c589beca0aaf9d41bbce94aeffd
 from models.database import get_db
 from models.db_models import Usuario
 from models.schemas import (
@@ -81,15 +76,9 @@ async def refresh_token(request: Request, dados: RefreshRequest, db: Session = D
 
 
 class UsuarioAtualizar(BaseModel):
-<<<<<<< HEAD
-    nome: Optional[str] = Field(None, min_length=2, max_length=120)
-    telefone: Optional[str] = Field(None, max_length=20)
-    placa_veiculo: Optional[str] = Field(None, max_length=12)
-=======
     nome: str | None = Field(None, min_length=2, max_length=120)
     telefone: str | None = Field(None, max_length=20)
     placa_veiculo: str | None = Field(None, max_length=12)
->>>>>>> eb64687f68d74c589beca0aaf9d41bbce94aeffd
 
     def _limpa(self):
         if self.placa_veiculo:
@@ -107,11 +96,7 @@ class TrocarSenha(BaseModel):
 def logout(
     request: Request,
     token: str = Depends(oauth2_scheme),
-<<<<<<< HEAD
-    refresh_token: Optional[str] = None,
-=======
     refresh_token: str | None = None,
->>>>>>> eb64687f68d74c589beca0aaf9d41bbce94aeffd
     usuario: Usuario = Depends(get_usuario_logado),
     db: Session = Depends(get_db),
 ):
@@ -123,13 +108,8 @@ def logout(
     de 22/10 (sem jti) sobrevivem até o `exp` — documentado no SDD.
     """
     from core.security import decodificar_token as _dec
-<<<<<<< HEAD
-    from models.db_models import RevogacaoToken
-    from core.timeutils import utc_agora
-=======
     from core.timeutils import utc_agora
     from models.db_models import RevogacaoToken
->>>>>>> eb64687f68d74c589beca0aaf9d41bbce94aeffd
 
     agora = utc_agora()
     def _revogar(tok: str, motivo: str):
@@ -144,11 +124,7 @@ def logout(
         exp = pl.get("exp")
         db.add(RevogacaoToken(
             jti=jti, motivo=motivo, criado_em=agora,
-<<<<<<< HEAD
-            expira_em=_dt.datetime.fromtimestamp(exp, _dt.timezone.utc) if exp else None,
-=======
             expira_em=_dt.datetime.fromtimestamp(exp, _dt.UTC) if exp else None,
->>>>>>> eb64687f68d74c589beca0aaf9d41bbce94aeffd
         ))
 
     _revogar(token, "logout")
@@ -159,10 +135,6 @@ def logout(
         RevogacaoToken.expira_em.isnot(None), RevogacaoToken.expira_em < agora
     ).delete(synchronize_session=False)
     db.commit()
-<<<<<<< HEAD
-    return None
-=======
->>>>>>> eb64687f68d74c589beca0aaf9d41bbce94aeffd
 
 
 @router.put("/me", response_model=UsuarioMeResponse)
@@ -199,15 +171,9 @@ def trocar_senha(
     as outras sessões do usuário (marcação de revogação global): quem troca a
     senha quer estar sozinho no sistema de novo.
     """
-<<<<<<< HEAD
-    from core.security import verificar_senha, criar_hash_senha
-    from models.db_models import RevogacaoToken
-    from core.timeutils import utc_agora
-=======
     from core.security import criar_hash_senha, verificar_senha
     from core.timeutils import utc_agora
     from models.db_models import RevogacaoToken
->>>>>>> eb64687f68d74c589beca0aaf9d41bbce94aeffd
 
     if not verificar_senha(dados.senha_atual, usuario.senha_hash):
         raise HTTPException(status_code=401, detail="Senha atual incorreta")
@@ -220,10 +186,6 @@ def trocar_senha(
     db.add(RevogacaoToken(jti=None, usuario_id=usuario.id, motivo="troca_senha",
                           criado_em=utc_agora()))
     db.commit()
-<<<<<<< HEAD
-    return None
-=======
->>>>>>> eb64687f68d74c589beca0aaf9d41bbce94aeffd
 
 
 @router.get("/me", response_model=UsuarioMeResponse)
