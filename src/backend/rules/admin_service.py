@@ -395,13 +395,8 @@ def reset_senha_admin(db: Session, usuario_id: str) -> str:
     alfabeto = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789abcdefghjkmnpqrstuvwxyz"
     temporaria = "".join(_sec.choice(alfabeto) for _ in range(10))
     usuario.senha_hash = criar_hash_senha(temporaria)
-<<<<<<< HEAD
-    from models.db_models import RevogacaoToken
-    from core.timeutils import utc_agora
-=======
     from core.timeutils import utc_agora
     from models.db_models import RevogacaoToken
->>>>>>> eb64687f68d74c589beca0aaf9d41bbce94aeffd
     db.add(RevogacaoToken(jti=None, usuario_id=usuario.id, motivo="reset_admin", criado_em=utc_agora()))
     db.commit()
     return temporaria

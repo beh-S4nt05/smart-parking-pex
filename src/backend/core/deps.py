@@ -6,11 +6,7 @@ from sqlalchemy.orm import Session
 
 from core.security import decodificar_token
 from models.database import get_db
-<<<<<<< HEAD
-from models.db_models import RevogacaoToken, Usuario, TipoUsuario
-=======
 from models.db_models import RevogacaoToken, TipoUsuario, Usuario
->>>>>>> eb64687f68d74c589beca0aaf9d41bbce94aeffd
 
 
 def sessao_revogada(db: Session, payload: dict, usuario_id: str) -> bool:
@@ -36,11 +32,7 @@ def sessao_revogada(db: Session, payload: dict, usuario_id: str) -> bool:
         if criado and criado.tzinfo is not None:
             criado_ts = criado.timestamp()
         else:
-<<<<<<< HEAD
-            criado_ts = _dt.datetime.replace(criado, tzinfo=_dt.timezone.utc).timestamp() if criado else 0
-=======
             criado_ts = _dt.datetime.replace(criado, tzinfo=_dt.UTC).timestamp() if criado else 0
->>>>>>> eb64687f68d74c589beca0aaf9d41bbce94aeffd
         if criado_ts > iat:
             return True
     return False

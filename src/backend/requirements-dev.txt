@@ -2,7 +2,4 @@
 pytest>=8
 httpx>=0.27   # necessário pelo TestClient do FastAPI
 alembic>=1.13
-<<<<<<< HEAD
-=======
 ruff>=0.6   # portao de correcao do CI (mesmo ruff.toml do backend)
->>>>>>> eb64687f68d74c589beca0aaf9d41bbce94aeffd

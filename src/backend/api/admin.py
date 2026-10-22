@@ -2,10 +2,6 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
-<<<<<<< HEAD
-from sqlalchemy.orm import Session
-=======
->>>>>>> eb64687f68d74c589beca0aaf9d41bbce94aeffd
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
@@ -135,13 +131,8 @@ async def deletar_andar(
 # ROTAS DE VAGAS (admin)
 # ======================================================================
 class AndarUpdate(BaseModel):
-<<<<<<< HEAD
-    numero_andar: Optional[int] = None
-    capacidade: Optional[int] = Field(None, ge=1, le=2000)
-=======
     numero_andar: int | None = None
     capacidade: int | None = Field(None, ge=1, le=2000)
->>>>>>> eb64687f68d74c589beca0aaf9d41bbce94aeffd
 
 
 @router.put("/andares/{id}", response_model=AndarResponse)
@@ -156,17 +147,10 @@ async def atualizar_andar(
 
 
 class VagaAdminUpdate(BaseModel):
-<<<<<<< HEAD
-    codigo: Optional[str] = None
-    tipo: Optional[str] = None
-    posicao_x: Optional[int] = None
-    posicao_y: Optional[int] = None
-=======
     codigo: str | None = None
     tipo: str | None = None
     posicao_x: int | None = None
     posicao_y: int | None = None
->>>>>>> eb64687f68d74c589beca0aaf9d41bbce94aeffd
 
 
 @router.put("/vagas/{id}", response_model=VagaResponse)
@@ -197,21 +181,13 @@ async def reset_senha_usuario(
 
 
 # ------------------- Sensores físicos (RF-45 · ADR-03) — emissão só admin -------------------
-<<<<<<< HEAD
-from rules import sensor_service  # noqa: E402
-=======
 from rules import sensor_service
->>>>>>> eb64687f68d74c589beca0aaf9d41bbce94aeffd
 
 
 class SensorCreate(BaseModel):
     estacionamento_id: str
     codigo: str
-<<<<<<< HEAD
-    nome: Optional[str] = None
-=======
     nome: str | None = None
->>>>>>> eb64687f68d74c589beca0aaf9d41bbce94aeffd
 
 
 @router.post("/sensores", status_code=201)
@@ -233,11 +209,7 @@ async def emitir_sensor(
 
 @router.get("/sensores")
 async def listar_sensores(
-<<<<<<< HEAD
-    estacionamento_id: Optional[str] = None,
-=======
     estacionamento_id: str | None = None,
->>>>>>> eb64687f68d74c589beca0aaf9d41bbce94aeffd
     db: Session = Depends(get_db),
     admin: Usuario = Depends(get_usuario_admin),
 ):

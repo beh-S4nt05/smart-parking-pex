@@ -1,8 +1,5 @@
 """RF-13/14/15 (sessões) + RF-45 (sensores) + RF-32/33 (edições de painel)."""
-<<<<<<< HEAD
-=======
 from datetime import UTC
->>>>>>> eb64687f68d74c589beca0aaf9d41bbce94aeffd
 
 
 def _login_admin(db):
@@ -42,24 +39,15 @@ def test_logout_revoga_access_e_refresh(client, db, fab):
 
 def test_tokens_legados_sem_jti_continuam_validos(client, db, fab):
     """Compat 22/10: token emitido antes do campo jti não é barrado."""
-<<<<<<< HEAD
-    import jwt as pyjwt
-    from datetime import datetime, timedelta, timezone
-=======
     from datetime import datetime, timedelta
 
     import jwt as pyjwt
->>>>>>> eb64687f68d74c589beca0aaf9d41bbce94aeffd
 
     from core.config import settings
 
     usuario = fab.usuario()
     db.commit()
-<<<<<<< HEAD
-    agora = datetime.now(timezone.utc)
-=======
     agora = datetime.now(UTC)
->>>>>>> eb64687f68d74c589beca0aaf9d41bbce94aeffd
     leg = pyjwt.encode(
         {"sub": usuario.id, "type": "access", "iat": agora, "exp": agora + timedelta(minutes=5)},
         settings.SECRET_KEY, algorithm=settings.ALGORITHM,

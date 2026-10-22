@@ -1,11 +1,6 @@
 import uuid
-<<<<<<< HEAD
-from datetime import datetime, timedelta, timezone
-from typing import Any, Union
-=======
 from datetime import UTC, datetime, timedelta
 from typing import Any
->>>>>>> eb64687f68d74c589beca0aaf9d41bbce94aeffd
 
 import bcrypt
 import jwt

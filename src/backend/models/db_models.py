@@ -1,7 +1,4 @@
 import enum
-<<<<<<< HEAD
-from sqlalchemy import Column, String, Integer, ForeignKey, DateTime, Boolean, Float, Text, UniqueConstraint
-=======
 import uuid
 
 from sqlalchemy import (
@@ -15,7 +12,6 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
 )
->>>>>>> eb64687f68d74c589beca0aaf9d41bbce94aeffd
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
