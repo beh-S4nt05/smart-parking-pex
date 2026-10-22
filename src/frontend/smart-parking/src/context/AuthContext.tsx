@@ -31,6 +31,8 @@ export interface AuthContextData {
     placa_veiculo?: string;
   }) => Promise<Usuario>;
   signOut: () => Promise<void>;
+  /** rebusca /auth/me após edições do perfil (RF-15) */
+  refreshUser: () => Promise<void>;
 }
 
 export const AuthContext = createContext<AuthContextData | null>(null);
@@ -93,6 +95,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     return usuario;
   }, []);
 
+  const refreshUser = useCallback(async () => {
+    try {
+      const me = await parkingApi.me();
+      setUser(me);
+      await storage.setUserCache(JSON.stringify(me));
+    } catch {
+      /* offline mantém o cache — nada a fazer */
+    }
+  }, []);
+
   const register = useCallback(
     async (payload: {
       nome: string;
@@ -119,8 +131,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
       signIn,
       register,
       signOut,
+      refreshUser,
     }),
-    [user, loading, signIn, register, signOut],
+    [user, loading, signIn, register, signOut, refreshUser],
   );
 
   return (

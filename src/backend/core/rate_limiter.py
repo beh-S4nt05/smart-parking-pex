@@ -61,5 +61,9 @@ LIMITS = {
     # Rotas de leitura/consulta: limite mais alto
     "consulta_publica": "120/minute",
     # Relatórios: são mais pesados, limite menor
-    "relatorios": "30/minute"
+    "relatorios": "30/minute",
+    # Escrita em conta própria (logout/troca de senha) — 13 do SDD
+    "auth_escrita": "20/minute",
+    # Ingestão de sensores (RF-45): dispositivos falam MUITO, mas por IP
+    "sensores": "240/minute"
 }

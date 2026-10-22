@@ -1,3 +1,4 @@
 # Dependências só de desenvolvimento/teste (M4-01 · ADR-10) — o runtime não usa nada daqui.
 pytest>=8
 httpx>=0.27   # necessário pelo TestClient do FastAPI
+alembic>=1.13

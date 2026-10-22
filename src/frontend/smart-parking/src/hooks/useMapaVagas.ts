@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { parkingApi } from "../services/api";
 import type { MapaVagas, Vaga } from "../types/api";
 
@@ -32,8 +33,29 @@ export function useMapaVagas(estacionamentoId?: string, { pollingMs = 0 }: Optio
       setMapa(dados);
       setErro(null);
       setAtualizadoEm(Date.now());
+      AsyncStorage.setItem(
+        `sp:cache:mapa:${estacionamentoId}`,
+        JSON.stringify({ ts: Date.now(), dados }),
+      ).catch(() => {});
     } catch {
-      if (mounted.current) setErro("Não foi possível carregar o mapa de vagas.");
+      if (!mounted.current) return;
+      // RF-06: sem rede, reabre a última leitura persistida do andar inteiro
+      try {
+        const bruto = await AsyncStorage.getItem(`sp:cache:mapa:${estacionamentoId}`);
+        if (bruto) {
+          const { ts, dados } = JSON.parse(bruto) as {
+            ts: number;
+            dados: typeof mapa;
+          };
+          setMapa((atual) => atual ?? dados);
+          setAtualizadoEm(ts);
+          setErro(`Sem conexão — última leitura ${new Date(ts).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}.`);
+          return;
+        }
+      } catch {
+        /* segue com o erro cru */
+      }
+      setErro("Não foi possível carregar o mapa de vagas.");
     } finally {
       if (mounted.current) setLoading(false);
     }

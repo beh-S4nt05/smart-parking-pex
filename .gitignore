@@ -45,3 +45,7 @@ yarn-error.*
 *.pytest_smartparking.db-wal
 *.pytest_smartparking.db-shm
 src/backend/.pytest_cache/
+
+# python
+__pycache__/
+*.pyc
