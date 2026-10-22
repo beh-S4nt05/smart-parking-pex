@@ -8,7 +8,36 @@ from sqlalchemy.orm import Session
 from core.config import settings
 from core.security import decodificar_token
 from models.database import get_db
-from models.db_models import Usuario, TipoUsuario
+from models.db_models import RevogacaoToken, Usuario, TipoUsuario
+
+
+def sessao_revogada(db: Session, payload: dict, usuario_id: str) -> bool:
+    """
+    RF-13: dois caminhos — jti específico (logout) ou "usuário inteiro desde
+    T" (reset de senha/bloqueio). Tokens LEGADOS (sem jti, emitidos antes de
+    22/10) só caem no segundo caminho — compatibilidade garantida.
+    """
+    import datetime as _dt
+
+    iat = payload.get("iat") or 0
+    jti = payload.get("jti")
+    q = db.query(RevogacaoToken.id)
+    if jti:
+        achou = q.filter(RevogacaoToken.jti == jti).first()
+        if achou:
+            return True
+    desde = db.query(RevogacaoToken.criado_em).filter(
+        RevogacaoToken.usuario_id == usuario_id, RevogacaoToken.jti.is_(None)
+    ).first()
+    if desde:
+        criado = desde[0]
+        if criado and criado.tzinfo is not None:
+            criado_ts = criado.timestamp()
+        else:
+            criado_ts = _dt.datetime.replace(criado, tzinfo=_dt.timezone.utc).timestamp() if criado else 0
+        if criado_ts > iat:
+            return True
+    return False
 
 # Define o esquema OAuth2 para extrair token do header Authorization
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
@@ -51,6 +80,14 @@ def get_usuario_logado(
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Usuário desativado. Contate o suporte.",
+        )
+
+    # RF-13 — o token pode ser válido na assinatura e mesmo assim morto:
+    if sessao_revogada(db, payload, usuario_id):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Sessão encerrada. Faça login novamente.",
+            headers={"WWW-Authenticate": "Bearer"},
         )
 
     return usuario

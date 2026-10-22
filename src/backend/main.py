@@ -17,6 +17,7 @@ from models.db_models import Usuario, TipoUsuario, Estacionamento
 from api.api import router as api_router
 from api.auth import router as auth_router
 from api.admin import router as admin_router
+from api.sensores import router as sensores_router
 
 # Cria todas as tabelas no banco de dados automaticamente
 try:
@@ -164,6 +165,7 @@ app.add_middleware(
 app.include_router(api_router)
 app.include_router(auth_router)
 app.include_router(admin_router)
+app.include_router(sensores_router, prefix="/api")
 
 
 # Rota raiz com limite de acesso

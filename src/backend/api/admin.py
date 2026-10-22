@@ -1,7 +1,7 @@
 from typing import Optional, List
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 
@@ -106,6 +106,117 @@ async def deletar_andar(
 # ======================================================================
 # ROTAS DE VAGAS (admin)
 # ======================================================================
+class AndarUpdate(BaseModel):
+    numero_andar: Optional[int] = None
+    capacidade: Optional[int] = Field(None, ge=1, le=2000)
+
+
+@router.put("/andares/{id}", response_model=AndarResponse)
+async def atualizar_andar(
+    id: str,
+    dados: AndarUpdate,
+    db: Session = Depends(get_db),
+    admin: Usuario = Depends(get_usuario_admin),
+):
+    """RF-32: editar número/capacidade de um andar (admin)."""
+    return admin_service.atualizar_andar(db, id, dados.model_dump(exclude_unset=True))
+
+
+class VagaAdminUpdate(BaseModel):
+    codigo: Optional[str] = None
+    tipo: Optional[str] = None
+    posicao_x: Optional[int] = None
+    posicao_y: Optional[int] = None
+
+
+@router.put("/vagas/{id}", response_model=VagaResponse)
+async def atualizar_vaga_admin(
+    id: str,
+    dados: VagaAdminUpdate,
+    db: Session = Depends(get_db),
+    admin: Usuario = Depends(get_usuario_admin),
+):
+    """RF-33: editar código/tipo/posição de uma vaga sem tocar no status."""
+    return admin_service.atualizar_vaga(db, id, dados.model_dump(exclude_unset=True))
+
+
+@router.post("/usuarios/{id}/reset-senha")
+async def reset_senha_usuario(
+    id: str,
+    db: Session = Depends(get_db),
+    admin: Usuario = Depends(get_usuario_admin),
+):
+    """
+    RF-14 (sem SMTP): gera senha temporária de balcão e derruba todas as
+    sessões do usuário. Mostre ao dono da conta por um canal combinado; ele
+    troca em "Minha conta" no primeiro login.
+    """
+    temporaria = admin_service.reset_senha_admin(db, id)
+    return {"senha_temporaria": temporaria,
+            "aviso": "Entregue em mãos e peça a troca imediata em Perfil → Segurança."}
+
+
+# ------------------- Sensores físicos (RF-45 · ADR-03) — emissão só admin -------------------
+from rules import sensor_service  # noqa: E402
+
+
+class SensorCreate(BaseModel):
+    estacionamento_id: str
+    codigo: str
+    nome: Optional[str] = None
+
+
+@router.post("/sensores", status_code=201)
+async def emitir_sensor(
+    dados: SensorCreate,
+    db: Session = Depends(get_db),
+    admin: Usuario = Depends(get_usuario_admin),
+):
+    """Emite um dispositivo e a ÚNICA exibição da chave clara (SHA-256 no banco)."""
+    sensor, chave = sensor_service.emitir_sensor(
+        db, dados.estacionamento_id, dados.codigo, dados.nome
+    )
+    return {
+        "id": sensor.id, "codigo": sensor.codigo, "nome": sensor.nome,
+        "chave": chave,
+        "aviso": "Guarde agora — não há como recuperar. Em caso de perda: revogar e reemitir.",
+    }
+
+
+@router.get("/sensores")
+async def listar_sensores(
+    estacionamento_id: Optional[str] = None,
+    db: Session = Depends(get_db),
+    admin: Usuario = Depends(get_usuario_admin),
+):
+    q = db.query(sensor_service.Sensor)
+    if estacionamento_id:
+        q = q.filter(sensor_service.Sensor.estacionamento_id == estacionamento_id)
+    return [
+        {
+            "id": x.id, "codigo": x.codigo, "nome": x.nome, "ativo": x.ativo,
+            "estacionamento_id": x.estacionamento_id,
+            "ultimo_evento_em": x.ultimo_evento_em.isoformat() if x.ultimo_evento_em else None,
+        }
+        for x in q.order_by(sensor_service.Sensor.codigo).all()
+    ]
+
+
+@router.post("/sensores/{id}/revogar")
+async def revogar_sensor(
+    id: str,
+    db: Session = Depends(get_db),
+    admin: Usuario = Depends(get_usuario_admin),
+):
+    """Desativa o dispositivo — eventos futuros com a chave antiga dão 401."""
+    sensor = db.query(sensor_service.Sensor).filter(sensor_service.Sensor.id == id).first()
+    if not sensor:
+        raise HTTPException(status_code=404, detail="Sensor não encontrado")
+    sensor.ativo = False
+    db.commit()
+    return {"mensagem": f"Sensor {sensor.codigo} revogado"}
+
+
 @router.post("/vagas", response_model=VagaResponse, status_code=201)
 async def criar_vaga(
     dados: VagaCreate,

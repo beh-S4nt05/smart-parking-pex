@@ -1,6 +1,6 @@
 import uuid
 import enum
-from sqlalchemy import Column, String, Integer, ForeignKey, DateTime, Boolean, Float, Text
+from sqlalchemy import Column, String, Integer, ForeignKey, DateTime, Boolean, Float, Text, UniqueConstraint
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from .database import Base
@@ -272,3 +272,65 @@ class Pagamento(Base):
 
     estacionamento = relationship("Estacionamento", foreign_keys=[estacionamento_id])
     usuario = relationship("Usuario", foreign_keys=[usuario_id])
+
+
+# ======================================================================
+# Sessão revogada (RF-13) + sensores físicos (RF-45/ADR-03) — 22/10
+# ======================================================================
+class RevogacaoToken(Base):
+    """
+    Revogação de JWT (RF-13). Duas formas de uso:
+    - jti preenchido: aquele access token específico morreu (logout normal);
+    - usuario_id preenchido com criado_em > iat do token: TODAS as sessões do
+      usuário morreram (reset de senha pelo admin, bloqueio de conta).
+    A verificação é 1 SELECT por request autenticada (índice no jti/usuario).
+    Linhas expiram junto com o próprio token — a limpeza roda no login.
+    """
+    __tablename__ = "revogacoes_token"
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    jti = Column(String, nullable=True, unique=True, index=True)
+    usuario_id = Column(String, nullable=True, index=True)
+    motivo = Column(String, nullable=False, default="logout")
+    criado_em = Column(DateTime(timezone=True), nullable=False)
+    expira_em = Column(DateTime(timezone=True), nullable=True, index=True)
+
+
+class Sensor(Base):
+    """
+    Chave por dispositivo (ADR-03/RF-45): o sensor NÃO faz login JWT — envia
+    o header `X-Device-Key`. Guardamos só o SHA-256 da chave (vazar a tabela
+    não entrega chaves usáveis). Emissão/revogação: admin global.
+    """
+    __tablename__ = "sensores"
+
+    id = Column(String, primary_key=True, default=generate_uuid, index=True)
+    estacionamento_id = Column(String, ForeignKey("estacionamentos.id", ondelete="CASCADE"), nullable=False, index=True)
+    codigo = Column(String, nullable=False, unique=True, index=True)  # ex.: SNS-A01
+    nome = Column(String, nullable=True)
+    chave_hash = Column(String, nullable=False)
+    ativo = Column(Boolean, nullable=False, default=True, index=True)
+    criado_em = Column(DateTime(timezone=True), server_default=func.now())
+    ultimo_evento_em = Column(DateTime(timezone=True), nullable=True)
+
+    estacionamento = relationship("Estacionamento", foreign_keys=[estacionamento_id])
+
+
+class SensorEvento(Base):
+    """
+    Log bruto da ingestão — a idempotência mora no UniqueConstraint
+    (sensor_id, seq): retransmissão de rede repete o MESMO seq e é
+    descartada com 200, não gera 2ª estadia.
+    """
+    __tablename__ = "sensor_eventos"
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    sensor_id = Column(String, ForeignKey("sensores.id", ondelete="CASCADE"), nullable=False, index=True)
+    vaga_id = Column(String, ForeignKey("vagas.id", ondelete="SET NULL"), nullable=True, index=True)
+    seq = Column(Integer, nullable=False)
+    status_enviado = Column(String, nullable=False)
+    aplicado = Column(Boolean, nullable=False, default=True)
+    ocorrido_em = Column(DateTime(timezone=True), nullable=True)
+    criado_em = Column(DateTime(timezone=True), server_default=func.now())
+
+    __table_args__ = (UniqueConstraint("sensor_id", "seq", name="uq_sensor_evento_seq"),)

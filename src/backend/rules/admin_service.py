@@ -248,6 +248,77 @@ def criar_andar(db: Session, dados: AndarCreate) -> Andar:
     return novo_andar
 
 
+def atualizar_andar(db: Session, andar_id: str, dados: dict) -> Andar:
+    """RF-32: renomeia número/ajusta capacidade de um andar."""
+    andar = db.query(Andar).filter(Andar.id == andar_id).first()
+    if not andar:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Andar não encontrado")
+    if "numero_andar" in dados and dados["numero_andar"] is not None:
+        novo = int(dados["numero_andar"])
+        colidiu = db.query(Andar).filter(
+            Andar.estacionamento_id == andar.estacionamento_id,
+            Andar.numero_andar == novo, Andar.id != andar_id,
+        ).first()
+        if colidiu:
+            raise HTTPException(status_code=409, detail=f"O estacionamento já tem um andar {novo}")
+        andar.numero_andar = novo
+    if "capacidade" in dados and dados["capacidade"] is not None:
+        cap = int(dados["capacidade"])
+        reais = db.query(Vaga).filter(Vaga.andar_id == andar_id).count()
+        if cap < reais:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Capacidade {cap} menor que as {reais} vagas já cadastradas no andar",
+            )
+        andar.capacidade = cap
+    db.commit(); db.refresh(andar)
+    return andar
+
+
+def atualizar_vaga(db: Session, vaga_id: str, dados: dict) -> Vaga:
+    """RF-33: edita código/tipo/posição de uma vaga (sem mexer no status)."""
+    vaga = db.query(Vaga).filter(Vaga.id == vaga_id).first()
+    if not vaga:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Vaga não encontrada")
+    if dados.get("tipo"):
+        if dados["tipo"] not in {t.value for t in TipoVaga}:
+            raise HTTPException(status_code=422, detail="tipo inválido")
+        vaga.tipo = dados["tipo"]
+    if dados.get("codigo"):
+        cod = str(dados["codigo"]).strip().upper()
+        if not cod:
+            raise HTTPException(status_code=422, detail="codigo vazio")
+        dup = db.query(Vaga).filter(Vaga.andar_id == vaga.andar_id, Vaga.codigo == cod, Vaga.id != vaga_id).first()
+        if dup:
+            raise HTTPException(status_code=409, detail=f"Já existe a vaga {cod} neste andar")
+        vaga.codigo = cod
+    for campo in ("posicao_x", "posicao_y"):
+        if dados.get(campo) is not None:
+            setattr(vaga, campo, int(dados[campo]))
+    db.commit(); db.refresh(vaga)
+    return vaga
+
+
+def reset_senha_admin(db: Session, usuario_id: str) -> str:
+    """
+    RF-14 (sem SMTP no projeto): o admin gera uma senha temporária de balcão.
+    A senha antiga morre junto com TODAS as sessões do usuário (revogação
+    global) — quem tinha o app aberto é forçado a religar com a nova.
+    """
+    import secrets as _sec
+    usuario = db.query(Usuario).filter(Usuario.id == usuario_id).first()
+    if not usuario:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Usuário não encontrado")
+    alfabeto = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789abcdefghjkmnpqrstuvwxyz"
+    temporaria = "".join(_sec.choice(alfabeto) for _ in range(10))
+    usuario.senha_hash = criar_hash_senha(temporaria)
+    from models.db_models import RevogacaoToken
+    from core.timeutils import utc_agora
+    db.add(RevogacaoToken(jti=None, usuario_id=usuario.id, motivo="reset_admin", criado_em=utc_agora()))
+    db.commit()
+    return temporaria
+
+
 def deletar_andar(db: Session, andar_id: str):
     """Remove um andar e todas as suas vagas"""
     andar = db.query(Andar).filter(Andar.id == andar_id).first()

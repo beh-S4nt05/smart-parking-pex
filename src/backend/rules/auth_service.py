@@ -130,6 +130,13 @@ def renovar_access_token(db: Session, refresh_token: str) -> TokenResponse:
             detail="Usuário desativado. Contate o suporte.",
         )
 
+    # RF-13: o refresh pode estar vivo na assinatura e MORTO em revogação
+    # (logout revogou a cadeia; troca de senha marcou o usuário inteiro).
+    from core.deps import sessao_revogada
+
+    if sessao_revogada(db, payload, usuario_id):
+        raise HTTPException(status_code=401, detail="Sessão encerrada. Faça login novamente.")
+
     novo_access = criar_token(subject=usuario_id, tipo_token="access")
 
     return montar_token_response(usuario, novo_access, refresh_token)

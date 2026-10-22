@@ -1,9 +1,9 @@
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from core.deps import get_usuario_logado
+from core.deps import get_usuario_logado, oauth2_scheme
 from core.rate_limiter import limiter, LIMITS
 from models.database import get_db
 from models.db_models import Usuario
@@ -69,6 +69,121 @@ async def refresh_token(request: Request, dados: RefreshRequest, db: Session = D
     Também retorna o usuário atualizado, para o app manter o estado coerente.
     """
     return auth_service.renovar_access_token(db, dados.refresh_token)
+
+
+class UsuarioAtualizar(BaseModel):
+    nome: Optional[str] = Field(None, min_length=2, max_length=120)
+    telefone: Optional[str] = Field(None, max_length=20)
+    placa_veiculo: Optional[str] = Field(None, max_length=12)
+
+    def _limpa(self):
+        if self.placa_veiculo:
+            self.placa_veiculo = self.placa_veiculo.upper().strip()
+        return self
+
+
+class TrocarSenha(BaseModel):
+    senha_atual: str
+    nova_senha: str = Field(min_length=6, max_length=72)
+
+
+@router.post("/logout", status_code=204)
+@limiter.limit(LIMITS["auth_escrita"])
+def logout(
+    request: Request,
+    token: str = Depends(oauth2_scheme),
+    refresh_token: Optional[str] = None,
+    usuario: Usuario = Depends(get_usuario_logado),
+    db: Session = Depends(get_db),
+):
+    """
+    RF-13: encerra a sessão no SERVIDOR — o access token atual (jti) entra na
+    lista de revogação e para de ser aceito em qualquer rota, mesmo antes do
+    `exp`. O refresh token (query `?refresh_token=`) também é revogado,
+    quebrando a cadeia de renovação silenciosa. Tokens antigos emitidos antes
+    de 22/10 (sem jti) sobrevivem até o `exp` — documentado no SDD.
+    """
+    from core.security import decodificar_token as _dec
+    from models.db_models import RevogacaoToken
+    from core.timeutils import utc_agora
+
+    agora = utc_agora()
+    def _revogar(tok: str, motivo: str):
+        try:
+            pl = _dec(tok)
+        except Exception:
+            return
+        jti = pl.get("jti")
+        if not jti:
+            return
+        import datetime as _dt
+        exp = pl.get("exp")
+        db.add(RevogacaoToken(
+            jti=jti, motivo=motivo, criado_em=agora,
+            expira_em=_dt.datetime.fromtimestamp(exp, _dt.timezone.utc) if exp else None,
+        ))
+
+    _revogar(token, "logout")
+    if refresh_token:
+        _revogar(refresh_token, "logout_refresh")
+    # faxina: linhas já vencidas não servem mais para nada
+    db.query(RevogacaoToken).filter(
+        RevogacaoToken.expira_em.isnot(None), RevogacaoToken.expira_em < agora
+    ).delete(synchronize_session=False)
+    db.commit()
+    return None
+
+
+@router.put("/me", response_model=UsuarioMeResponse)
+@limiter.limit(LIMITS["auth_escrita"])
+def atualizar_perfil(
+    request: Request,
+    dados: UsuarioAtualizar,
+    usuario: Usuario = Depends(get_usuario_logado),
+    db: Session = Depends(get_db),
+):
+    """RF-15: o próprio usuário edita nome/telefone/placa (e-mail não é editável)."""
+    muda = dados._limpa().model_dump(exclude_unset=True)  # _limpa: placa → upper
+    if not muda:
+        raise HTTPException(status_code=422, detail="Nada para atualizar")
+    if "nome" in muda and (muda["nome"] or "").strip().__len__() < 2:
+        raise HTTPException(status_code=422, detail="Nome precisa de 2+ caracteres")
+    for campo, val in muda.items():
+        setattr(usuario, campo, (val or "").strip() or None)
+    db.commit()
+    db.refresh(usuario)
+    return usuario
+
+
+@router.put("/senha", status_code=204)
+@limiter.limit(LIMITS["auth_escrita"])
+def trocar_senha(
+    request: Request,
+    dados: TrocarSenha,
+    usuario: Usuario = Depends(get_usuario_logado),
+    db: Session = Depends(get_db),
+):
+    """
+    RF-15: troca de senha com a senha atual — e, ao contrário, derruba TODAS
+    as outras sessões do usuário (marcação de revogação global): quem troca a
+    senha quer estar sozinho no sistema de novo.
+    """
+    from core.security import verificar_senha, criar_hash_senha
+    from models.db_models import RevogacaoToken
+    from core.timeutils import utc_agora
+
+    if not verificar_senha(dados.senha_atual, usuario.senha_hash):
+        raise HTTPException(status_code=401, detail="Senha atual incorreta")
+    if dados.senha_atual == dados.nova_senha:
+        raise HTTPException(status_code=422, detail="A nova senha não pode ser igual à atual")
+    usuario.senha_hash = criar_hash_senha(dados.nova_senha)
+    # Marca global: todos os tokens emitidos antes de agora caem — inclusive o
+    # desta chamada (já validada: o 204 sai; o próximo request dá 401 e o app
+    # faz re-login sozinho com a senha nova). Padrão "mudei a senha, religue".
+    db.add(RevogacaoToken(jti=None, usuario_id=usuario.id, motivo="troca_senha",
+                          criado_em=utc_agora()))
+    db.commit()
+    return None
 
 
 @router.get("/me", response_model=UsuarioMeResponse)
