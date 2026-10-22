@@ -2,6 +2,8 @@ import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
+import asyncio
+from contextlib import asynccontextmanager
 from slowapi import _rate_limit_exceeded_handler  # noqa: F401  (mantido p/ compatibilidade)
 
 from core.config import settings
@@ -69,11 +71,51 @@ def popular_dados_demo() -> None:
         db.close()
 
 
-garantir_admin_padrao()
-popular_dados_demo()
+# ACH-02 (M2-02): em PRODUÇÃO o admin padrão NÃO nasce com senha sabida —
+# crie via `python -c "..."`/script interno ou defina DEMO_ADMIN_FIXTURE.
+if settings.ENVIRONMENT.lower() == "production":
+    print("🔒 production: admin padrão e seed demo desabilitados")
+else:
+    garantir_admin_padrao()
+    popular_dados_demo()
+
+async def _zapeador_reservas() -> None:
+    """
+    RF-23: a cada 60 s expira reservas CONFIRMADA vencidas e libera as vagas
+    presas a elas. O mesmo zap é chamado sob demanda nas leituras do app
+    (idempotente), então este loop é só a rede de segurança do mapa/painel.
+    """
+    from rules import reserva_service
+
+    while True:
+        try:
+            await asyncio.sleep(60)
+            db = SessionLocal()
+            try:
+                n = reserva_service.expirar_reservas_vencidas(db)
+                if n:
+                    print(f"⏱️  {n} reserva(s) expirada(s) — vagas liberadas")
+            finally:
+                db.close()
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:  # nunca derruba o servidor por causa do zap
+            print(f"⚠️  zapador de reservas: {exc}")
+            await asyncio.sleep(10)
+
+
+@asynccontextmanager
+async def _lifespan(app: FastAPI):
+    task = asyncio.create_task(_zapeador_reservas())
+    try:
+        yield
+    finally:
+        task.cancel()
+
 
 # Inicializa o app do FastAPI
 app = FastAPI(
+    lifespan=_lifespan,
     title=settings.APP_NAME,
     description=settings.APP_DESCRIPTION,
     version=settings.APP_VERSION,
@@ -86,6 +128,10 @@ app = FastAPI(
 
 # Adiciona Rate Limiter
 app.state.limiter = limiter
+# ACH-04: o handler precisa estar preso à EXCEÇÃO do slowapi — mapear só o
+# status 429 deixava o RateLimitExceeded virar 500 antes de chegar nele.
+from slowapi.errors import RateLimitExceeded
+app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
 app.add_exception_handler(429, rate_limit_exceeded_handler)
 
 # Adiciona middlewares de segurança na ordem correta

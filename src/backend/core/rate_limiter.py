@@ -12,10 +12,15 @@ def get_user_or_ip(request: Request) -> str:
     """
     auth_header = request.headers.get("Authorization", "")
     if auth_header.startswith("Bearer "):
-        # Usa o próprio token como identificador do usuário para rate limit
-        # Assim cada usuário tem seu próprio limite independente do IP
-        token = auth_header.split(" ")[1][:32]  # Usa só os primeiros 32 chars para economizar memória
-        return f"user:{token}"
+        # ACH-04 (M2-03): os primeiros 32 chars de um JWT são o HEADER —
+        # IDÊNTICOS para todos os usuários, ou seja, o "limite por usuário"
+        # era compartilhado. Identificador = hash curto do token completo
+        # (estável por sessão, sem guardar segredo em memória).
+        import hashlib
+
+        token = auth_header.split(" ")[1]
+        digest = hashlib.sha256(token.encode()).hexdigest()[:16]
+        return f"user:{digest}"
     # Se não estiver logado usa IP
     return f"ip:{get_remote_address(request)}"
 

@@ -883,43 +883,96 @@ function AbaRelatorios({ estSel }: { estSel: string | null }) {
     total_saidas: number;
     tempo_medio_permanencia_min: number;
   } | null>(null);
+  const [hist, setHist] = useState<Awaited<ReturnType<typeof parkingApi.ocupacaoHistorica>> | null>(null);
+  const [rot, setRot] = useState<Awaited<ReturnType<typeof parkingApi.rotacao>> | null>(null);
+  const [fin, setFin] = useState<Awaited<ReturnType<typeof parkingApi.financeiroResumo>> | null>(null);
   const [carregando, setCarregando] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+  const [baixando, setBaixando] = useState<"fluxo" | "financeiro" | null>(null);
 
   useEffect(() => {
     let alive = true;
     setCarregando(true);
-    parkingApi
-      .relatorioFluxo(periodo, estSel ?? undefined)
-      .then((d) => alive && setDados(d))
-      .catch(() => alive && setDados(null))
-      .finally(() => alive && setCarregando(false));
+    const id = estSel ?? undefined;
+    Promise.allSettled([
+      parkingApi.relatorioFluxo(periodo, id),
+      parkingApi.ocupacaoHistorica(periodo, id),
+      parkingApi.rotacao(periodo, id),
+      parkingApi.financeiroResumo(periodo, id),
+    ]).then(([f, h, r, n]) => {
+      if (!alive) return;
+      setErro(null);
+      if (f.status === "fulfilled") setDados(f.value);
+      if (h.status === "fulfilled") setHist(h.value);
+      if (r.status === "fulfilled") setRot(r.value);
+      if (n.status === "fulfilled") setFin(n.value);
+      if ([f, h, r, n].every((x) => x.status === "rejected")) {
+        setErro(
+          apiErrorMessage(
+            (f as PromiseRejectedResult).reason,
+            "Sem acesso aos relatórios neste estacionamento (painel: gestor/financeiro/admin)."
+          )
+        );
+      }
+      setCarregando(false);
+    });
     return () => {
       alive = false;
     };
   }, [periodo, estSel]);
 
+  async function exportar(tipo: "fluxo" | "financeiro") {
+    setBaixando(tipo);
+    try {
+      const ok = await parkingApi.baixarCsv(tipo, periodo, estSel ?? undefined);
+      if (!ok) {
+        Alert.alert(
+          "Exportação na web",
+          "O CSV é baixado pelo painel no navegador. No celular, abra o mesmo endereço no browser."
+        );
+      }
+    } catch (e) {
+      Alert.alert("Erro ao exportar", apiErrorMessage(e, "Verifique o acesso ao relatório."));
+    } finally {
+      setBaixando(null);
+    }
+  }
+
+  const maxDia = Math.max(1, ...(fin?.faturamento_por_dia ?? []).map((d) => d.valor));
+
   return (
     <View className="gap-5">
-      <View className="flex-row gap-2">
-        {(["diario", "semanal", "mensal"] as const).map((p) => (
-          <Pressable
-            key={p}
-            onPress={() => setPeriodo(p)}
-            className={`rounded-full px-4 py-2 ${
-              periodo === p ? "bg-blue-600" : "border border-slate-200 bg-white"
-            }`}
-          >
-            <Text
-              className={`text-[13px] font-semibold capitalize ${
-                periodo === p ? "text-white" : "text-slate-600"
+      {/* período + exportações lado a lado */}
+      <View className="flex-row flex-wrap items-center justify-between gap-3">
+        <View className="flex-row gap-2">
+          {(["diario", "semanal", "mensal"] as const).map((p) => (
+            <Pressable
+              key={p}
+              onPress={() => setPeriodo(p)}
+              className={`rounded-full px-4 py-2 ${
+                periodo === p ? "bg-blue-600" : "border border-slate-200 bg-white"
               }`}
             >
-              {p === "diario" ? "Diário" : p === "semanal" ? "Semanal" : "Mensal"}
-            </Text>
-          </Pressable>
-        ))}
+              <Text
+                className={`text-[13px] font-semibold capitalize ${
+                  periodo === p ? "text-white" : "text-slate-600"
+                }`}
+              >
+                {p === "diario" ? "Diário" : p === "semanal" ? "Semanal" : "Mensal"}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+        <View className="flex-row gap-2">
+          <Botao label="CSV fluxo" variant="contorno" className="px-4 py-2" loading={baixando === "fluxo"} onPress={() => exportar("fluxo")} />
+          <Botao label="CSV financeiro" variant="contorno" className="px-4 py-2" loading={baixando === "financeiro"} onPress={() => exportar("financeiro")} />
+        </View>
       </View>
 
+      {erro ? <Text className="text-[13px] text-red-600">{erro}</Text> : null}
+      {carregando ? <ActivityIndicator color="#2563EB" /> : null}
+
+      {/* RF-50 · fluxo consolidado */}
       <View className="flex-row flex-wrap gap-3">
         <View className="min-w-[150px] flex-1">
           <StatTile rotulo="Entradas" valor={String(dados?.total_entradas ?? "—")} tone="verde" />
@@ -935,10 +988,128 @@ function AbaRelatorios({ estSel }: { estSel: string | null }) {
           />
         </View>
       </View>
-      {carregando ? <ActivityIndicator color="#2563EB" /> : null}
+
+      {/* RF-52 · mapa de calor hora × andar (ADR-09: derivado do Histórico) */}
+      <Card className="p-5">
+        <Text className="text-[15px] font-bold text-slate-800">
+          Ocupação por hora × andar
+        </Text>
+        <Text className="mt-0.5 text-xs text-slate-500">
+          Média de {hist?.dias ?? "—"} dia(s) no período — horas locais (America/Manaus).
+        </Text>
+        <View className="mt-3 gap-2">
+          {(hist?.dados_por_andar ?? []).map((a) => (
+            <View key={`${a.estacionamento_id}-${a.andar_numero}`} className="flex-row items-center gap-2">
+              <Text className="w-14 text-[12px] font-semibold text-slate-600">
+                {a.andar_numero >= 0 ? `P${a.andar_numero}` : `B${-a.andar_numero}`}
+              </Text>
+              <View className="flex-1 flex-row gap-px overflow-hidden rounded">
+                {a.ocupacao_por_hora.map((pct, h) => (
+                  <View
+                    key={h}
+                    className="h-3.5 flex-1"
+                    style={{
+                      backgroundColor: "#2563EB",
+                      opacity: 0.06 + Math.min(Math.max(pct, 0), 100) / 100 * 0.94,
+                    }}
+                  />
+                ))}
+              </View>
+              <Text className="w-12 text-right text-[11px] tabular-nums text-slate-500">
+                {Math.max(...a.ocupacao_por_hora, 0).toFixed(0)}%
+              </Text>
+            </View>
+          ))}
+          {(hist?.dados_por_andar ?? []).length === 0 ? (
+            <Text className="text-[13px] text-slate-400">Sem dados no período.</Text>
+          ) : (
+            <View className="flex-row justify-between pl-16">
+              {["0h", "6h", "12h", "18h", "23h"].map((h) => (
+                <Text key={h} className="text-[10px] text-slate-400">{h}</Text>
+              ))}
+            </View>
+          )}
+        </View>
+      </Card>
+
+      {/* RF-54 · rotação por andar */}
+      {rot && rot.por_andar.length > 0 ? (
+        <Card className="p-5">
+          <Text className="text-[15px] font-bold text-slate-800">Rotação dos andares</Text>
+          <Text className="mt-0.5 text-xs text-slate-500">
+            {rot.total_entradas} entrada(s) · permanência média {formatarMinutos(rot.tempo_medio_min)}
+          </Text>
+          <View className="mt-3 gap-1.5">
+            {rot.por_andar.map((a) => (
+              <View key={`${a.estacionamento_id}-${a.andar_numero}`} className="flex-row items-center">
+                <Text className="w-14 text-[12px] font-semibold text-slate-600">
+                  {a.andar_numero >= 0 ? `P${a.andar_numero}` : `B${-a.andar_numero}`}
+                </Text>
+                <Text className="flex-1 text-[12px] text-slate-500">
+                  {a.entradas} entradas · {a.vagas_ativas} vagas ativas
+                </Text>
+                <Chip label={`giro ${a.giro.toFixed(2)}`} tone="azul" />
+                <Text className="ml-2 w-16 text-right text-[11px] tabular-nums text-slate-500">
+                  {formatarMinutos(a.tempo_medio_min)}
+                </Text>
+              </View>
+            ))}
+          </View>
+        </Card>
+      ) : null}
+
+      {/* RF-53 · financeiro do período (só leitura — fase 2 mantém o caixa) */}
+      {fin ? (
+        <Card className="p-5">
+          <Text className="text-[15px] font-bold text-slate-800">Financeiro do período</Text>
+          <View className="mt-3 flex-row flex-wrap gap-3">
+            <View className="min-w-[140px] flex-1">
+              <StatTile rotulo="Faturamento" valor={formatarMoedaBR(fin.faturamento_total)} tone="verde" />
+            </View>
+            <View className="min-w-[140px] flex-1">
+              <StatTile rotulo="Ticket médio" valor={formatarMoedaBR(fin.ticket_medio)} tone="azul" />
+            </View>
+            <View className="min-w-[140px] flex-1">
+              <StatTile rotulo="Pagamentos" valor={String(fin.total_pagamentos)} tone="neutro" />
+            </View>
+          </View>
+          <View className="mt-3 gap-1.5">
+            {[
+              { k: "Pix", n: fin.pagamentos_pix, v: fin.valor_pix },
+              { k: "Cartão (créd.+débito)", n: fin.pagamentos_cartao, v: fin.valor_cartao },
+              { k: "Dinheiro", n: fin.pagamentos_dinheiro, v: fin.valor_dinheiro },
+            ].map((m) => (
+              <View key={m.k} className="flex-row items-center">
+                <Text className="flex-1 text-[13px] text-slate-600">{m.k}</Text>
+                <Text className="text-[12px] tabular-nums text-slate-400">{m.n}×</Text>
+                <Text className="ml-3 w-24 text-right text-[13px] font-semibold tabular-nums text-slate-700">
+                  {formatarMoedaBR(m.v)}
+                </Text>
+              </View>
+            ))}
+          </View>
+          {fin.faturamento_por_dia.length > 0 ? (
+            <View className="mt-4">
+              <Text className="mb-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                Faturamento por dia
+              </Text>
+              {fin.faturamento_por_dia.map((d) => (
+                <View key={d.data} className="mb-1 flex-row items-center gap-2">
+                  <Text className="w-20 text-[11px] tabular-nums text-slate-500">{d.data}</Text>
+                  <View className="h-2.5 rounded" style={{ width: `${Math.max(2, (d.valor / maxDia) * 100)}%`, backgroundColor: "#10B981" }} />
+                  <Text className="ml-auto text-[11px] font-semibold tabular-nums text-slate-600">
+                    {formatarMoedaBR(d.valor)}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          ) : null}
+        </Card>
+      ) : null}
+
       <Text className="text-xs text-slate-400">
-        Relatório consolidado de entradas e saídas no período — fonte dos dados
-        históricos do estacionamento.
+        Relatórios consolidados (SDD M6): fluxo, ocupação histórica derivada do
+        Histórico, rotação e financeiro — CSV com escape para Excel pt-BR.
       </Text>
     </View>
   );

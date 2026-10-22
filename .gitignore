@@ -39,5 +39,9 @@ yarn-error.*
 # generated native folders
 /ios
 /android
-# banco sqlite de desenvolvimento
+# banco sqlite de desenvolvimento + base isolada do pytest
 .smartparking.db
+*.pytest_smartparking.db
+*.pytest_smartparking.db-wal
+*.pytest_smartparking.db-shm
+src/backend/.pytest_cache/

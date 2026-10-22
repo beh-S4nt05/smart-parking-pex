@@ -66,11 +66,11 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
                 status_code=405, content={"detail": "Método não permitido"}
             )
 
-        # 3. Proteção contra SQL Injection: verifica TODOS os parâmetros de query e body
+        # 3. (era "proteção regex anti-SQLi" — REMOVIDA por ACH-05/ADR-06:
+        #    o SQLAlchemy já parametriza 100% das queries, e o regex bloqueava
+        #    dados legítimos — senha com `;`, nome com apóstrofo, "create" em
+        #    texto livre. Bloqueio de SCANNERS (UA) e limite de corpo seguem.)
         client_ip = request.client.host if request.client else "unknown"
-        blocked = await self._verificar_sql_injection(request)
-        if blocked is not None:
-            return blocked
 
         # 4. Anti-duplicação de requisições: bloqueia requisições idênticas feitas em menos de 1s
         # Evita cliques duplicados e ataques de repetição

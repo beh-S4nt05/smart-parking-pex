@@ -492,6 +492,94 @@ export const parkingApi = {
     };
   },
 
+  // ---- Marca 3 (SDD RF-52/54/55): relatórios do painel + exportação CSV ----
+  async ocupacaoHistorica(
+    periodo: "diario" | "semanal" | "mensal" = "semanal",
+    estacionamentoId?: string
+  ) {
+    const { data } = await api.get("/api/relatorios/ocupacao-historica", {
+      params: { periodo, ...(estacionamentoId ? { estacionamento_id: estacionamentoId } : {}) },
+    });
+    return data as {
+      periodo: string;
+      dias: number;
+      dados_por_andar: Array<{
+        andar_numero: number;
+        estacionamento_id: string;
+        vagas_ativas: number;
+        ocupacao_por_hora: number[]; // 24 buckets locais (America/Manaus), %
+      }>;
+    };
+  },
+
+  async rotacao(
+    periodo: "diario" | "semanal" | "mensal" = "diario",
+    estacionamentoId?: string
+  ) {
+    const { data } = await api.get("/api/relatorios/rotacao", {
+      params: { periodo, ...(estacionamentoId ? { estacionamento_id: estacionamentoId } : {}) },
+    });
+    return data as {
+      total_entradas: number;
+      tempo_medio_min: number;
+      por_andar: Array<{
+        andar_numero: number;
+        estacionamento_id: string;
+        entradas: number;
+        vagas_ativas: number;
+        giro: number;
+        tempo_medio_min: number;
+      }>;
+    };
+  },
+
+  async financeiroResumo(
+    periodo: "diario" | "semanal" | "mensal" = "diario",
+    estacionamentoId?: string
+  ) {
+    const { data } = await api.get("/api/admin/financeiro/resumo", {
+      params: { periodo, ...(estacionamentoId ? { estacionamento_id: estacionamentoId } : {}) },
+    });
+    return data as {
+      faturamento_total: number;
+      ticket_medio: number;
+      total_pagamentos: number;
+      pagamentos_pix: number;
+      pagamentos_cartao: number;
+      pagamentos_dinheiro: number;
+      valor_pix: number;
+      valor_cartao: number;
+      valor_dinheiro: number;
+      faturamento_por_dia: Array<{ data: string; valor: number }>;
+      faturamento_por_tipo_vaga: Array<{ tipo_vaga: string; valor: number }>;
+    };
+  },
+
+  /**
+   * RF-55: baixa CSV pelo navegador (blob + <a download>). Em nativo o
+   * `document` não existe → devolve false e a tela orienta o painel web.
+   */
+  async baixarCsv(
+    tipo: "fluxo" | "financeiro",
+    periodo: string,
+    estacionamentoId?: string
+  ): Promise<boolean> {
+    const { data } = await api.get(`/api/relatorios/${tipo}/csv`, {
+      params: { periodo, ...(estacionamentoId ? { estacionamento_id: estacionamentoId } : {}) },
+      responseType: "blob",
+    });
+    if (typeof document === "undefined") return false;
+    const url = URL.createObjectURL(data as unknown as Blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `relatorio_${tipo}_${periodo}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+    return true;
+  },
+
   async ocupacaoHoje(estacionamentoId?: string) {
     const { data } = await api.get("/api/relatorios/ocupacao", {
       params: {

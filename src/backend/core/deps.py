@@ -1,3 +1,5 @@
+from typing import Optional
+
 import jwt as pyjwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
@@ -80,6 +82,40 @@ def permissao_necessaria(*cargos_permitidos):
         return usuario
 
     return checador
+
+
+def garantir_escopo_estacionamento(
+    usuario: Usuario,
+    estacionamento_id: Optional[str],
+    acao: str = "usar este estacionamento",
+) -> Optional[str]:
+    """
+    ADR-07 (ACH-06/16): ÚNICA fonte de escopo anti-BOLA para rotas que recebem
+    `estacionamento_id` (preços, pagamentos, caixas, cupons, eventos, relatórios).
+    - admin: vê/age em qualquer um (ou no global quando id é None);
+    - gestor/financeiro: reescrito para o próprio; pedir o dos outros = 403;
+    - demais papéis: sem escopo de painel → 403.
+    Retorna o id a ser usado (nunca o id alheio).
+    """
+    role = usuario.role
+    if role == TipoUsuario.ADMIN.value:
+        return estacionamento_id
+    if role not in (TipoUsuario.GESTOR.value, TipoUsuario.FINANCEIRO.value):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Acesso negado. Você não tem permissão para {acao}.",
+        )
+    if not usuario.estacionamento_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Usuário não está vinculado a nenhum estacionamento. Contate o administrador.",
+        )
+    if estacionamento_id and estacionamento_id != usuario.estacionamento_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Acesso negado. Você só pode {acao} no seu estacionamento.",
+        )
+    return usuario.estacionamento_id
 
 
 # Dependências prontas para usar nas rotas

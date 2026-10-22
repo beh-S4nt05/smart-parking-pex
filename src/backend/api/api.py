@@ -1,10 +1,15 @@
+import csv
+import io
+from datetime import datetime
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Query, HTTPException
+from fastapi import APIRouter, Depends, Query, HTTPException, Request
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 
 from core.config import settings
+from core.rate_limiter import limiter, LIMITS
 from core.deps import (
     get_usuario_financeiro,
     get_usuario_gestor,
@@ -135,7 +140,9 @@ async def proxima_vaga(
 
 # --- Rotas de Reservas (requerem autenticação) ---
 @router.post("/reservas", response_model=ReservaResponse, status_code=201)
+@limiter.limit(LIMITS["criar_reserva"])
 async def criar_reserva(
+    request: Request,
     dados: ReservaCreate,
     db: Session = Depends(get_db),
     usuario: Usuario = Depends(get_usuario_logado),
@@ -240,7 +247,9 @@ async def atualizar_status_vagas_lote(
 
 
 @router.patch("/vagas/{id}/status", response_model=VagaResponse)
+@limiter.limit(LIMITS["atualiza_status_vaga"])
 async def atualizar_status_vaga(
+    request: Request,
     id: str,
     dados: VagaAtualizaStatus,
     db: Session = Depends(get_db),
@@ -261,7 +270,9 @@ async def atualizar_status_vaga(
 # existe /relatorios/fluxo/publico só com agregados — foi essa a fonte que o
 # StatusPanel da Home sempre usou (tempo_medio_permanencia_min).
 @router.get("/relatorios/fluxo", response_model=FluxoResponse)
+@limiter.limit(LIMITS["relatorios"])
 async def relatorio_fluxo(
+    request: Request,
     periodo: str = Query(..., description="Período: diario, semanal, mensal"),
     estacionamento_id: Optional[str] = Query(None),
     db: Session = Depends(get_db),
@@ -297,7 +308,9 @@ async def relatorio_fluxo_publico(
 
 
 @router.get("/relatorios/ocupacao", response_model=OcupacaoResponse)
+@limiter.limit(LIMITS["relatorios"])
 async def relatorio_ocupacao(
+    request: Request,
     periodo: str = Query(..., description="Período: diario, semanal, mensal"),
     estacionamento_id: Optional[str] = Query(None),
     db: Session = Depends(get_db),
@@ -307,3 +320,113 @@ async def relatorio_ocupacao(
     return relatorio_service.gerar_relatorio_ocupacao(
         db, periodo, garantir_escopo_relatorio(usuario, estacionamento_id)
     )
+
+
+# ======================================================================
+# MARCA 3 · RF-51/52/54/55 — ocupação histórica, rotação e exportações CSV
+# (tudo escopado por papel com o MESMO garantidor dos demais relatórios)
+# ======================================================================
+
+def _csv_response(nome: str, linhas: list[list]) -> StreamingResponse:
+    """text/csv com BOM (Excel pt-BR abre sem gambiarra de encoding)."""
+    buf = io.StringIO()
+    buf.write("\ufeff")
+    w = csv.writer(buf, delimiter=";", lineterminator="\r\n")
+    for ln in linhas:
+        w.writerow(ln)
+    stamp = datetime.utcnow().strftime("%Y%m%d_%H%M")
+    return StreamingResponse(
+        iter([buf.getvalue()]),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{nome}_{stamp}.csv"'},
+    )
+
+
+@router.get("/relatorios/ocupacao-historica")
+@limiter.limit(LIMITS["relatorios"])
+async def relatorio_ocupacao_historica(
+    request: Request,
+    periodo: str = Query("semanal", description="Período: diario, semanal, mensal"),
+    estacionamento_id: Optional[str] = Query(None),
+    db: Session = Depends(get_db),
+    usuario: Usuario = Depends(get_usuario_financeiro),
+):
+    """
+    RF-52 (ADR-09): matriz hora × andar DERIVADA dos intervalos do Histórico —
+    ocupação média por hora do dia LOCAL (America/Manaus) na janela pedida.
+    """
+    return relatorio_service.gerar_relatorio_ocupacao_historica(
+        db, periodo, garantir_escopo_relatorio(usuario, estacionamento_id)
+    )
+
+
+@router.get("/relatorios/rotacao")
+@limiter.limit(LIMITS["relatorios"])
+async def relatorio_rotacao(
+    request: Request,
+    periodo: str = Query("diario", description="Período: diario, semanal, mensal"),
+    estacionamento_id: Optional[str] = Query(None),
+    db: Session = Depends(get_db),
+    usuario: Usuario = Depends(get_usuario_financeiro),
+):
+    """RF-54: giro (entradas ÷ vagas ativas) e tempo médio por andar no período."""
+    return relatorio_service.gerar_relatorio_rotacao(
+        db, periodo, garantir_escopo_relatorio(usuario, estacionamento_id)
+    )
+
+
+@router.get("/relatorios/fluxo/csv")
+@limiter.limit(LIMITS["relatorios"])
+async def relatorio_fluxo_csv(
+    request: Request,
+    periodo: str = Query("diario"),
+    estacionamento_id: Optional[str] = Query(None),
+    db: Session = Depends(get_db),
+    usuario: Usuario = Depends(get_usuario_financeiro),
+):
+    """RF-55: uma linha por estadia (placa, entrada, saída, minutos, valor)."""
+    dados = relatorio_service.gerar_relatorio_fluxo(
+        db, periodo, garantir_escopo_relatorio(usuario, estacionamento_id)
+    )
+    linhas = [["id", "entrada_em", "saida_em", "placa", "tempo_min", "valor_total"]]
+    for r in dados["registros"]:
+        linhas.append([
+            r["id"],
+            r["entrada_em"].isoformat(sep=" ", timespec="minutes") if r["entrada_em"] else "",
+            r["saida_em"].isoformat(sep=" ", timespec="minutes") if r["saida_em"] else "",
+            r["placa"] or "",
+            r["tempo_permanencia"] if r["tempo_permanencia"] is not None else "",
+            f'{r["valor_total"]:.2f}' if r["valor_total"] is not None else "",
+        ])
+    return _csv_response("fluxo", linhas)
+
+
+@router.get("/relatorios/financeiro/csv")
+@limiter.limit(LIMITS["relatorios"])
+async def relatorio_financeiro_csv(
+    request: Request,
+    periodo: str = Query("diario"),
+    estacionamento_id: Optional[str] = Query(None),
+    db: Session = Depends(get_db),
+    usuario: Usuario = Depends(get_usuario_financeiro),
+):
+    """RF-55: pagamentos do período (método/status/valores), escopo por papel."""
+    from models.db_models import Pagamento
+    from rules import financeiro_service
+
+    est = garantir_escopo_relatorio(usuario, estacionamento_id)
+    ini, fim = financeiro_service._calcular_periodo(periodo)
+    q = db.query(Pagamento).filter(
+        Pagamento.data_pagamento >= ini, Pagamento.data_pagamento < fim
+    )
+    if est:
+        q = q.filter(Pagamento.estacionamento_id == est)
+    linhas = [["id", "data", "metodo", "status", "valor_bruto", "desconto", "valor_total"]]
+    for p in q.order_by(Pagamento.data_pagamento.desc()).all():
+        linhas.append([
+            p.id,
+            p.data_pagamento.strftime("%Y-%m-%d %H:%M") if p.data_pagamento else "",
+            p.metodo_pagamento, p.status_pagamento,
+            f"{p.valor_bruto or 0:.2f}", f"{p.valor_desconto or 0:.2f}", f"{p.valor_total or 0:.2f}",
+        ])
+    return _csv_response("financeiro", linhas)

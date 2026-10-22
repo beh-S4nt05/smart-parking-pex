@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from core.security import criar_hash_senha
 from models.db_models import (
-    Estacionamento, Andar, Vaga, Usuario,
+    Estacionamento, Andar, Vaga, Usuario, TipoVaga,
     StatusVaga, TipoUsuario, Historico, Reserva, Pagamento
 )
 from models.schemas import EstacionamentoCreate, AndarCreate, VagaCreate, UsuarioAdminCreate, UsuarioAdminUpdate
@@ -282,13 +282,33 @@ def criar_vaga(db: Session, dados: VagaCreate) -> Vaga:
     return nova_vaga
 
 
-def criar_vagas_em_lote(db: Session, andar_id: str, quantidade: int, prefixo_codigo: str = "") -> List[Vaga]:
-    """Cria várias vagas de uma vez em um andar (útil para cadastro rápido)"""
+def criar_vagas_em_lote(
+    db: Session,
+    andar_id: str,
+    quantidade: int,
+    prefixo_codigo: str = "",
+    tipo: str = TipoVaga.COMUM,
+) -> List[Vaga]:
+    """Cria várias vagas de uma vez em um andar (útil para cadastro rápido).
+
+    ACH-17: o lote agora aceita `tipo` e mantém `andares.capacidade` e
+    `estacionamentos.total_vagas` — antes ambos divergiam do cadastro real.
+    """
     andar = db.query(Andar).filter(Andar.id == andar_id).first()
     if not andar:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Andar não encontrado"
+        )
+    if quantidade < 1 or quantidade > 500:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="quantidade deve estar entre 1 e 500",
+        )
+    if tipo not in {t.value for t in TipoVaga}:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"tipo inválido — use {[t.value for t in TipoVaga]}",
         )
 
     vagas_existentes = db.query(Vaga).filter(Vaga.andar_id == andar_id).count()
@@ -300,10 +320,16 @@ def criar_vagas_em_lote(db: Session, andar_id: str, quantidade: int, prefixo_cod
         vaga = Vaga(
             andar_id=andar_id,
             codigo=codigo,
-            status=StatusVaga.LIVRE
+            status=StatusVaga.LIVRE,
+            tipo=tipo,
         )
         db.add(vaga)
         novas_vagas.append(vaga)
+
+    andar.capacidade = vagas_existentes + quantidade
+    est = db.query(Estacionamento).filter(Estacionamento.id == andar.estacionamento_id).first()
+    if est:
+        est.total_vagas = (est.total_vagas or 0) + quantidade
 
     db.commit()
     for v in novas_vagas:

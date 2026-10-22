@@ -25,7 +25,13 @@ services:
       # para demo/banca por IP na LAN. Produção real: ENVIRONMENT=production +
       # TRUSTED_HOSTS='["seu.dominio"]' e APP_SIGNING_SECRET fortes.
       - ENVIRONMENT=staging
-      - SECRET_KEY=mude_efta_chave_secreta_em_producao
+      # ACH-02/M2-02 + ACH-03/M2-01: segredos e URL do QR passam por env do
+      # host (padrão mantém a demo local funcionando; produção: exportar ANTES do up).
+      - SECRET_KEY=${SECRET_KEY:-mude_efta_chave_secreta_em_producao}
+      - APP_SIGNING_SECRET=${APP_SIGNING_SECRET:-smartparking_default_signing_key_change_in_production}
+      # QR do simulador: sem isto o código no celular aponta para o localhost DELE.
+      # Na demo pela LAN: SIMULADOR_BASE_URL=http://IP_DO_PC:8081 ./scripts/docker.sh up
+      - SIMULADOR_BASE_URL=${SIMULADOR_BASE_URL:-http://localhost:8081}
       # Fallback SQLite silencioso desligado: se o Postgres falhar, o container
       # mostra o erro na cara (evita apresentar "dados fantasmas" do .db local)
       - DB_AUTO_SQLITE=false

@@ -104,6 +104,7 @@ export const RESERVA_STATUS_LABEL: Record<string, string> = {
   confirmada: "Confirmada",
   cancelada: "Cancelada",
   concluida: "Concluída",
+  expirada: "Expirada",
 };
 
 export const ORIGEM_LABEL: Record<string, string> = {

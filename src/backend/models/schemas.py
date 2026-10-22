@@ -266,23 +266,16 @@ class ConfiguracaoPrecoResponse(ConfiguracaoPrecoBase):
     id: str
     estacionamento_id: str
     criado_em: datetime
+    # RF-60: expõe fração/minimo. A COLUNA nasceu com acento (valor_fração_15min);
+    # a API devolve o nome limpo — validation_alias lê o ORM, serialization_alias
+    # vale porque o FastAPI serializa response_model com by_alias=True.
+    valor_fracao_15min: Optional[float] = Field(
+        None, validation_alias="valor_fração_15min", serialization_alias="valor_fracao_15min"
+    )
+    cobrar_valor_minimo: bool = True
+    valor_minimo: Optional[float] = None
 
-    model_config = {"from_attributes": True}
-
-
-class PagamentoResponse(BaseModel):
-    id: str
-    historico_id: str
-    estacionamento_id: str
-    valor_total: float
-    metodo_pagamento: str
-    status_pagamento: str
-    data_pagamento: datetime
-    comprovante_url: Optional[str] = None
-    placa_veiculo: Optional[str] = None
-    tempo_permanencia_min: Optional[int] = None
-
-    model_config = {"from_attributes": True}
+    model_config = {"from_attributes": True, "populate_by_name": True}
 
 
 class ResumoFinanceiroResponse(BaseModel):
@@ -300,14 +293,6 @@ class ResumoFinanceiroResponse(BaseModel):
     valor_dinheiro: float
     faturamento_por_dia: List[dict]
     faturamento_por_tipo_vaga: List[dict]
-
-
-class RegistrarPagamentoRequest(BaseModel):
-    historico_id: str
-    metodo_pagamento: str = Field(..., pattern="^(pix|cartao|dinheiro)$")
-    valor_total: float = Field(..., gt=0)
-    comprovante_url: Optional[str] = None
-    observacoes: Optional[str] = None
 
 
 

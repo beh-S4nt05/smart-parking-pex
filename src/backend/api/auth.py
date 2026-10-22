@@ -1,5 +1,5 @@
 from typing import Optional
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -11,7 +11,19 @@ from models.schemas import (
     UsuarioCreate, UsuarioResponse, UsuarioMeResponse, LoginRequest,
     TokenResponse, RefreshRequest
 )
+from core.config import settings
 from rules import auth_service, social_auth_service
+
+
+def _social_habilitado() -> None:
+    """ACH-08/ADR-06: Google/Apple/Facebook têm bugs conhecidos (JWKS/Facebook
+    sem app validation) e o front não os usa em produção — as rotas ficam
+    atrás de flag; desligadas, respondem 404."""
+    if not settings.LOGIN_SOCIAL_ENABLED:
+        raise HTTPException(
+            status_code=404,
+            detail="Login social desabilitado (LOGIN_SOCIAL_ENABLED=false)",
+        )
 
 router = APIRouter(prefix="/auth", tags=["Autenticação"])
 
@@ -88,6 +100,7 @@ async def login_google(request: Request, dados: GoogleLoginRequest, db: Session 
     Envie o id_token obtido após login com o Google no frontend.
     Cria automaticamente o usuário se ele não existir.
     """
+    _social_habilitado()
     return await social_auth_service.autenticar_google(dados.id_token, db)
 
 
@@ -99,6 +112,7 @@ async def login_facebook(request: Request, dados: FacebookLoginRequest, db: Sess
     Envie o access_token obtido após login com o Facebook no frontend.
     Cria automaticamente o usuário se ele não existir.
     """
+    _social_habilitado()
     return await social_auth_service.autenticar_facebook(dados.access_token, db)
 
 
@@ -110,4 +124,5 @@ async def login_apple(request: Request, dados: AppleLoginRequest, db: Session = 
     Envie o identity_token obtido após login com Apple no frontend.
     Cria automaticamente o usuário se ele não existir.
     """
+    _social_habilitado()
     return await social_auth_service.autenticar_apple(dados.identity_token, db)

@@ -143,7 +143,9 @@ export default function Login() {
         </Text>
       </Text>
 
-      {/* Atalhos de demonstração (credenciais do seed) */}
+      {/* Atalhos de demonstração (credenciais do seed) — ACH-02: aparecem só
+          em build de desenvolvimento; num app de produção eles somem sozinhos. */}
+      {__DEV__ ? (
       <View className="mt-8 rounded-2xl border border-slate-200 bg-slate-50 p-4">
         <Text className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
           Acesso rápido (demo)
@@ -181,6 +183,7 @@ export default function Login() {
           </Pressable>
         </View>
       </View>
+      ) : null}
     </View>
   );
 
