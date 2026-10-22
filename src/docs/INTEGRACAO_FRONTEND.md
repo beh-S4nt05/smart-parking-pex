@@ -473,9 +473,18 @@ O app em `src/frontend/smart-parking` usa a API de ponta a ponta (sem mocks):
 | Dados | `src/hooks/useEstacionamentos.ts` · `useMapaVagas.ts` · `useReservas.ts` | polling (`pollingMs`) + cache de última resposta para offline |
 | Telas | `src/app/*.tsx` | responsivas: `useWindowDimensions()` escolhe layout web largo vs. stack mobile na mesma rota |
 
-**URL da API**: `.env` → `EXPO_PUBLIC_API_URL` (dev local: `http://localhost:8000`;
-Expo Go no celular: IP LAN; preview: URL pública do backend). O token é o mesmo
-entre web e mobile (mesma origem de storage por dispositivo).
+**URL da API** (reescrita em 22/10 — ACH-21): UMA API, resolução por plataforma no
+cliente (`resolverApiURL()` em `src/services/api.ts`):
+- override `EXPO_PUBLIC_API_URL` (`.env`) → manda em tudo (porta ≠ 8000, túnel ngrok,
+  domínio de produção);
+- **web** servida no `:80`/`:443` (ex.: `expo export` atrás do nginx) → same-origin;
+  em dev (`:8081`) → `http://<host-atual>:8000`;
+- **Expo Go/dev client** → IP LAN publicado pelo `npx expo start` (`expo-constants`
+  → `expoConfig.hostUri`) — o celular acha o PC sem `.env`;
+- **emulador Android** → `http://10.0.2.2:8000` (alias do host).
+Não existe "API da web" e "API do mobile" — seria divergência de contrato; o que
+existe é UM backend com UM endereço por ambiente, resolvido pelo cliente. O token é
+o mesmo entre web e mobile (mesma origem de storage por dispositivo).
 
 ### Fluxo admin: QR do simulador
 1. Painel → aba **Simulador QR** (`/simulador-qr`): escolhe shopping + andar +

@@ -15,6 +15,7 @@ import axios, {
   AxiosResponse,
   InternalAxiosRequestConfig,
 } from "axios";
+import Constants from "expo-constants";
 import { storage } from "./storage";
 import { addRequestSignerInterceptor } from "./requestSigner";
 import type {
@@ -34,25 +35,44 @@ import type {
   VagaTipo,
 } from "../types/api";
 
-// URL base da API.
-// - Com .env: usa EXPO_PUBLIC_API_URL (o valor que mandar).
-// - Web sem .env: auto-detecta o HOST atual na porta 8000 — abrir o preview no
-//   celular ou noutro PC da rede já aponta para a máquina certa sozinha
-//   (ex.: http://192.168.0.42:8000). OBS: o app NÃO tem env "DEFAULT_API_URL"
-//   — se você precisa de outra porta (ex.: 8010), defina EXPO_PUBLIC_API_URL.
-// - Nativo (Expo Go): localhost não existe no celular → configure o IP LAN.
-const DEFAULT_API_URL = (() => {
+// ======================================================================
+// URL base da API — UMA API, UMA RESOLUÇÃO POR PLATAFORMA (ACH-21, 22/10).
+// O erro clássico que derrubava o celular inteiro: localhost no telefone é
+// o próprio telefone. Em vez de "uma API para web e outra para mobile", o
+// cliente resolve sozinho o host certo e o backend continua um só:
+//   · override manual EXPO_PUBLIC_API_URL (túnel ngrok, domínio próprio,
+//     porta fora de 8000) → manda em tudo;
+//   · web servida no :80/:443 (ex.: export + nginx) → same-origin;
+//   · web dev (:8081) → mesmo host na 8000;
+//   · Expo Go/dev client → o IP LAN que o próprio `expo start` publica em
+//     Constants.expoConfig.hostUri (mudou de Wi-Fi? mudou o IP? nada a fazer);
+//   · emulador Android → 10.0.2.2 (alias do host); iOS sim compartilha rede.
+// ======================================================================
+function resolverApiURL(): string {
+  const env = (process.env.EXPO_PUBLIC_API_URL || "").trim();
+  if (env) return env.replace(/\/+$/, "");
+
   if (Platform.OS === "web" && typeof window !== "undefined") {
-    const host = window.location?.hostname;
-    if (host && host !== "localhost" && host !== "127.0.0.1") {
+    const { hostname, port, protocol } = window.location;
+    if (port === "" || port === "80" || port === "443") {
+      return `${protocol}//${hostname}`;
+    }
+    return `http://${hostname}:8000`;
+  }
+
+  // hostUri vem como "192.168.0.42:8081" ou "exp://192.168.0.42:8081"
+  const hostUri = Constants.expoConfig?.hostUri;
+  if (hostUri) {
+    const host = hostUri.split("://").pop()!.split(":")[0];
+    if (host && host !== "localhost" && host !== "127.0.0.1" && host !== "[::1]") {
       return `http://${host}:8000`;
     }
   }
+  if (Platform.OS === "android") return "http://10.0.2.2:8000";
   return "http://localhost:8000";
-})();
+}
 
-export const API_URL: string =
-  (process.env.EXPO_PUBLIC_API_URL || DEFAULT_API_URL).replace(/\/+$/, "");
+export const API_URL: string = resolverApiURL();
 
 if (__DEV__) {
   // trilha de depuração: qual URL o app está usando (aparece no console do navegador/Metro)
@@ -184,7 +204,7 @@ export function apiErrorMessage(err: unknown, fallback = "Algo deu errado. Tente
     if (first?.msg) return humanizeValidationMessage(first.msg);
   }
   if (e?.code === "ERR_NETWORK" || !e?.response) {
-    return `Não foi possível alcançar a API em ${API_URL} — confira se o backend está rodando nessa porta (src/backend/.env → PORT) e se o .env do app aponta para o mesmo endereço.`;
+    return `Não foi possível alcançar a API em ${API_URL}. Confira: (1) o backend está rodando? (2) no celular, ele está na MESMA rede do PC e o app foi aberto pelo QR do "npx expo start"? (3) porta diferente de 8000? Ajuste EXPO_PUBLIC_API_URL em src/frontend/smart-parking/.env e reinicie com "npx expo start -c".`;
   }
   return fallback;
 }

@@ -161,7 +161,8 @@ Severidade: **A** = corrigir antes de expor; **M** = corrigir nas marcas 3–4; 
 | ACH-17 | B | Lote cria só vagas `comum` e não atualiza `capacidade`/`total_vagas` | `admin_service.py` | M3-09 |
 | ACH-18 | B | Ocupação % conta vagas `inativa` no denominador; relatório de ocupação é **snapshot atual**, não histórico | `relatorio_service.py` | M3-02 |
 | ACH-19 | B | `rules/` importa `HTTPException` e `Session` (a doc afirma independência de framework) | `rules/*.py` | — (documentar) |
-| ACH-20 | B | Higiene: venv `meu_server_pex/` versionado; `src/.gitignore` ignora a si mesmo; `AGENTS.md`/`metro.config.js` citam SDK 54 (projeto é SDK 57); `run-dev.sh` sobe o stack completo e depois o backend local (conflito na 8000); `.env-sample` × `.env.example`; `.npmrc engine-strict` + npm exato; tipos TS (`ocupacaoHoje`, `image.d.ts`, `*.css` 3×); texto do simulador diz "admin ou gestor" | vários | M2-06 |
+| ACH-20 | B | Higiene: venv `meu_server_pex/` versionado; `src/.gitignore` ignora a si mesmo; `AGENTS.md`/`metro.config.js` citam SDK 54 (projeto é SDK 57); `run-dev.sh` sobe o stack completo e depois o backend local (conflito na 8000); `.env-sample` × `.env.example`; `.npmrc engine-strict` + npm exato; tipos TS (`ocupacaoHoje`, `image.d.ts`, `*.css` 3×); texto do simulador diz "admin ou gestor" — ✅ 22/10: `run-dev.sh` reescrito (âncora dirname, só banco no Docker, venv, timeout no pg_isready, DB_AUTO_SQLITE=false), `start_dev.sh` virou delegação, `.gitignore` cobre `.venv/`+`*.db` | vários | M2-06 |
+| ACH-21 | B | Conexão front↔back quebrava fora do mesmo-host: `.env.example` vinha com `EXPO_PUBLIC_API_URL=http://localhost:8000` **ativa** (copiar = congelar localhost em todas as plataformas — no celular, localhost é o próprio celular) e a auto-detecção existia só na web. Fix: `resolverApiURL()` — override manual → web same-origin/`:8000` → Expo Go via `hostUri` do Metro → Android emu `10.0.2.2`; `.env.example` 100% comentado; mensagem ERR_NETWORK com checklist de 3 passos; docs README/INTEGRACAO/MAPA alinhadas ("uma API, resolução por plataforma") | front `services/api.ts`+docs | M2-06 |
 | ACH-21 | B | Seed: dois shoppings com o mesmo endereço (`Av. Camapuã, 1480`); nomes da decisão D8 (`CLAUDE.md`) diferem do seed | `seed_demo.py` | M4-05 |
 
 ### 3.4 Divergências documentação × código
@@ -444,6 +445,14 @@ Maestro), Alembic (ADR-04/M4-02), sessões Postgres (H-01), sensores com `X-Devi
 (H-02), check-in por câmera (RF-46), logout com revogação (RF-13), recuperar senha (RF-14),
 perfil (RF-15), cache offline persistido (RF-06), "como chegar" (RF-07), UI de edição
 RF-31..34, RF-24 `[decisão Q-08 — texto da decisão não veio no upload]`, TLS no nginx.
+
+### Evidências — 22/10 (conexão multi-plataforma, ACH-20/21)
+
+| Evidência | Resultado |
+|---|---|
+| `tsc --noEmit` / `expo export --platform web` | limpos com `resolverApiURL()` + `expo-constants` (dependência já existente — zero pacote novo) |
+| `bash -n` nos 5 `.sh` | os cinco validados; `run-dev.sh` novo funciona de qualquer cwd (âncora `dirname $0`), sobe só `postgres pgadmin` (8000 livre p/ o backend local) e falha com mensagem em vez de loop infinito |
+| Cadeia .env | `.env.example` sem nenhuma linha ativa — `cp .env.example .env` não muda mais nada; override continua 1-tipo (EXPO_PUBLIC_) |
 
 ### Evidências — 22/10 (rodada PCD, RF-47)
 

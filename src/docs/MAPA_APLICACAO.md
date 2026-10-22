@@ -21,7 +21,9 @@ usuário (Expo Go / navegador)
        src/components/ui.tsx  primitivas visuais + animações (RN core Animated)
        src/services/api.ts    48 métodos → UM ponto de saída HTTP
        src/hooks/*            estado + cache AsyncStorage (sp:cache:*)
-  └─ HTTP (JSON, Bearer)  ← mesma URL p/ web e mobile (EXPO_PUBLIC_API_URL)
+  └─ HTTP (JSON, Bearer)  ← URL resolvida POR PLATAFORMA no cliente (ACH-21):
+      web same-origin/dev, Expo Go via hostUri do Metro, Android emu 10.0.2.2
+      ou override EXPO_PUBLIC_API_URL — UM backend só, nunca "duas APIs"
        └─ src/backend                       FastAPI (porta 8000; prod 80 via nginx)
             main.py                composição: middleware, CORS, lifespan (zapador)
             core/security_middleware.py  headers, scanners, tamanho corpo, anti-duplic.

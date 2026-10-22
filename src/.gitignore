@@ -1,3 +1,6 @@
 .env
 __pycache__
 .gitignore
+# venv do run-dev.sh e SQLite de fallback — nunca versionar
+.venv/
+*.db
