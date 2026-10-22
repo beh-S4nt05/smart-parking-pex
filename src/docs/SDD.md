@@ -244,6 +244,7 @@ Status vem de leitura de código. Coluna **Marca** indica onde o item fecha.
 | RF-44 | Feed de eventos com origem (sensor/simulador/app/manual) | ✅ | 2 |
 | RF-45 | Sensor real: chave por dispositivo + contrato idempotente (§10) | ✅ 22/10 — `sensores`+`sensor_eventos`, `X-Device-Key` (SHA-256 no banco), `POST /api/sensores/eventos` com (sensor,seq), emissão/revogação só admin | 5 |
 | RF-46 | Check-in/out por QR com a câmera do celular | ⬜ | 5 |
+| RF-47 | Elegibilidade PCD: vaga PCD só para quem se declara no cadastro; os demais recebem sempre vaga Comum (nunca PCD) | ✅ 22/10 — coluna `usuarios.is_pcd` (migração `a7e41c9d0b52`), guarda 403 na reserva explícita, motor de atribuição ignora PCD p/ anônimo/não-declarado e prioriza p/ declarado, `aviso` em /proxima-vaga, checkbox no cadastro+perfil | 5 |
 
 **M6 — Relatórios**
 
@@ -443,6 +444,16 @@ Maestro), Alembic (ADR-04/M4-02), sessões Postgres (H-01), sensores com `X-Devi
 (H-02), check-in por câmera (RF-46), logout com revogação (RF-13), recuperar senha (RF-14),
 perfil (RF-15), cache offline persistido (RF-06), "como chegar" (RF-07), UI de edição
 RF-31..34, RF-24 `[decisão Q-08 — texto da decisão não veio no upload]`, TLS no nginx.
+
+### Evidências — 22/10 (rodada PCD, RF-47)
+
+| Evidência | Resultado |
+|---|---|
+| `pytest tests -q` | **48/48** (+10 em `test_pcd.py`: registro persiste `is_pcd`, omissão = comum, declarar/revogar via /me, 403 ao reservar PCD sem declaração, declarado reserva PCD e comum, motor — anônimo nunca recebe PCD / declarado prioriza / `?tipo_vaga=pcd` rebaixa com aviso / PCD isolada não é sugerida a comum / token inválido ≠ 401, legado sem coluna = False) |
+| Alembic | nova revisão `a7e41c9d0b52` sobre a baseline; `upgrade head` em banco vazio ok; `alembic check` = zero divergência; coluna NOT NULL com `server_default false` |
+| `ruff check .` | limpo |
+| `tsc --noEmit` / `expo export --platform web` | limpos — `Checkbox` novo em ui.tsx (padrão Campo, a11y `accessibilityRole/state`), cadastro e perfil com a declaração, `aviso` do rebaixamento no Alert de destaque |
+| Terminologia | varrido: o app **já nomeava tudo como "Comum"**; não existia string "normal" de categoria (só `font-normal`). Sinônimo `tipo_vaga=normal` aceito no motor e mapeado para COMUM — o Figma antigo usava "Vaga Normal" |
 
 ### Repeteco de evidências — 22/10 (2ª rodada do dia)
 

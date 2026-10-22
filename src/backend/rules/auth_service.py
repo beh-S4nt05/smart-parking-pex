@@ -66,7 +66,8 @@ def criar_usuario(db: Session, dados: UsuarioCreate) -> Usuario:
         placa_veiculo=(dados.placa_veiculo or "").upper().replace(" ", "") or None,
         senha_hash=senha_hash,
         role="usuario",  # Usuários cadastrados publicamente são sempre comuns
-        is_ativo=True
+        is_ativo=True,
+        is_pcd=dados.is_pcd,  # RF-47: declaração colhida no cadastro
     )
 
     db.add(novo_usuario)

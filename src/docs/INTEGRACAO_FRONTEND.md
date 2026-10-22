@@ -89,9 +89,18 @@ POST /auth/registrar
 ```json
 {
   "telefone": "(92)99999-9999",
-  "placa_veiculo": "AMZ1234"
+  "placa_veiculo": "AMZ1234",
+  "is_pcd": false
 }
 ```
+
+> **RF-47 (22/10):** `is_pcd` é a autodeclaração de pessoa com deficiência —
+> omissão vale `false`. Quem **não** declara recebe sempre vaga **Comum**:
+> o motor `/api/estacionamentos/{id}/proxima-vaga` ignora vagas PCD para
+> esse motorista (e responde `aviso` + rebaixa `?tipo_vaga=pcd` pedido),
+> e `POST /api/reservas` numa vaga PCD retorna **403** com explicação.
+> Dá pra declarar/revogar depois em `PUT /auth/me` (aceita `is_pcd`).
+> `GET /auth/me` e o login passaram a devolver `is_pcd`.
 ❌ **Validações:**
 - `nome`: mínimo 2 caracteres, máximo 120
 - `email`: deve ser um e-mail válido
@@ -505,5 +514,5 @@ agrupando `registros[].entrada_em` por hora — não há endpoint por hora.
 ### Login/redirect mesclado
 `/login` aceita **e-mail ou telefone**; após `POST /auth/login`, redireciona por
 papel (`admin|gestor|financeiro → /dashboard`, `usuario → /`). Cadastro:
-`POST /auth/registrar` (`nome`, `email`, `senha ≥ 6`, `telefone?`, `placa_veiculo?`)
-com auto-login em seguida.
+`POST /auth/registrar` (`nome`, `email`, `senha ≥ 6`, `telefone?`, `placa_veiculo?`,
+`is_pcd?` — RF-47) com auto-login em seguida.

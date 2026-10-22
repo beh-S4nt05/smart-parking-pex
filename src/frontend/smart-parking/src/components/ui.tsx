@@ -20,6 +20,7 @@ import {
   View,
   ViewStyle,
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { colors, ocupacaoColor } from "../theme";
 
 // ---------------------------------------------------------- animações (RN core)
@@ -443,6 +444,56 @@ export function Campo({
         <Text className="mt-1 text-[11px] text-slate-400">{helper}</Text>
       ) : null}
       <Text className="mt-1 min-h-[16px] text-xs text-red-600">{erro ?? ""}</Text>
+    </View>
+  );
+}
+
+// ---------------------------------------------------------------- Checkbox
+/**
+ * RF-47: toque simples para declarações opcionais do cadastro ("sou PCD").
+ * Mesma linguagem visual do Campo (mb-4, label 13px semibold). Nativo ganha
+ * feedback de pressão; web usa hover/outline — `active:opacity` não existe
+ * no nativo e `opacity-0` de animação envenenaria a web (QA_UI_UX §1).
+ */
+export function Checkbox({
+  checked,
+  onPress,
+  label,
+  hint,
+}: {
+  checked: boolean;
+  onPress: () => void;
+  label: string;
+  hint?: string;
+}) {
+  return (
+    <View className="mb-4">
+      <Pressable
+        onPress={onPress}
+        accessibilityRole="checkbox"
+        accessibilityState={{ checked, disabled: false }}
+        accessibilityLabel={label}
+        hitSlop={4}
+        className={`flex-row items-center rounded-xl border-2 px-3.5 py-3 transition-colors active:scale-[0.99] ${
+          checked ? "border-blue-500 bg-blue-50" : "border-slate-200 bg-slate-50"
+        }`}
+      >
+        <View
+          className={`mr-3 h-[22px] w-[22px] items-center justify-center rounded-md border-2 ${
+            checked ? "border-blue-600 bg-blue-600" : "border-slate-300 bg-white"
+          }`}
+        >
+          {checked ? (
+            <Ionicons name="checkmark" size={15} color="#fff" />
+          ) : null}
+        </View>
+        <Text className="flex-1 text-[14px] font-semibold text-slate-800">
+          {label}
+        </Text>
+      </Pressable>
+      {hint ? (
+        <Text className="mt-1 text-[11px] leading-4 text-slate-400">{hint}</Text>
+      ) : null}
     </View>
   );
 }

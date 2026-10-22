@@ -106,7 +106,7 @@ Guards do admin (novos/verificados nesta rodada):
 | 4 | api | GET | `/status` | público |
 | 5 | api | GET | `/estacionamentos` | público |
 | 6 | api | GET | `/estacionamentos/{id}/vagas` | público |
-| 7 | api | GET | `/estacionamentos/{id}/proxima-vaga` | público |
+| 7 | api | GET | `/estacionamentos/{id}/proxima-vaga` | público (**token opcional** — RF-47: logado define elegibilidade PCD; token ruim ≠ 401) |
 | 8 | api | POST | `/reservas` | logado |
 | 9 | api | DELETE | `/reservas/{id}` | logado |
 | 10 | api | GET | `/reservas/minhas` | logado |
@@ -181,12 +181,12 @@ de ser a dela. Rotas novas = registrar aqui + `INTEGRACAO_FRONTEND.md`.
 | Tela (src/app) | Endpoints que chama | Tabelas que lê/escreve |
 |---|---|---|
 | `index` (splash) | `GET /health` | — |
-| `login` / `cadastro` | `POST /login` `/registrar` | usuarios |
+| `login` / `cadastro` | `POST /login` `/registrar` (aceita `is_pcd` — RF-47) | usuarios |
 | `mapa` (busca) | `GET /estacionamentos`, `/estacionamentos/{id}/vagas`, `/proxima-vaga` | estacionamentos, andares, vagas |
 | `shopping/[id]` | idem + `POST /reservas` (logado) | + reservas |
 | `pagamento/[id]` | `POST /pagamentos` · `/pagamentos/{id}/confirmar` | pagamentos, historicos |
 | `minhas-estadias` | `GET /historico` | historicos |
-| `perfil` | `PUT /auth/me`, `POST /auth/reset-senha`, `POST /logout` | usuarios, revogacoes |
+| `perfil` | `PUT /auth/me` (nome/telefone/placa + `is_pcd` — RF-47), `POST /auth/reset-senha`, `POST /logout` | usuarios, revogacoes |
 | `dashboard` (5 abas) | `GET /admin/resumo`, CRUD estacionamentos/andares/vagas, `PATCH /vagas/{id}/status`, `/vagas/lote/status`, usuarios, financeiro, relatórios CSV | todas as 14 |
 | `simulador-qr` / `simulador` | `POST /admin/simulador/sessoes`, validar, operar | vagas (+estado memória) |
 | admin Sensores | `POST /admin/sensores` (+eventos/últimos) | sensores, sensor_eventos |
@@ -276,7 +276,7 @@ VagaMapa recalcula colunas por `useWindowDimensions` (4/6/8).
 
 No backend, "nada solto" = `ruff check` **0** com regras de correção ligadas
 (F/B/S/PERF/SIM/C4/DTZ — `src/backend/ruff.toml` com exceções justificadas
-linha a linha) + 38 testes. Estilo opinativo (isort/UP) fica fora de
+linha a linha) + 48 testes. Estilo opinativo (isort/UP) fica fora de
 propósito: sem reforma estética em código em uso.
 
 ## 9. Flags de configuração novas (dev/test já coerentes)

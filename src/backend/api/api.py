@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from core.config import settings
 from core.timeutils import utc_agora
 from core.deps import (
+    get_usuario_logado_opcional,
     get_usuario_financeiro,
     get_usuario_gestor,
     get_usuario_logado,
@@ -115,23 +116,32 @@ async def proxima_vaga(
         None, description="Tipo de vaga: comum, idoso, pcd, moto, eletrico"
     ),
     db: Session = Depends(get_db),
+    usuario: Usuario | None = Depends(get_usuario_logado_opcional),
 ):
-    """Consulta o motor de atribuição para obter a próxima vaga disponível"""
+    """
+    Consulta o motor de atribuição para obter a próxima vaga disponível.
+    RF-47: aceita token OPCIONAL — logado sem declaração PCD nunca recebe
+    vaga PCD; declarado PCD tem prioridade na especial. Anônimo = comum.
+    """
     estacionamento = estacionamento_service.buscar_estacionamento_por_id(db, id)
     if not estacionamento:
         raise HTTPException(status_code=404, detail="Estacionamento não encontrado")
 
-    vaga, andar_numero = estacionamento_service.buscar_proxima_vaga_disponivel(
-        db, id, tipo_vaga
+    vaga, andar_numero, aviso = estacionamento_service.buscar_proxima_vaga_disponivel(
+        db, id, tipo_vaga, usuario
     )
 
     return {
         "estacionamento_id": id,
         "vaga": vaga,
         "andar_numero": andar_numero,
+        "aviso": aviso,
         "mensagem": (
             f"Vaga encontrada no {andar_numero}º andar!"
             if vaga
+            else "Não há vagas comuns disponíveis — vagas PCD são exclusivas "
+                 "de quem declarou PCPD no cadastro."
+            if not (usuario and usuario.is_pcd)
             else "Não há vagas disponíveis no momento."
         ),
     }

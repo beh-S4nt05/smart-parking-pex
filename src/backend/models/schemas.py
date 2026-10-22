@@ -11,6 +11,8 @@ class UsuarioBase(BaseModel):
     email: EmailStr
     telefone: str | None = None
     placa_veiculo: str | None = Field(None, max_length=10)
+    # RF-47: autodeclaração PCD (cadastro/perfil). False = motorista comum.
+    is_pcd: bool = False
 
 
 class UsuarioCreate(UsuarioBase):
@@ -168,6 +170,8 @@ class ProximaVagaResponse(BaseModel):
     vaga: VagaResponse | None = None
     andar_numero: int | None = None
     mensagem: str
+    # RF-47: presente quando a elegibilidade PCD alterou a atribuição
+    aviso: str | None = None
 
 
 # --- Schemas de Reserva ---

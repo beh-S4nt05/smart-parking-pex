@@ -7,6 +7,14 @@ e mecanismo das mudanças futuras. Baseline gerada em 22/10:
 (13 tabelas; validada com `alembic upgrade head` em banco vazio e
 `alembic check` = zero divergência contra os modelos).
 
+**2ª revisão — 22/10 (RF-47):**
+`migrations/versions/a7e41c9d0b52_rf47_usuario_is_pcd.py` — adiciona
+`usuarios.is_pcd BOOLEAN NOT NULL DEFAULT false`. Escolha deliberada:
+`server_default` faz toda linha pré-existente virar **comum** (quem nunca
+declarou não tem direito à vaga PCD — exatamente a regra da RF-47), sem
+backfill e sem lock em Postgres. `downgrade` drop-safe. Validada com
+`upgrade head` + `alembic check` em banco vazio.
+
 ## Bancos NOVOS (deploy do zero)
 
 ```bash

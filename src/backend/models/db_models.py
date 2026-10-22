@@ -11,6 +11,7 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    false,
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -86,6 +87,12 @@ class Usuario(Base):
     placa_veiculo = Column(String, nullable=True, index=True)
     telefone = Column(String, nullable=True)
     is_ativo = Column(Boolean, default=True)
+    # RF-47 (22/10-rod.5): autodeclaração PCD feita no CADASTRO (ou na
+    # "Minha conta"). É a única fonte da elegibilidade a vagas PCD: quem não
+    # marcou — inclusive por omissão — é motorista comum e o motor de
+    # atribuição nunca aloca vaga PCD para ele. Protege também a via inversa:
+    # a vaga especial não fica ociosa presa a quem não tem direito.
+    is_pcd = Column(Boolean, nullable=False, default=False, server_default=false())
     role = Column(String, nullable=False, default=TipoUsuario.USUARIO, index=True)
     estacionamento_id = Column(String, ForeignKey("estacionamentos.id"), nullable=True, index=True)
     criado_em = Column(DateTime(timezone=True), server_default=func.now())

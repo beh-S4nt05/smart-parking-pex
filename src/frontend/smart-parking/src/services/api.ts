@@ -220,6 +220,8 @@ export const parkingApi = {
     senha: string;
     telefone?: string;
     placa_veiculo?: string;
+    /** RF-47: autodeclaração PCD colhida no cadastro (opcional). */
+    is_pcd?: boolean;
   }): Promise<Usuario> {
     const { data } = await api.post<Usuario>("/auth/registrar", payload);
     return data;
@@ -251,6 +253,8 @@ export const parkingApi = {
     nome?: string;
     telefone?: string;
     placa_veiculo?: string;
+    /** RF-47: declarar/revogar a condição PCD depois do cadastro. */
+    is_pcd?: boolean;
   }): Promise<Usuario> {
     const { data } = await api.put<Usuario>("/auth/me", payload);
     return data;

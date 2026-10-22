@@ -13,6 +13,8 @@ export interface Usuario {
   email: string;
   telefone?: string | null;
   placa_veiculo?: string | null;
+  /** RF-47: autodeclaração PCD — vaga PCD só é atribuída a quem declara. */
+  is_pcd?: boolean;
   is_ativo: boolean;
   role: "publico" | "usuario" | "financeiro" | "gestor" | "admin";
   estacionamento_id?: string | null;
@@ -110,6 +112,8 @@ export interface ProximaVaga {
   vaga: Vaga | null;
   andar_numero: number | null;
   mensagem: string;
+  /** RF-47: presente quando a elegibilidade PCD mudou a atribuição. */
+  aviso?: string | null;
 }
 
 export interface Reserva {

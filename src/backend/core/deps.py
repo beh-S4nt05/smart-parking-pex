@@ -1,6 +1,6 @@
 
 import jwt as pyjwt
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 
@@ -40,6 +40,30 @@ def sessao_revogada(db: Session, payload: dict, usuario_id: str) -> bool:
 # Define o esquema OAuth2 para extrair token do header Authorization
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
+
+def get_usuario_logado_opcional(
+    request: Request, db: Session = Depends(get_db)
+) -> Usuario | None:
+    """
+    RF-47: para rotas PÚBLICAS que ficam melhores quando conhecem quem lê
+    (ex.: /proxima-vaga não sugere vaga PCD a quem não se declarou PCD).
+    Token ausente/inválido/expirado → None silencioso: NUNca vira 401, a
+    rota segue anônima. Nunca eleva privilégio — só ajusta sugestão.
+    """
+    header = request.headers.get("Authorization", "")
+    if not header.lower().startswith("bearer "):
+        return None
+    try:
+        payload = decodificar_token(header.split(" ", 1)[1].strip())
+        usuario_id = payload.get("sub")
+        if not usuario_id or payload.get("type") != "access":
+            return None
+        usuario = db.get(Usuario, usuario_id)
+        if usuario and usuario.is_ativo:
+            return usuario
+    except pyjwt.InvalidTokenError:
+        return None
+    return None
 
 def get_usuario_logado(
     token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)
