@@ -1,5 +1,15 @@
 # 🛡️ Proteção contra Wireshark, MITM e Captura de Tráfego
 
+> **Nota de honestidade (SDD M4-04, 22/10):** o **SSL Pinning descrito neste
+> documento NÃO está implementado** no app nem na API — é a cartilha do que
+> fazer se MITM deixar de ser ameaça teórica no nosso cenário. Hoje o que
+> existe de verdade: o Nginx do compose serve **HTTP puro na porta 80**
+> (sem 443/certificado — TLS na LAN fica como passo manual do §final deste
+> doc), CORS restrito, `TrustedHostMiddleware` só em produção e a
+> camada HMAC de `PROTECAO_REQUISICOES.md`. `react-native-ssl-pinning` não é
+> dependência do projeto. Em rede de campus com AP-isolation, a mitigação
+> prática adotada foi rede fechada + `--tunnel` do Expo, não pinning.
+
 ## O que o Wireshark consegue fazer sem proteção?
 Sem criptografia adequada, o Wireshark captura:
 ✅ Toda a URL acessada

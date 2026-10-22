@@ -10,8 +10,8 @@ banca fechar o ponto. Atualizar o "Status" a cada revisão.
 | - | ---------------- | -------- | ---- | ------------------------------- |
 | 1 | Banco modelado   | 10/09    | 1    | ✅ Entregue                     |
 | 2 | MVP operacional  | 22/10    | 2    | ✅ **Entregue 20/10** (+ auditoria de acesso) |
-| 3 | Relatórios       | 02/11    | 1    | ⚠️ Fluxo+Ocupação prontos no back |
-| 4 | Testes & Docs    | 09/11    | 1    | ⚠️ Docs + aceite E2E ✅; pytest ⬜ |
+| 3 | Relatórios       | 02/11    | 1    | ✅ **Entregue 22/10** (back+CSV+aba no painel) |
+| 4 | Testes & Docs    | 09/11    | 1    | 🟡 pytest 25✅ + CI ✅; SDD/README ✅; aceite E2E ✅ |
 | 5 | Entrega Integrada| 12/11    | 5    | ⬜ Plano de fechamento abaixo   |
 
 ---
@@ -84,37 +84,48 @@ celular no mesmo Wi-Fi: `npx expo start` (`.env` com `EXPO_PUBLIC_API_URL=http:/
 → cadastro motorista → explorar → reservar → entrar com QR → saída.
 Se travar em algo "sem dados", seguir as Achas de configuração do README.
 
-## 3️⃣ Relatórios prontos — 02/11 · peso 1 ⚠️ (backend 50% já existe)
+## 3️⃣ Relatórios prontos — 02/11 · peso 1 ✅ (entregue 22/10)
 
-**Já implementado** em `src/backend/api/api.py` + `core/relatorio_service.py`:
+Backend **completo** em `rules/relatorio_service.py` + `financeiro_service.py` e rotas em `api/api.py`:
 
-- `GET /api/relatorios/fluxo?periodo=diario|semanal|mensal[&estacionamento_id=]` — entradas/saídas;
-- `GET /api/relatorios/ocupacao?periodo=...` — taxa de ocupação + dados de mapa de calor por andar.
+- `GET /api/relatorios/fluxo` — entradas/saídas/permanência, fuso **America/Manaus** na borda
+  (datas chegam como D-nacional→janela UTC-4, ADR-05);
+- `GET /api/relatorios/ocupacao` — instantâneo + heatmap, **denominador sem `inativa`** (RN-10);
+- `GET /api/relatorios/ocupacao-historica` — **derivado do `Historico`**, sobreposição de estadias
+  por hora local × andar (ADR-09, substitui o snapshot gravado a cada 5 min — nunca existiu);
+- `GET /api/relatorios/rotacao` — entradas, giro e tempo médio por andar;
+- `GET /api/relatorios/financeiro/resumo` + `GET /api/admin/financeiro/resumo` — receita por dia,
+  por método (cartão = crédito+débito), ticket médio, por tipo de vaga;
+- `GET /api/relatorios/fluxo/csv` e `/financeiro/csv` — `StreamingResponse`-free (CSV simples),
+  com BOM + `;` para abrir certinho no Excel pt-BR;
+- **Gating real**: as rotas exigem papel de painel E `garantir_escopo_relatorio` (gestor/financeiro
+  só no próprio estacionamento — 403 fora; motorista 403), e rate limit `relatorios` por usuário;
+- **Aba "Relatórios" no painel** (`src/app/dashboard.tsx`): pills de período, cards de fluxo,
+  heat 24×andares, rotação, financeiro com barra por dia e **dois botões de CSV**
+  (`parkingApi.baixarCsv` — download no web, orientação de painel no nativo).
 
-Falta para fechar a marca:
+Testes: `tests/test_relatorios.py` + `test_financeiro.py` + `test_escopo_api.py` cobrem fuso,
+denominador, heat, giro, cartão P16 e a matriz BOLA dos CSVs.
 
-- `GET /api/relatorios/financeiro` (receita por dia/método em `pagamentos`, estornos,
-  cupons usados, ligação com `fechamentos_caixa`) e `.../rotacao` (tempo médio por vaga);
-- **Export CSV** via `StreamingResponse` (sem dependência nova);
-- **Gating de acesso**: hoje as duas rotas acima estão no router público `/api` —
-  mover para exigir role (`admin`/`financeiro`/`gestor` do próprio estacionamento);
-- **Aba "Relatórios" no painel** (roles com permissão), reaproveitando a UI de
-  filtros já existente em `src/app/dashboard.tsx`.
+## 4️⃣ Testes & Documentação — 09/11 · peso 1 🟡
 
-## 4️⃣ Testes & Documentação — 09/11 · peso 1 ⚠️
-
-- **Docs:** já em `src/docs/` — `INTEGRACAO_FRONTEND.md` (contrato de rotas),
-  `PROTECAO_REQUISICOES.md`/`SEGURANCA_*` (HMAC/TLS), `NGINX_EXPLICADO.md`
-  (teoria do conf atual), `docker-commands.md`, README com Achas de config.
-  Falta: adicionar seção de Relatórios quando a marca 3 sair.
-- **Testes (a escrever):** `pytest` + `TestClient` do FastAPI em
-  `src/backend/tests/`, rodando em SQLite (não exige Docker), com deps só de
-  dev no requirements-dev. Cobertura-alvo (fluxos de peso): auth (login e-mail/
-  telefone, refresh, bloqueado→401), cotação→reserva→saída (vaga livre→ocupada→
-  livre), cupom (válido/expirado/limite). O **aceite integrado já existe**:
-  `scripts/smoke_mvp.sh` (10) cobre fluxo de dados, e `scripts/smoke_acesso.sh`
-  (27) cobre a matriz de permissões (anon/papel/escopo) — os testes unitários do
-  pytest vêm para rodar em CI sem servidor de pé, não para substituí-los.
+- **pytest (✅ 25 testes, roda sem Docker):** `src/backend/tests/` com `TestClient` + SQLite
+  isolado (`.pytest_smartparking.db`, criado pelo `conftest.py` ANTES do import do app).
+  Grupos: `test_core_timeutils`/`test_core_guards` (fuso, produção-recusa-chave-padrão, chave do
+  limiter, flag social 404), `test_relatorios` (RN-10/ADR-09/giro), `test_reserva_vaga`
+  (expiração RF-23, RF-25, lote ACH-17), `test_financeiro` (tarifa RN-05/06, cupom não-consome,
+  P16), `test_escopo_api` (matriz BOLA + CSV + 401). Rodar: `cd src/backend && pytest tests -q`.
+- **CI (✅):** `.github/workflows/ci.yml` roda `pytest` (py 3.12) e `tsc --noEmit` (node 24 +
+  `NPM_CONFIG_ENGINE_STRICT=false`) a cada push/PR — M4-01/ADR-10 fechado.
+- **Docs (✅ desta rodada):** SDD completo em `src/docs/SDD.md` com status ✅/⬜ por item e
+  log de evidências; README com bloco pytest + roadmap = rubrica; `DOCUMENTACAO_BACKEND.md`
+  desmentido (1 worker, sensores autenticados, contagem de rotas); notas de honestidade
+  (M4-04/ADR-15) no topo de `PROTECAO_REQUISICOES.md` e `SEGURANCA_TLS_WIRESHARK.md`
+  (HMAC = atrito, pinning NÃO implementado, compose é HTTP puro).
+- **Aceite E2E (✅):** `smoke_mvp.sh` (10/10) + `smoke_acesso.sh` (27/27) contra o backend
+  com o código novo; `validar_frontend.sh` (tsc+export web).
+- **Falta para o ✅:** E2E de UI (Detox/Maestro) se a banca exigir, e os itens da marca 5
+  que mordem docs (sessões em Postgres → reescrever §H-01 dos docs de segurança).
 
 ## 5️⃣ Entrega do Projeto Integrado (Funcional) — 12/11 · peso 5 ⬜
 

@@ -94,10 +94,10 @@ src/backend/
 - Lista de reservas do usuário
 
 ### 🛰️ Integração com Sensores IoT
-- Endpoint simples para receber atualização de status de vaga (`livre`/`ocupada`)
-- Registro automático de entrada quando vaga fica ocupada
+- `PATCH /api/vagas/{id}/status` recebe atualização de status de vaga (`livre`/`ocupada`) com a **origem** da transição (`sensor`/`simulador`/`app_motorista`/`manual`) — entra no feed de eventos do painel
+- Registro automático de entrada quando vaga fica ocupada (RESERVADA→OCUPADA também abre estadia e dá baixa na reserva — RF-25)
 - Registro automático de saída quando vaga fica livre, com cálculo de tempo de permanência em minutos para cálculo de tarifa
-- Sem necessidade de autenticação para facilitar integração com dispositivos
+- ⚠️ **Exige autenticação de painel** (gestor/admin) — NÃO há mais endpoint público de sensor. A chave `X-Device-Key` por dispositivo com ingestão em lote idempotente (`POST /api/sensores/eventos`) é a proposta da marca 5 (SDD H-02/ADR-03), ainda não implementada.
 
 ### 💰 Módulo Financeiro
 - Configuração de preço por tipo de vaga (valor hora, diária, tolerância sem cobrança)
@@ -169,7 +169,7 @@ O projeto foi construído com segurança em múltiplas camadas:
 ## ⚡ Performance e Escalabilidade
 - **Pool de conexões com banco**: 10 conexões permanentes + 20 conexões em pico, com `pool_pre_ping` para recuperar conexões quebradas.
 - **Load Balancer Nginx** na frente da aplicação distribuindo tráfego entre múltiplos workers.
-- **Gunicorn como servidor de produção** com múltiplos workers: `(2 * núcleos CPU) + 1` processos para aproveitar todos os cores do servidor.
+- **Gunicorn como servidor de produção** com `workers = 1` por padrão (`GUNICORN_WORKERS` no env): o estado do simulador/QR/sessions mora em memória do processo, e o limiter do slowapi também — múltiplos workers sem Redis (SDD H-01) fragmentariam esse estado. O número mágico `(2×cores)+1` só volta a valer depois de externalizar esse estado.
 - Balanceamento de carga por método `least_conn` que envia requisição para o worker menos carregado.
 - Reinício automático de workers após 1000 requisições para evitar vazamentos de memória.
 - Configuração Docker Compose pronta com:
@@ -247,7 +247,7 @@ Em ambiente de desenvolvimento, acesse:
 
 ## ✅ Status do projeto
 - ✅ Estrutura desacoplada completa
-- ✅ Todos endpoints funcionando e testados (26 rotas)
+- ✅ Todos endpoints funcionando e testados (60 paths / 63 operações no OpenAPI atual; a suíte `pytest` cobre as regras novas — ver §Validação)
 - ✅ Todos os níveis de permissão implementados
 - ✅ Módulo financeiro completo
 - ✅ Relatórios de ocupação e fluxo

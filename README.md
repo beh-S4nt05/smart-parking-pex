@@ -93,8 +93,8 @@ com dashboard, mapa de vagas por andar e simulador de sensores por QR Code.
 | **UI cross-platform** | NativeWind (Tailwind no RN), componentização, design responsivo sem CSS grid, acessibilidade de toque (Pressable) | `src/components/` |
 | **Estado e integração** | React Context + hooks customizados, interceptors Axios (token + refresh automático + assinatura), storage seguro multiplataforma | `src/context/`, `src/hooks/`, `src/services/` |
 | **DevOps/Infra** | Docker Compose (nginx + backend + postgres + pgadmin), proxy reverso com load balancing (`least_conn`), health checks | `src/docker-compose.yml`, `src/nginx/` |
-| **Qualidade** | Testes (pytest), smoke tests shell, validação estática (tsc, expo export, expo-doctor), matriz de conformidade | `scripts/validacao/` |
-| **Documentação** | 12 documentos técnicos (integração, segurança, módulos, guias) + plano e validação | `src/docs/` |
+| **Qualidade** | Testes (pytest), smoke tests shell, validação estática (tsc, expo export, expo-doctor), rubrica por marca | `src/backend/tests/` · `scripts/` · `src/docs/MARCAS_ENTREGA.md` |
+| **Documentação** | SDD v0.2 (contrato executável com evidências) + 11 documentos técnicos (integração, segurança, módulos, guias) | `src/docs/` |
 
 ---
 
@@ -333,7 +333,6 @@ smart-parking-pex/
 │   │   └── src/                 #   app · components · hooks · services · context
 │   ├── nginx/                   # proxy reverso + load balancer
 │   ├── docs/                    # 12 documentos técnicos
-│   └── scripts/validacao/       # scripts de verificação (L1–L3)
 └── LICENSE                      # MIT
 ```
 
@@ -342,28 +341,44 @@ smart-parking-pex/
 ## ✅ Validação e testes
 
 ```bash
-# Frontend: TypeScript + HTML residual + bundles Android/Web + expo-doctor
-./scripts/validacao/validar_frontend.sh
+# Backend — suíte pytest (25 testes: fuso/tarifa/cupom/relatórios/expiração de
+# reserva/matriz BOLA/guards de produção). SQLite isolado, SEM Docker, SEM servidor:
+cd src/backend && pip install -r requirements-dev.txt && pytest tests -q
 
-# Backend: smoke test da API viva (15 etapas)
-./scripts/validacao/validar_backend_smoke.sh http://localhost:8000
+# Backend — aceite E2E contra a API viva (com o servidor de pé):
+./scripts/smoke_mvp.sh    http://localhost:8000   # 10 checks de fluxo de dados
+./scripts/smoke_acesso.sh http://localhost:8000   # 27 checks de papel × recurso (BOLA)
 
-# Segurança: paridade HMAC + anti-replay
-python3 scripts/validacao/validar_assinatura.py
+# Stack completo com Postgres + smoke da cadeia:
+./scripts/docker.sh up      # sobe db+api+nginx e roda os dois smokes
+./scripts/docker.sh smoke
+
+# Frontend — typecheck e build web:
+cd src/frontend/smart-parking && npx tsc --noEmit && npx expo export --platform web
 ```
 
-A conformidade do projeto é controlada pela **matriz de conformidade** em [`src/docs/VALIDACAO_E_CONFORMIDADE.md`](src/docs/VALIDACAO_E_CONFORMIDADE.md).
+> **Honestidade (SDD M4-04):** as versões antigas deste README apontavam para
+> `scripts/validacao/` e `src/docs/VALIDACAO_E_CONFORMIDADE.md`, que não existem
+> neste repositório — a régua real é [`src/docs/MARCAS_ENTREGA.md`](src/docs/MARCAS_ENTREGA.md)
+> e o [`src/docs/SDD.md`](src/docs/SDD.md) (status por requisito + §12 de evidências).
+> Tudo acima foi executado de fato em 22/10 (pytest 25/25 · smokes 10/10 e 27/27 · tsc limpo).
+
+
 
 ---
 
 ## 🗺️ Roadmap
 
-| Data | Marco |
-|---|---|
-| 28/09–09/10/2026 | Execução das frentes: Frontend · Backend · Integração · Segurança · Simulador QR |
-| 10–11/10/2026 | Folga para ajustes e ensaio |
-| **12/10/2026** | 🎯 **Apresentação do MVP** (app + relatório + demo) |
-| Fase 2 | Reservas · pagamentos (PIX/cartão) · cupons · caixa · sensores IoT reais |
+Régua oficial = as 5 marcas da rubrica (detalhe e evidência por marca em
+[`src/docs/MARCAS_ENTREGA.md`](src/docs/MARCAS_ENTREGA.md)):
+
+| Data | Marco | Status |
+|---|---|---|
+| 10/09/2026 | 1️⃣ Banco de dados modelado | ✅ |
+| 22/10/2026 | 2️⃣ MVP operacional (API+app+Docker+acessos) | ✅ |
+| 02/11/2026 | 3️⃣ Relatórios (fluxo/ocupação/rotação/financeiro + CSV + aba no painel) | ✅ 22/10, antecipado |
+| 09/11/2026 | 4️⃣ Testes & Documentação (pytest em CI + SDD) | 🟡 suíte+CI prontas; SDD em `src/docs/SDD.md` |
+| 12/11/2026 | 5️⃣ Entrega Integrada Funcional | ⬜ plano na doc de marcas |
 
 ---
 

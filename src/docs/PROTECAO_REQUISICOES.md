@@ -1,10 +1,23 @@
 # 🔐 Proteção contra replicação de requisições e acesso indevido pelo navegador/Postman
 
+# 🔏 Proteção de Requisições — Assinatura HMAC + Anti-replay
+
+> **Nota de honestidade (SDD M4-04, 22/10):** este mecanismo é **camada de
+> atrito**, não fronteira de segurança. A `APP_SIGNING_SECRET` viaja dentro do
+> bundle (web) — quem descompilar o bundle extrai a chave e forja assinaturas.
+> Ele eleva o custo do abuso casual (Postman/scraper/navegador sem adaptação) e
+> corta replay de requisições escritas; NÃO substitui auth/autorização, validação
+> de escopo nem rate limit, e não protege APIs usadas por terceiros. Os
+> percentuais "99%" abaixo descrevem a fração de tentativas casuais barradas,
+> nunca garantia criptográfica contra atacante dedicado. A chave padrão
+> (`smartparking_default_signing_key_change_in_production`) é recusada no boot
+> quando `ENVIRONMENT=production`.
+
 ## O problema:
 Se o usuário abrir o DevTools no navegador/Expo ou usar um proxy (Charles/mitmproxy), ele consegue pegar o token JWT e copiar requisições para fazer manualmente pelo Postman, curl ou script, burlando o frontend oficial.
 
 ## Como resolvemos isso:
-Implementei um sistema de **Assinatura HMAC de requisições com anti-replay** que bloqueia 99% dessas tentativas, sem afetar usuários legítimos do app oficial.
+Implementei um sistema de **Assinatura HMAC de requisições com anti-replay** que barra a grande maioria dessas tentativas CASUAIS (sem engenharia reversa do bundle), sem afetar usuários legítimos do app oficial.
 
 ---
 
@@ -103,4 +116,4 @@ Nenhuma proteção cliente-side é 100% inquebrável. Um atacante com conhecimen
 ✅ Logs de atividades suspeitas
 ✅ Limite de ações por usuário.
 
-Essa combinação de proteções bloqueia 99.9% dos casos comuns de usuários tentando burlar o app pelo navegador/Postman, que é a grande maioria das tentativas de abuso.
+Essa combinação barra a maior parte dos casos comuns de usuários tentando burlar o app pelo navegador/Postman — lembrando (nota acima) que um atacante que extraia a chave do bundle contorna a assinatura; o que continua valendo contra ele é auth + escopo por estacionamento + rate limit.
