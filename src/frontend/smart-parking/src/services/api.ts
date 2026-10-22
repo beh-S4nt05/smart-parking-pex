@@ -231,7 +231,33 @@ export const parkingApi = {
   },
 
   async logout(): Promise<void> {
+    // RF-13: avisa o servidor para revogar access+refresh ANTES de limpar o
+    // armazenamento local; offline/401 não travam o logout do app.
+    try {
+      const refresh = await storage.getRefreshToken();
+      await api.post(
+        "/auth/logout",
+        null,
+        { params: refresh ? { refresh_token: refresh } : {}, timeout: 5000 },
+      );
+    } catch {
+      /* melhor esforço — o clearTokens abaixo é o que fecha a sessão local */
+    }
     await storage.clearTokens();
+  },
+
+  // ---- Conta (RF-15) ----
+  async atualizarMe(payload: {
+    nome?: string;
+    telefone?: string;
+    placa_veiculo?: string;
+  }): Promise<Usuario> {
+    const { data } = await api.put<Usuario>("/auth/me", payload);
+    return data;
+  },
+
+  async trocarSenha(senha_atual: string, nova_senha: string): Promise<void> {
+    await api.put("/auth/senha", { senha_atual, nova_senha });
   },
 
   // ---- Estacionamentos / vagas ----
@@ -421,6 +447,86 @@ export const parkingApi = {
     await api.delete(`/api/admin/estacionamentos/${id}`);
   },
 
+  async atualizarEstacionamento(
+    id: string,
+    payload: Partial<{
+      nome: string;
+      endereco: string;
+      total_andares: number;
+      total_vagas: number;
+      hora_abertura: string;
+      hora_fechamento: string;
+      taxa_hora: number;
+      telefone: string;
+      latitude: number;
+      longitude: number;
+    }>,
+  ): Promise<Estacionamento> {
+    const { data } = await api.put<Estacionamento>(`/api/admin/estacionamentos/${id}`, payload);
+    return data;
+  },
+
+  // RF-32: editar número/capacidade e excluir andar (a API já tinha DELETE, a UI não)
+  async atualizarAndar(
+    id: string,
+    payload: { numero_andar?: number; capacidade?: number },
+  ): Promise<{ id: string; numero_andar: number; capacidade: number }> {
+    const { data } = await api.put(`/api/admin/andares/${id}`, payload);
+    return data;
+  },
+
+  async excluirAndar(id: string): Promise<void> {
+    await api.delete(`/api/admin/andares/${id}`);
+  },
+
+  // RF-33: CRUD fino de vaga
+  async criarVaga(payload: {
+    andar_id: string;
+    codigo: string;
+    tipo?: "comum" | "pcd" | "idoso" | "moto" | "eletrico";
+  }): Promise<{ id: string }> {
+    const { data } = await api.post("/api/admin/vagas", payload);
+    return data;
+  },
+
+  async atualizarVaga(
+    id: string,
+    payload: {
+      codigo?: string;
+      tipo?: "comum" | "pcd" | "idoso" | "moto" | "eletrico";
+      posicao_x?: number;
+      posicao_y?: number;
+    },
+  ): Promise<{ id: string }> {
+    const { data } = await api.put(`/api/admin/vagas/${id}`, payload);
+    return data;
+  },
+
+  async excluirVaga(id: string): Promise<void> {
+    await api.delete(`/api/admin/vagas/${id}`);
+  },
+
+  // RF-34: editar usuário (nome/tel/placa/role/vínculo/ativo) e reset de balcão (RF-14)
+  async atualizarUsuario(
+    id: string,
+    payload: Partial<{
+      nome: string;
+      telefone: string;
+      placa_veiculo: string;
+      role: "usuario" | "gestor" | "financeiro" | "admin" | "publico";
+      is_ativo: boolean;
+      estacionamento_id: string | null;
+    }>,
+  ): Promise<Usuario> {
+    const { data } = await api.put<Usuario>(`/api/admin/usuarios/${id}`, payload);
+    return data;
+  },
+
+  async resetSenhaUsuario(id: string): Promise<{ senha_temporaria: string; aviso: string }> {
+    const { data } = await api.post(`/api/admin/usuarios/${id}/reset-senha`);
+    return data;
+  },
+
   async criarAndar(payload: {
     estacionamento_id: string;
     numero_andar: number;
@@ -434,6 +540,7 @@ export const parkingApi = {
     andar_id: string;
     quantidade: number;
     prefixo_codigo: string;
+    tipo?: "comum" | "pcd" | "idoso" | "moto" | "eletrico";
   }): Promise<{ id: string }[]> {
     const { data } = await api.post("/api/admin/vagas/lote", payload);
     return data;

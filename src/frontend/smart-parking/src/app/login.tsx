@@ -39,6 +39,8 @@ export default function Login() {
   const [senha, setSenha] = useState("");
   const [senhaVisivel, setSenhaVisivel] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  const [recuperar, setRecuperar] = useState(false);
+
   const [erros, setErros] = useState<{ email?: string; senha?: string }>({});
   const [loading, setLoading] = useState(false);
 
@@ -110,18 +112,38 @@ export default function Login() {
       />
 
       <View className="-mt-1 mb-4 flex-row justify-end">
-        <Pressable
-          onPress={() =>
-            Linking.openURL(
-              "mailto:behsolutionsandautomations@gmail.com?subject=Recuperar%20acesso%20Smart%20Parking",
-            )
-          }
-        >
+        <Pressable onPress={() => setRecuperar((v) => !v)}>
           <Text className="text-xs font-semibold text-blue-700">
             Esqueci minha senha
           </Text>
         </Pressable>
       </View>
+
+      {recuperar ? (
+        <View className="mb-4 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3">
+          <Text className="text-[13px] font-semibold text-slate-800">
+            Como recuperar o acesso
+          </Text>
+          <Text className="mt-1 text-xs leading-4 text-slate-600">
+            O app não tem e-mail transacional: peça ao administrador do
+            estacionamento uma senha temporária (Painel → Usuários → “Reset
+            senha”). Ela derruba suas sessões antigas — entre com ela e troque
+            em “Minha conta”.
+          </Text>
+          <Pressable
+            onPress={() =>
+              Linking.openURL(
+                "mailto:behsolutionsandautomations@gmail.com?subject=Recuperar%20acesso%20Smart%20Parking",
+              )
+            }
+            className="mt-2 self-start rounded-full bg-white px-3 py-1.5"
+          >
+            <Text className="text-xs font-bold text-blue-700">
+              Ou fale com o suporte por e-mail
+            </Text>
+          </Pressable>
+        </View>
+      ) : null}
 
       {erro ? (
         <View className="mb-4 rounded-xl border border-red-200 bg-red-50 px-3.5 py-2.5">
