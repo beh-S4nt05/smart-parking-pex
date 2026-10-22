@@ -1,12 +1,11 @@
-from typing import List, Optional
 
 from sqlalchemy.orm import Session
 
-from models.db_models import Estacionamento, Andar, Vaga, StatusVaga
-from models.schemas import EstacionamentoCreate, AndarCreate
+from models.db_models import Andar, Estacionamento, StatusVaga, Vaga
+from models.schemas import AndarCreate, EstacionamentoCreate
 
 
-def listar_todos_estacionamentos(db: Session) -> List[Estacionamento]:
+def listar_todos_estacionamentos(db: Session) -> list[Estacionamento]:
     """Retorna todos os estacionamentos com contagem de vagas disponíveis"""
     estacionamentos = db.query(Estacionamento).all()
 
@@ -24,7 +23,7 @@ def listar_todos_estacionamentos(db: Session) -> List[Estacionamento]:
     return estacionamentos
 
 
-def buscar_estacionamento_por_id(db: Session, estacionamento_id: str) -> Optional[Estacionamento]:
+def buscar_estacionamento_por_id(db: Session, estacionamento_id: str) -> Estacionamento | None:
     """Busca um estacionamento pelo ID (UUID)"""
     est = db.query(Estacionamento).filter(Estacionamento.id == estacionamento_id).first()
     if est:
@@ -86,8 +85,8 @@ def listar_vagas_estacionamento(db: Session, estacionamento_id: str):
 def buscar_proxima_vaga_disponivel(
     db: Session,
     estacionamento_id: str,
-    tipo_vaga_desejado: Optional[str] = None
-) -> tuple[Optional[Vaga], Optional[int]]:
+    tipo_vaga_desejado: str | None = None
+) -> tuple[Vaga | None, int | None]:
     """
     Motor de atribuição de próxima vaga:
     Busca a primeira vaga livre, priorizando o tipo desejado,

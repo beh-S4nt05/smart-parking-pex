@@ -1,17 +1,14 @@
-from datetime import datetime, timedelta, timezone
-from typing import List, Optional
 
-from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
-from models.db_models import Andar, Estacionamento, Historico, Vaga
+from models.db_models import Andar, Historico, Vaga
 
 
 def listar_eventos_recentes(
     db: Session,
-    estacionamento_id: Optional[str] = None,
+    estacionamento_id: str | None = None,
     limite: int = 8,
-) -> List[dict]:
+) -> list[dict]:
     """
     Feed de "Últimos eventos de vagas" para o dashboard do painel:
     cruza histórico de entradas/saídas com o status atual da vaga e
@@ -27,7 +24,7 @@ def listar_eventos_recentes(
         .all()
     )
 
-    eventos: List[dict] = []
+    eventos: list[dict] = []
     vistos = set()
     for h in registros:
         chave = (h.vaga_id, h.entrada_em)
@@ -63,7 +60,7 @@ def listar_eventos_recentes(
     return eventos
 
 
-def ocupacao_por_andar(db: Session, estacionamento_id: str) -> List[dict]:
+def ocupacao_por_andar(db: Session, estacionamento_id: str) -> list[dict]:
     """Percentual de ocupação por andar — usado nas barras do dashboard."""
     andares = (
         db.query(Andar)

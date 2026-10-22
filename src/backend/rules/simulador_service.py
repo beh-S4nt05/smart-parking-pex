@@ -13,8 +13,7 @@ para a apresentação. Com múltiplos workers em produção, mover para Redis/Po
 import base64
 import io
 import secrets
-from datetime import datetime, timedelta, timezone
-from typing import Optional
+from datetime import UTC, datetime, timedelta
 
 from fastapi import HTTPException, status
 
@@ -27,7 +26,7 @@ _SESSOES: dict[str, dict] = {}
 
 
 def _agora() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 def _expirados(salvar: dict) -> bool:
@@ -38,7 +37,7 @@ def _expirados(salvar: dict) -> bool:
 def criar_sessao(
     db,
     estacionamento_id: str,
-    andar_numero: Optional[int] = None,
+    andar_numero: int | None = None,
     expira_em_horas: int = EXPIRACAO_PADRAO_HORAS,
     base_url: str = "",
 ) -> dict:
@@ -124,6 +123,17 @@ def listar_sessoes_ativas() -> list[dict]:
     ]
 
 
+def revogar_por_estacionamento(estacionamento_id: str) -> int:
+    """Derruba as sessões QR da filial quando ela é excluída (chamado pelo
+    purge do admin_service). Retorna quantas sessões morreram."""
+    mortas = 0
+    for tok in list(_SESSOES.keys()):
+        if _SESSOES[tok].get("estacionamento_id") == estacionamento_id:
+            _SESSOES.pop(tok, None)
+            mortas += 1
+    return mortas
+
+
 def revogar_sessao(token: str) -> dict:
     if token not in _SESSOES:
         raise HTTPException(
@@ -134,7 +144,7 @@ def revogar_sessao(token: str) -> dict:
     return {"mensagem": "Sessão revogada — o link do celular não funciona mais"}
 
 
-def _gerar_qr_data_url(texto: str) -> Optional[str]:
+def _gerar_qr_data_url(texto: str) -> str | None:
     """
     Desenha o QR Code no backend e devolve um data URL PNG — o app mostra com
     <Image source={{uri}}> sem precisar de dependência nova no frontend.

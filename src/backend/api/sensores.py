@@ -5,9 +5,8 @@ muito), idempotência por (sensor, seq).
 """
 
 from datetime import datetime
-from typing import List, Optional
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Request
+from fastapi import APIRouter, Depends, Header, Request
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
@@ -22,11 +21,11 @@ class EventoVagaIn(BaseModel):
     seq: int = Field(ge=0, description="sequencial por dispositivo (idempotência)")
     codigo_vaga: str
     status: str = Field(description="livre | ocupada")
-    ocorreu_em: Optional[datetime] = None
+    ocorreu_em: datetime | None = None
 
 
 class LoteEventosIn(BaseModel):
-    eventos: List[EventoVagaIn] = Field(min_length=1, max_length=200)
+    eventos: list[EventoVagaIn] = Field(min_length=1, max_length=200)
 
 
 @router.post("/eventos")
@@ -34,7 +33,7 @@ class LoteEventosIn(BaseModel):
 async def receber_eventos(
     request: Request,
     dados: LoteEventosIn,
-    x_device_key: Optional[str] = Header(None, alias="X-Device-Key"),
+    x_device_key: str | None = Header(None, alias="X-Device-Key"),
     db: Session = Depends(get_db),
 ):
     """

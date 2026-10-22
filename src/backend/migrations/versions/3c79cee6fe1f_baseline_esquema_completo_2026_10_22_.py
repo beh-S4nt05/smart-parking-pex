@@ -1,4 +1,4 @@
-"""baseline — esquema completo 2026-10-22 (paridade com create_all)
+"""baseline — esquema completo 22/10 (paridade create_all; FKs c/ ondelete rod.4)
 
 Revision ID: 3c79cee6fe1f
 Revises: 
@@ -59,7 +59,7 @@ def upgrade() -> None:
     sa.Column('is_saida_manual', sa.Boolean(), nullable=True),
     sa.Column('observacoes', sa.Text(), nullable=True),
     sa.ForeignKeyConstraint(['estacionamento_id'], ['estacionamentos.id'], ),
-    sa.ForeignKeyConstraint(['pagamento_id'], ['pagamentos.id'], ),
+    sa.ForeignKeyConstraint(['pagamento_id'], ['pagamentos.id'], ondelete='SET NULL'),
     sa.ForeignKeyConstraint(['usuario_id'], ['usuarios.id'], ),
     sa.ForeignKeyConstraint(['vaga_id'], ['vagas.id'], ),
     sa.PrimaryKeyConstraint('id')
@@ -89,7 +89,7 @@ def upgrade() -> None:
     sa.Column('observacoes', sa.Text(), nullable=True),
     sa.ForeignKeyConstraint(['estacionamento_id'], ['estacionamentos.id'], ),
     sa.ForeignKeyConstraint(['historico_id'], ['historicos.id'], ),
-    sa.ForeignKeyConstraint(['usuario_id'], ['usuarios.id'], ),
+    sa.ForeignKeyConstraint(['usuario_id'], ['usuarios.id'], ondelete='SET NULL'),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_pagamentos_estacionamento_id'), 'pagamentos', ['estacionamento_id'], unique=False)
@@ -147,7 +147,7 @@ def upgrade() -> None:
     sa.Column('data_validade', sa.DateTime(timezone=True), nullable=True),
     sa.Column('ativo', sa.Boolean(), nullable=True),
     sa.Column('criado_em', sa.DateTime(timezone=True), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=True),
-    sa.ForeignKeyConstraint(['estacionamento_id'], ['estacionamentos.id'], ),
+    sa.ForeignKeyConstraint(['estacionamento_id'], ['estacionamentos.id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_cupons_desconto_codigo'), 'cupons_desconto', ['codigo'], unique=True)
@@ -208,8 +208,8 @@ def upgrade() -> None:
     sa.Column('observacoes', sa.Text(), nullable=True),
     sa.Column('fechado', sa.Boolean(), nullable=True),
     sa.ForeignKeyConstraint(['estacionamento_id'], ['estacionamentos.id'], ),
-    sa.ForeignKeyConstraint(['usuario_abertura_id'], ['usuarios.id'], ),
-    sa.ForeignKeyConstraint(['usuario_fechamento_id'], ['usuarios.id'], ),
+    sa.ForeignKeyConstraint(['usuario_abertura_id'], ['usuarios.id'], ondelete='RESTRICT'),
+    sa.ForeignKeyConstraint(['usuario_fechamento_id'], ['usuarios.id'], ondelete='SET NULL'),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_fechamentos_caixa_estacionamento_id'), 'fechamentos_caixa', ['estacionamento_id'], unique=False)

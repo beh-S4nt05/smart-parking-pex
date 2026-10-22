@@ -1,14 +1,12 @@
-from typing import Optional
 
 import jwt as pyjwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 
-from core.config import settings
 from core.security import decodificar_token
 from models.database import get_db
-from models.db_models import RevogacaoToken, Usuario, TipoUsuario
+from models.db_models import RevogacaoToken, TipoUsuario, Usuario
 
 
 def sessao_revogada(db: Session, payload: dict, usuario_id: str) -> bool:
@@ -34,7 +32,7 @@ def sessao_revogada(db: Session, payload: dict, usuario_id: str) -> bool:
         if criado and criado.tzinfo is not None:
             criado_ts = criado.timestamp()
         else:
-            criado_ts = _dt.datetime.replace(criado, tzinfo=_dt.timezone.utc).timestamp() if criado else 0
+            criado_ts = _dt.datetime.replace(criado, tzinfo=_dt.UTC).timestamp() if criado else 0
         if criado_ts > iat:
             return True
     return False
@@ -123,9 +121,9 @@ def permissao_necessaria(*cargos_permitidos):
 
 def garantir_escopo_estacionamento(
     usuario: Usuario,
-    estacionamento_id: Optional[str],
+    estacionamento_id: str | None,
     acao: str = "usar este estacionamento",
-) -> Optional[str]:
+) -> str | None:
     """
     ADR-07 (ACH-06/16): ÚNICA fonte de escopo anti-BOLA para rotas que recebem
     `estacionamento_id` (preços, pagamentos, caixas, cupons, eventos, relatórios).

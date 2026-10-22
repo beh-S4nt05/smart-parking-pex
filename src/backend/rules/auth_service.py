@@ -1,21 +1,25 @@
 import re
-from typing import Optional
 
 import jwt as pyjwt
 from fastapi import HTTPException, status
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from core.security import verificar_senha, criar_hash_senha, criar_token, decodificar_token
+from core.security import (
+    criar_hash_senha,
+    criar_token,
+    decodificar_token,
+    verificar_senha,
+)
 from models.db_models import Usuario
-from models.schemas import UsuarioCreate, LoginRequest, TokenResponse, UsuarioResponse
+from models.schemas import LoginRequest, TokenResponse, UsuarioCreate, UsuarioResponse
 
 
 def _somente_digitos(valor: str) -> str:
     return re.sub(r"\D", "", valor or "")
 
 
-def buscar_usuario_por_credencial(db: Session, credencial: str) -> Optional[Usuario]:
+def buscar_usuario_por_credencial(db: Session, credencial: str) -> Usuario | None:
     """
     Localiza um usuário pelo e-mail OU telefone.
     - Se a credencial contém "@" -> busca por e-mail (case-insensitive).

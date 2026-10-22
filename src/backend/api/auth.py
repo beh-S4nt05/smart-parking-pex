@@ -1,17 +1,21 @@
-from typing import Optional
+
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
+from core.config import settings
 from core.deps import get_usuario_logado, oauth2_scheme
-from core.rate_limiter import limiter, LIMITS
+from core.rate_limiter import LIMITS, limiter
 from models.database import get_db
 from models.db_models import Usuario
 from models.schemas import (
-    UsuarioCreate, UsuarioResponse, UsuarioMeResponse, LoginRequest,
-    TokenResponse, RefreshRequest
+    LoginRequest,
+    RefreshRequest,
+    TokenResponse,
+    UsuarioCreate,
+    UsuarioMeResponse,
+    UsuarioResponse,
 )
-from core.config import settings
 from rules import auth_service, social_auth_service
 
 
@@ -39,7 +43,7 @@ class FacebookLoginRequest(BaseModel):
 
 class AppleLoginRequest(BaseModel):
     identity_token: str
-    nome: Optional[str] = None
+    nome: str | None = None
 
 
 @router.post("/registrar", response_model=UsuarioResponse, status_code=201)
@@ -72,9 +76,9 @@ async def refresh_token(request: Request, dados: RefreshRequest, db: Session = D
 
 
 class UsuarioAtualizar(BaseModel):
-    nome: Optional[str] = Field(None, min_length=2, max_length=120)
-    telefone: Optional[str] = Field(None, max_length=20)
-    placa_veiculo: Optional[str] = Field(None, max_length=12)
+    nome: str | None = Field(None, min_length=2, max_length=120)
+    telefone: str | None = Field(None, max_length=20)
+    placa_veiculo: str | None = Field(None, max_length=12)
 
     def _limpa(self):
         if self.placa_veiculo:
@@ -92,7 +96,7 @@ class TrocarSenha(BaseModel):
 def logout(
     request: Request,
     token: str = Depends(oauth2_scheme),
-    refresh_token: Optional[str] = None,
+    refresh_token: str | None = None,
     usuario: Usuario = Depends(get_usuario_logado),
     db: Session = Depends(get_db),
 ):
@@ -104,8 +108,8 @@ def logout(
     de 22/10 (sem jti) sobrevivem até o `exp` — documentado no SDD.
     """
     from core.security import decodificar_token as _dec
-    from models.db_models import RevogacaoToken
     from core.timeutils import utc_agora
+    from models.db_models import RevogacaoToken
 
     agora = utc_agora()
     def _revogar(tok: str, motivo: str):
@@ -120,7 +124,7 @@ def logout(
         exp = pl.get("exp")
         db.add(RevogacaoToken(
             jti=jti, motivo=motivo, criado_em=agora,
-            expira_em=_dt.datetime.fromtimestamp(exp, _dt.timezone.utc) if exp else None,
+            expira_em=_dt.datetime.fromtimestamp(exp, _dt.UTC) if exp else None,
         ))
 
     _revogar(token, "logout")
@@ -131,7 +135,6 @@ def logout(
         RevogacaoToken.expira_em.isnot(None), RevogacaoToken.expira_em < agora
     ).delete(synchronize_session=False)
     db.commit()
-    return None
 
 
 @router.put("/me", response_model=UsuarioMeResponse)
@@ -168,9 +171,9 @@ def trocar_senha(
     as outras sessões do usuário (marcação de revogação global): quem troca a
     senha quer estar sozinho no sistema de novo.
     """
-    from core.security import verificar_senha, criar_hash_senha
-    from models.db_models import RevogacaoToken
+    from core.security import criar_hash_senha, verificar_senha
     from core.timeutils import utc_agora
+    from models.db_models import RevogacaoToken
 
     if not verificar_senha(dados.senha_atual, usuario.senha_hash):
         raise HTTPException(status_code=401, detail="Senha atual incorreta")
@@ -183,7 +186,6 @@ def trocar_senha(
     db.add(RevogacaoToken(jti=None, usuario_id=usuario.id, motivo="troca_senha",
                           criado_em=utc_agora()))
     db.commit()
-    return None
 
 
 @router.get("/me", response_model=UsuarioMeResponse)

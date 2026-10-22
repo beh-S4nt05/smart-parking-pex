@@ -1,12 +1,12 @@
-from typing import Optional
+
 import httpx
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
 from core.config import settings
 from core.security import criar_token
-from models.db_models import Usuario, TipoUsuario
-from models.schemas import TokenResponse, UsuarioResponse
+from models.db_models import TipoUsuario, Usuario
+from models.schemas import TokenResponse
 from rules.auth_service import montar_token_response
 
 
@@ -148,7 +148,7 @@ async def autenticar_apple(identity_token: str, db: Session) -> TokenResponse:
     return _processar_login_social(db, email=email, nome=nome)
 
 
-def _processar_login_social(db: Session, email: str, nome: str, foto_url: Optional[str] = None) -> TokenResponse:
+def _processar_login_social(db: Session, email: str, nome: str, foto_url: str | None = None) -> TokenResponse:
     """
     Função interna compartilhada por todos os provedores OAuth:
     1. Verifica se o e-mail já existe → se sim, loga o usuário

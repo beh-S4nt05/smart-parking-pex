@@ -3,7 +3,7 @@
 from datetime import timedelta
 
 from core.timeutils import utc_agora
-from models.db_models import Estacionamento, TipoUsuario, Usuario
+from models.db_models import TipoUsuario, Usuario
 
 
 def _tokens(db, fab):

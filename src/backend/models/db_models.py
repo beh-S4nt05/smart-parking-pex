@@ -1,8 +1,20 @@
-import uuid
 import enum
-from sqlalchemy import Column, String, Integer, ForeignKey, DateTime, Boolean, Float, Text, UniqueConstraint
+import uuid
+
+from sqlalchemy import (
+    Boolean,
+    Column,
+    DateTime,
+    Float,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+)
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
+
 from .database import Base
 
 
@@ -192,7 +204,7 @@ class Historico(Base):
     status_pagamento = Column(String, nullable=False, default=StatusPagamento.PENDENTE)
     forma_pagamento = Column(String, nullable=True)
     origem = Column(String, nullable=True, default="sensor")  # sensor | simulador | app_motorista | manual
-    pagamento_id = Column(String, ForeignKey("pagamentos.id"), nullable=True)
+    pagamento_id = Column(String, ForeignKey("pagamentos.id", ondelete="SET NULL"), nullable=True)
     comprovante_url = Column(String, nullable=True)
     is_saida_manual = Column(Boolean, default=False)
     observacoes = Column(Text, nullable=True)
@@ -207,7 +219,7 @@ class CupomDesconto(Base):
     __tablename__ = "cupons_desconto"
 
     id = Column(String, primary_key=True, default=generate_uuid, index=True)
-    estacionamento_id = Column(String, ForeignKey("estacionamentos.id"), nullable=False, index=True)
+    estacionamento_id = Column(String, ForeignKey("estacionamentos.id", ondelete="CASCADE"), nullable=False, index=True)
     codigo = Column(String, nullable=False, unique=True, index=True)
     tipo_desconto = Column(String, nullable=False)
     valor_desconto = Column(Float, nullable=False)
@@ -226,8 +238,8 @@ class FechamentoCaixa(Base):
 
     id = Column(String, primary_key=True, default=generate_uuid, index=True)
     estacionamento_id = Column(String, ForeignKey("estacionamentos.id"), nullable=False, index=True)
-    usuario_abertura_id = Column(String, ForeignKey("usuarios.id"), nullable=False)
-    usuario_fechamento_id = Column(String, ForeignKey("usuarios.id"), nullable=True)
+    usuario_abertura_id = Column(String, ForeignKey("usuarios.id", ondelete="RESTRICT"), nullable=False)
+    usuario_fechamento_id = Column(String, ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True)
     data_abertura = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
     data_fechamento = Column(DateTime(timezone=True), nullable=True)
     valor_inicial_caixa = Column(Float, default=0.0)
@@ -253,7 +265,7 @@ class Pagamento(Base):
     id = Column(String, primary_key=True, default=generate_uuid, index=True)
     historico_id = Column(String, ForeignKey("historicos.id"), nullable=False)
     estacionamento_id = Column(String, ForeignKey("estacionamentos.id"), nullable=False, index=True)
-    usuario_id = Column(String, ForeignKey("usuarios.id"), nullable=True)
+    usuario_id = Column(String, ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True)
     valor_bruto = Column(Float, nullable=False)
     valor_desconto = Column(Float, default=0.0)
     valor_total = Column(Float, nullable=False)

@@ -29,7 +29,6 @@ from models.db_models import (
     Estacionamento,
     Historico,
     StatusPagamento,
-    StatusReserva,
     StatusVaga,
     TipoUsuario,
     TipoVaga,
@@ -387,7 +386,7 @@ def popular_database(db: Session) -> dict:
     # -------- Tarifas base por estacionamento (ConfiguracaoPreco) --------
     from models.db_models import ConfiguracaoPreco
 
-    for nome, est in estacionamento_por_nome.items():
+    for est in estacionamento_por_nome.values():
         for tipo, mult in (
             (TipoVaga.COMUM.value, 1.0),
             (TipoVaga.MOTO.value, 0.5),
