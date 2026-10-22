@@ -93,7 +93,7 @@ com dashboard, mapa de vagas por andar e simulador de sensores por QR Code.
 | **UI cross-platform** | NativeWind (Tailwind no RN), componentização, design responsivo sem CSS grid, acessibilidade de toque (Pressable) | `src/components/` |
 | **Estado e integração** | React Context + hooks customizados, interceptors Axios (token + refresh automático + assinatura), storage seguro multiplataforma | `src/context/`, `src/hooks/`, `src/services/` |
 | **DevOps/Infra** | Docker Compose (nginx + backend + postgres + pgadmin), proxy reverso com load balancing (`least_conn`), health checks | `src/docker-compose.yml`, `src/nginx/` |
-| **Qualidade** | Testes (pytest), smoke tests shell, validação estática (tsc, expo export, expo-doctor), rubrica por marca | `src/backend/tests/` · `scripts/` · `src/docs/MARCAS_ENTREGA.md` |
+| **Qualidade** | Testes (pytest), smoke tests shell, validação estática (tsc, expo export, expo-doctor), QA de UI/UX medido no pré-render web, rubrica por marca | `src/backend/tests/` · `scripts/` · `src/docs/MARCAS_ENTREGA.md` · `src/docs/QA_UI_UX.md` |
 | **Documentação** | SDD v0.3 (contrato executável com evidências) + 13 documentos técnicos — destaque para o [`MAPA_APLICACAO.md`](src/docs/MAPA_APLICACAO.md) (índice do sistema inteiro e do fluxo de acesso) | `src/docs/` |
 
 ---
@@ -332,7 +332,7 @@ smart-parking-pex/
 │   ├── frontend/smart-parking/  # Expo (Android · iOS · Web)
 │   │   └── src/                 #   app · components · hooks · services · context
 │   ├── nginx/                   # proxy reverso + load balancer
-│   ├── docs/                    # 13 documentos técnicos (mapa completo incluso)
+│   ├── docs/                    # 14 documentos técnicos (mapa + QA de UI/UX)
 └── LICENSE                      # MIT
 ```
 

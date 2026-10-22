@@ -220,18 +220,41 @@ Testes: `tests/test_exclusao_admin.py` (7 casos, todos os passos acima).
 
 | Peça | Movimento | Tempo | Onde |
 |---|---|---|---|
-| `Botao` (press) | scale 1→0.96, spring **friction 7 · tension 180** (~140ms, ~35% mais seco que antes) + `hitSlop` 4/8 | ~140ms | ui.tsx |
+| `Botao` (press) | **nativo**: scale 1→0.96 spring friction 7 · tension 180 + `hitSlop` 4/8 · **web**: `active:scale-[0.97]` em CSS puro (`transition-transform duration-100`) — ver nota abaixo | ~100–140ms | ui.tsx |
 | `ModalForma` | Modal fade + folha entra scale 0.95→1 & fade | 170ms | ui.tsx |
-| `FadeTroca` (abas do painel) | fade puro ao trocar aba | **130ms** | ui.tsx novo |
+| `FadeTroca` (abas do painel) | fade puro ao trocar aba (nativo; web renderiza direto) | **130ms** | ui.tsx |
 | `AnimarEntrada` (cards/listas 1º paint) | fade + subida 12px | 320ms | ui.tsx |
 | `BarraOcupacao` | tween da largura | 400ms | ui.tsx |
 | teclado no modal | `KeyboardAvoidingView` (padding no iOS) | nativo | ModalForma |
+
+**Dualidade web×nativo (corrigida por medição em 22/10, rodada UI/UX):**
+`Animated.createAnimatedComponent` é invisível ao css-interop do NativeWind na
+web e derrubava o `className` inteiro de quem o usasse (o `<button>` do login
+saía do pré-render sem bg/padding = "botão invisível"). O `Botao` agora roda
+Pressable puro na web (feedback por `:active` CSS) e Animated no nativo (guarda
+do crash Fabric do PR#7). Pelo mesmo motivo, `AnimarEntrada`/`FadeTroca` dão
+short-circuit na web: inline `opacity:0` do SSR que não hidrata a tempo deixava
+cards deslocados sobre a lista de baixo. Medida de QA que provou ambos: grepar
+o `dist/*.html` do `expo export web` (inlines com `opacity: 0` = 0; botão com
+`bg-blue-600 px-5` = presente). Métodos completos em `QA_UI_UX.md`.
 
 Regras que sustentam o "tempo de resposta": feedback de toque < 150ms;
 animação de navegação/entrada pode chegar a 320ms; tudo `useNativeDriver:
 true` (sem JS thread no meio); nenhuma animação bloqueia input; o
 `AnimatedPressable` (compat Fabric, PR#7) continua sendo a base — **não**
 substituir por reanimated (proibido: política "zero npm install na V-02").
+
+**Edge-to-edge (Android/iOS, pedido do usuário em 22/10):** `app.json` já traz
+`android.edgeToEdgeEnabled: true` — o app ocupa a tela inteira com as barras do
+sistema flutuando transparentes sobre o conteúdo. O `_layout.tsx` usa
+`useSafeAreaInsets()` (react-native-safe-area-context, já era dependência — zero
+pacote novo) para dar a TODAS as telas `paddingTop = insets.top` e
+`paddingBottom = max(insets.bottom, 8)` via `Stack contentStyle`: nenhum botão
+fica inatingível sob a barra de status e nenhuma lista termina embaixo da barra
+de navegação/gesto. Na web os insets são 0 → comportamento idêntico ao antigo.
+Escondimento total da barra (immersive) foi rejeitado de propósito: engolir
+relógio/bateria em app de operação não é acessível, e o usuário marcou o respiro
+seguro como o ideal.
 
 Layout — travas contra quebra: nomes/endereços/e-mails longos com
 `numberOfLines={1}` (card de estacionamento e de usuário; e-mail com

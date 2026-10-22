@@ -39,6 +39,7 @@ export function AnimarEntrada({
 }) {
   const anim = useRef(new Animated.Value(0)).current;
   useEffect(() => {
+    if (Platform.OS === "web") return; // web entra limpo (evita SSR com opacity:0)
     Animated.timing(anim, {
       toValue: 1,
       duration: 320,
@@ -47,6 +48,7 @@ export function AnimarEntrada({
       useNativeDriver: true,
     }).start();
   }, [anim, delay]);
+  if (Platform.OS === "web") return <>{children}</>;
   return (
     <Animated.View
       style={{
@@ -75,6 +77,7 @@ export function FadeTroca({
 }) {
   const anim = useRef(new Animated.Value(0)).current;
   useEffect(() => {
+    if (Platform.OS === "web") return; // troca de aba sem fade na web (SSR-safe)
     anim.setValue(0);
     Animated.timing(anim, {
       toValue: 1,
@@ -83,6 +86,7 @@ export function FadeTroca({
       useNativeDriver: true,
     }).start();
   }, [anim, chave]);
+  if (Platform.OS === "web") return <>{children}</>;
   return <Animated.View style={{ opacity: anim }}>{children}</Animated.View>;
 }
 
@@ -129,9 +133,14 @@ export function LogoBlox({ compact }: { compact?: boolean }) {
 // ---------------------------------------------------------------- Botões
 // Animated.Value SÓ pode viver no style de um componente Animated. Num
 // <Pressable> comum, o objeto passa cru para o nativo e o Fabric derruba a
-// tela com "Transform with key of 'scale' must be a number" (a web ignora e
-// esconde o bug). createAnimatedComponent faz o wiring do driver nativo.
-const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+// tela com "Transform with key of 'scale' must be a number" (crash do PR#7).
+// Na WEB, porém, o createAnimatedComponent é invisível ao css-interop do
+// NativeWind e DERRUBAVA o className inteiro — medido no HTML pré-render do
+// `expo export web`: <button> sem bg/padding = "botão invisível". Duas rotas:
+//   · web    → Pressable puro + feedback por CSS :active (0 JS, 0 flash);
+//   · nativo → Animated (guarda do crash Fabric).
+const PressavelAnimada =
+  Platform.OS === "web" ? Pressable : Animated.createAnimatedComponent(Pressable);
 
 type BotaoProps = {
   label: string;
@@ -156,6 +165,7 @@ export function Botao({
 }: BotaoProps) {
   // feedback tátil visual: mola de escala ao pressionar (web e nativo)
   const escala = useRef(new Animated.Value(1)).current;
+  const ehWeb = Platform.OS === "web";
   const apertar = (paraDentro: boolean) =>
     Animated.spring(escala, {
       toValue: paraDentro ? 0.96 : 1,
@@ -182,16 +192,18 @@ export function Botao({
     sucesso: "text-white",
   };
   return (
-    <AnimatedPressable
+    <PressavelAnimada
       accessibilityRole="button"
       onPress={onPress}
-      onPressIn={() => apertar(true)}
-      onPressOut={() => apertar(false)}
+      {...(ehWeb
+        ? {}
+        : { onPressIn: () => apertar(true), onPressOut: () => apertar(false) })}
+      hitSlop={{ top: 4, bottom: 4, left: 8, right: 8 }}
       disabled={disabled || loading}
       className={`${base} ${variants[variant]} ${
         disabled ? "opacity-40" : ""
-      } ${className}`}
-      style={[style, { transform: [{ scale: escala }] }]}
+      } ${ehWeb ? "active:scale-[0.97] transition-transform duration-100" : ""} ${className}`}
+      style={ehWeb ? style : [style, { transform: [{ scale: escala }] }]}
     >
       {loading ? (
         <ActivityIndicator
@@ -206,7 +218,7 @@ export function Botao({
           </Text>
         </>
       )}
-    </AnimatedPressable>
+    </PressavelAnimada>
   );
 }
 
@@ -617,6 +629,7 @@ export function ModalForma({
     >
       <KeyboardAvoidingView
         className="flex-1"
+        style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
       <View className="flex-1 items-center justify-center bg-black/50 p-4">
