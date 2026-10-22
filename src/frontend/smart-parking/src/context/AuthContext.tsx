@@ -29,6 +29,7 @@ export interface AuthContextData {
     senha: string;
     telefone?: string;
     placa_veiculo?: string;
+    /** RF-47 */ is_pcd?: boolean;
   }) => Promise<Usuario>;
   signOut: () => Promise<void>;
   /** rebusca /auth/me após edições do perfil (RF-15) */
@@ -112,6 +113,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
       senha: string;
       telefone?: string;
       placa_veiculo?: string;
+      is_pcd?: boolean;
     }) => parkingApi.registrar(payload),
     [],
   );

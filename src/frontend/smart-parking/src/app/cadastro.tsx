@@ -15,7 +15,7 @@ import {
 import { useRouter } from "expo-router";
 import { useAuth } from "../hooks/useAuth";
 import { apiErrorMessage } from "../services/api";
-import { Botao, Campo, Logo } from "../components/ui";
+import { Botao, Campo, Checkbox, Logo } from "../components/ui";
 
 type FormState = {
   nome: string;
@@ -25,6 +25,8 @@ type FormState = {
   confirmarSenha: string;
   modeloCarro: string;
   placa: string;
+  /** RF-47: autodeclaração PCD — habilita prioridade/exclusividade nas PCD. */
+  pcd: boolean;
 };
 
 type FormErrors = Partial<Record<keyof FormState, string>>;
@@ -60,7 +62,8 @@ export default function Cadastro() {
     confirmarSenha: "",
     modeloCarro: "",
     placa: "",
-  });
+    pcd: false,
+});
   const [errors, setErrors] = useState<FormErrors>({});
   const [erroGeral, setErroGeral] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -113,6 +116,7 @@ export default function Cadastro() {
         senha: form.senha,
         telefone: form.telefone.replace(/\D/g, ""),
         placa_veiculo: form.placa ? formatarPlaca(form.placa) : undefined,
+        is_pcd: form.pcd,
       });
       // login automático após criar a conta
       await signIn(form.email, form.senha);
@@ -251,6 +255,12 @@ export default function Cadastro() {
                   value={form.placa}
                   onChangeText={(v) => setField("placa", formatarPlaca(v))}
                   erro={errors.placa}
+                />
+                <Checkbox
+                  checked={form.pcd}
+                  onPress={() => setForm((p) => ({ ...p, pcd: !p.pcd }))}
+                  label="Sou pessoa com deficiência (PCD)"
+                  hint="Opcional. Declarar habilita a prioridade e a exclusividade das vagas PCD — sem a declaração, o sistema sempre atribui vaga Comum."
                 />
                 {erroGeral ? (
                   <View className="mb-3 rounded-xl border border-red-200 bg-red-50 px-3.5 py-2.5">

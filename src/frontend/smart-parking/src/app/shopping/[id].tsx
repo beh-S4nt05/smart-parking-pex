@@ -197,7 +197,12 @@ export default function MapaVagas() {
     setVagaSel(v);
     if (!isWeb) {
       // mobile: scroll até a grade (destaque visual já aplicado na célula)
-      Alert.alert("Vaga destacada", `${v.codigo} · ${sugestao?.mensagem ?? ""}`);
+      Alert.alert(
+        "Vaga destacada",
+        [`${v.codigo} · ${sugestao?.mensagem ?? ""}`, sugestao?.aviso ?? ""]
+          .filter(Boolean)
+          .join("\n"),
+      );
     }
   }
 

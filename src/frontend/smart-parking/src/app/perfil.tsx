@@ -17,7 +17,7 @@ import {
 import { useRouter } from "expo-router";
 import { useAuth } from "../hooks/useAuth";
 import { apiErrorMessage, parkingApi } from "../services/api";
-import { Botao, Card, Campo, Chip } from "../components/ui";
+import { Botao, Card, Campo, Checkbox, Chip } from "../components/ui";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 import { colors } from "../theme";
@@ -34,7 +34,7 @@ export default function Perfil() {
   const router = useRouter();
   const { user, loading, signIn, signOut, refreshUser } = useAuth();
 
-  const [f, setF] = useState({ nome: "", telefone: "", placa: "" });
+  const [f, setF] = useState({ nome: "", telefone: "", placa: "", pcd: false });
   const [salvando, setSalvando] = useState(false);
   const [senha, setSenha] = useState({ atual: "", nova: "", confirma: "" });
   const [trocando, setTrocando] = useState(false);
@@ -45,6 +45,7 @@ export default function Perfil() {
         nome: user.nome ?? "",
         telefone: user.telefone ?? "",
         placa: user.placa_veiculo ?? "",
+        pcd: Boolean(user.is_pcd),
       });
     }
   }, [user]);
@@ -82,6 +83,7 @@ export default function Perfil() {
         nome: f.nome.trim(),
         telefone: f.telefone.trim() || undefined,
         placa_veiculo: f.placa.trim() || undefined,
+        is_pcd: f.pcd, // RF-47: declarar/revogar a elegibilidade PCD
       });
       await refreshUser();
       Alert.alert("Perfil atualizado ✅", "Já vale para a reserva da próxima vaga.");
@@ -141,6 +143,12 @@ export default function Perfil() {
             <Campo label="Nome completo" value={f.nome} onChangeText={(v) => setF((p) => ({ ...p, nome: v }))} autoCapitalize="words" />
             <Campo label="Telefone" keyboardType="phone-pad" placeholder="(92) 99999-0000" value={f.telefone} onChangeText={(v) => setF((p) => ({ ...p, telefone: v }))} />
             <Campo label="Placa do veículo" autoCapitalize="characters" maxLength={8} placeholder="RRA1A23" value={f.placa} onChangeText={(v) => setF((p) => ({ ...p, placa: v }))} />
+            <Checkbox
+              checked={f.pcd}
+              onPress={() => setF((p) => ({ ...p, pcd: !p.pcd }))}
+              label="Sou pessoa com deficiência (PCD)"
+              hint="Com a declaração, você ganha prioridade (e exclusividade) nas vagas PCD. Sem ela, o sistema sempre atribui vaga Comum."
+            />
             <Text className="mt-1 text-xs text-slate-400">
               A placa entra na reserva para a leitura do portão — use maiúsculas sem hífen.
             </Text>

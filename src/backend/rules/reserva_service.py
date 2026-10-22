@@ -3,7 +3,7 @@ from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
 from core.timeutils import utc_agora
-from models.db_models import Andar, Reserva, StatusReserva, StatusVaga, Usuario, Vaga
+from models.db_models import Andar, Reserva, StatusReserva, StatusVaga, TipoVaga, Usuario, Vaga
 from models.schemas import ReservaCreate
 
 
@@ -51,6 +51,19 @@ def criar_reserva(db: Session, dados: ReservaCreate, usuario_logado: Usuario) ->
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Esta vaga não está disponível para reserva"
+        )
+
+    # RF-47: vaga PCD é restrita a quem se declarou PCD. A reserva explícita
+    # (toque no mapa) passa pelo mesmo crivo do motor de atribuição — sem
+    # essa amarração bastaria mirar a célula PCD no mapa para furar a fila.
+    if vaga.tipo == TipoVaga.PCD.value and not usuario_logado.is_pcd:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=(
+                "Vaga PCD é exclusiva para motoristas com deficiência declarada "
+                "no cadastro. Escolha uma vaga comum — ou declare sua condição "
+                "em “Minha conta”, se aplicável."
+            ),
         )
 
     if dados.horario_fim <= dados.horario_inicio:

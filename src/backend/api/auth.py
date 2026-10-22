@@ -79,6 +79,7 @@ class UsuarioAtualizar(BaseModel):
     nome: str | None = Field(None, min_length=2, max_length=120)
     telefone: str | None = Field(None, max_length=20)
     placa_veiculo: str | None = Field(None, max_length=12)
+    is_pcd: bool | None = None  # RF-47: declarar/revogar depois também
 
     def _limpa(self):
         if self.placa_veiculo:
@@ -152,7 +153,10 @@ def atualizar_perfil(
     if "nome" in muda and (muda["nome"] or "").strip().__len__() < 2:
         raise HTTPException(status_code=422, detail="Nome precisa de 2+ caracteres")
     for campo, val in muda.items():
-        setattr(usuario, campo, (val or "").strip() or None)
+        if isinstance(val, bool):  # is_pcd não passa pelo strip de strings
+            setattr(usuario, campo, val)
+        else:
+            setattr(usuario, campo, (val or "").strip() or None)
     db.commit()
     db.refresh(usuario)
     return usuario
