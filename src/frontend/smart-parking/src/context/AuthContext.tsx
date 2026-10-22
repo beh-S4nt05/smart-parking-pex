@@ -52,6 +52,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
       try {
         const token = await storage.getAccessToken();
         const cached = await storage.getUserCache();
+        if (!token) {
+          // Sem token NÃO existe sessão — o cache de usuário é lixo de
+          // sessão anterior (logout parcial, expurgo do SecureStore,
+          // logout remoto). Confiar nele deixava o painel "aberto" para
+          // quem não está logado: guardas de rota veem um usuário fantasma
+          // e os dados reais vêm 401. Auditoria E2E de 22/10 (rod.12).
+          if (cached) await storage.clearUserCache();
+          setLoading(false);
+          return;
+        }
         if (cached) {
           try {
             setUser(JSON.parse(cached));
