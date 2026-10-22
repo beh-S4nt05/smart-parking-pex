@@ -15,6 +15,17 @@ declarou não tem direito à vaga PCD — exatamente a regra da RF-47), sem
 backfill e sem lock em Postgres. `downgrade` drop-safe. Validada com
 `upgrade head` + `alembic check` em banco vazio.
 
+**Nota Docker (visto na máquina do usuário em 22/10):** a imagem do backend
+não carrega alembic nos requirements de runtime — volumes criados antes de
+uma revisão nova ficariam com a tabela antiga e o boot quebrava
+(`UndefinedColumn` no seed de admin → healthcheck falha →
+`dependency backend failed to start`). O `main.py` ganhou
+`reparar_esquema_antigo()`, chamado antes do seed: detecta a coluna ausente e
+aplica o DDL equivalente à revisão (idempotente, PG e SQLite, testes em
+`tests/test_compat_volume.py`). Para parity completa com os modelos, rode
+`alembic upgrade head` a partir do host — o auto-reparo cobre só colunas
+simples com default seguro.
+
 ## Bancos NOVOS (deploy do zero)
 
 ```bash
