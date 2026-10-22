@@ -169,6 +169,17 @@ python seed_demo.py                                 # popula os 8 shoppings de M
 python main.py                                      # API em http://localhost:8000
 ```
 
+### 2.5️⃣ "Está sem conexão?" — um comando responde
+
+```bash
+./scripts/check_conexao.sh          # diagnóstico: .env, porta, firewall/LAN, CORS, Metro, Docker
+./scripts/check_conexao.sh --fix    # conserta o item 1 sozinho (QA-101: linha ativa no .env)
+```
+
+Exit code `0` = conexão validada ponta a ponta (health → login → /me → proxima-vaga →
+CORS), `1` = o primeiro ✘ impresso é exatamente o que bloqueia. É o gate de véspera de
+banca: roda de qualquer pasta, sem dependência além de `curl`.
+
 ### 3️⃣ Frontend (Expo)
 
 ```bash
