@@ -256,10 +256,14 @@ export default function Login() {
       className="flex-1 bg-white"
     >
       <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: "center" }}>
+        {/* antes: absolute top-4 — com edge-to-edge no Android o toque caía na
+            barra de status do sistema, nunca no botão. Agora vive no fluxo e
+            herda o respiro seguro do _layout (queda clicável garantida). */}
         <Pressable
           onPress={voltarInicio}
           accessibilityRole="button"
-          className="absolute left-3 top-4 z-10 flex-row items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 active:bg-slate-50"
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          className="ml-6 mt-4 flex-row items-center gap-1.5 self-start rounded-full border border-slate-200 bg-white px-3 py-1.5 active:bg-slate-50"
         >
           <Text className="text-[15px] leading-5 text-blue-600">←</Text>
           <Text className="text-[13px] font-semibold text-slate-600">Início</Text>
