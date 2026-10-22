@@ -10,7 +10,7 @@
 | Base de análise | Leitura do repositório: backend, frontend, nginx, docker, scripts e `src/docs/` |
 | Não analisado | Arquivo do Figma (sem link), `PLANO_DO_PROJETO.md`, `VALIDACAO_E_CONFORMIDADE.md` e `scripts/validacao/*` (não enviados) |
 | Substitui (após aprovação) | `CLAUDE.md` (briefing de 12/10) como fonte da verdade |
-| Documentos irmãos | `MARCAS_ENTREGA.md` (rubrica) · `INTEGRACAO_FRONTEND.md` (contrato de rotas) · `VALIDACAO_E_CONFORMIDADE.md` (matriz) — os nomes citados no rascunho (MATRIZ_RASTREABILIDADE/RELATORIO_MVP/APRESENTACAO_MVP) não existem no repositório |
+| Documentos irmãos | `MAPA_APLICACAO.md` (mapa do sistema + fluxo de acesso, rodada 22/10) · `MARCAS_ENTREGA.md` (rubrica) · `INTEGRACAO_FRONTEND.md` (contrato de rotas) · `VALIDACAO_E_CONFORMIDADE.md` (matriz) — os nomes citados no rascunho (MATRIZ_RASTREABILIDADE/RELATORIO_MVP/APRESENTACAO_MVP) não existem no repositório |
 
 ## Como ler este documento
 
