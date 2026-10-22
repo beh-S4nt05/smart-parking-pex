@@ -50,7 +50,7 @@ export default function Hero({ shoppings, selecionadoId, onSelect, onBuscar }: P
         {/* seletor + CTA */}
         <View
           className={`mt-7 w-full max-w-2xl ${
-            isWide ? "flex-row items-center gap-2.5" : "gap-3"
+            isWide ? "flex-row items-start gap-2.5" : "gap-3"
           }`}
         >
           {/* barra fechada = shopping atual; toque abre mini-lista de cards
@@ -79,7 +79,7 @@ export default function Hero({ shoppings, selecionadoId, onSelect, onBuscar }: P
 
             {listaAberta && shoppings.length > 0 ? (
               <View
-                className="absolute left-0 right-0 top-full z-20 mt-2 rounded-2xl border border-slate-200 bg-white p-2"
+                className="relative left-0 right-0 top-full z-20 mt-2 rounded-2xl border border-slate-200 bg-white p-2"
                 style={{
                   elevation: 12,
                   shadowColor: "#0F172A",
@@ -106,7 +106,7 @@ export default function Hero({ shoppings, selecionadoId, onSelect, onBuscar }: P
           <Botao
             label="Ver Vagas Disponíveis  →"
             onPress={onBuscar}
-            className={isWide ? "" : "w-full"}
+            className={isWide ? "" : "w-full relative"}
           />
         </View>
 

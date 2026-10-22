@@ -3,7 +3,8 @@
 Backend 100% compatível com os arquivos que você já possui, construído com arquitetura limpa e desacoplada, seguindo os princípios SOLID.
 
 ## Estrutura final de arquivos (compatível com o que você já criou)
-```
+
+``` text
 src/
 └── backend/
     ├── main.py              # Entrada da aplicação, inicializa FastAPI e middlewares
@@ -30,6 +31,7 @@ src/
 ```
 
 ## Principais características
+
 ✅ **Totalmente desacoplado**: Rotas não contém lógica de negócio, só recebem requisições e chamam os serviços
 ✅ **Compatível com seus arquivos originais**: Mantive a configuração PostgreSQL, UUID como ID, PyJWT e estrutura de Andares/Vagas
 ✅ **Autenticação JWT completa**: Access token (15min) + Refresh token (7dias), exatamente como seu auth.py
@@ -42,44 +44,50 @@ src/
 ## Como rodar o projeto
 
 ### 1. Pré-requisitos
+
 - Python 3.10+
 - PostgreSQL rodando com banco `smartparking` criado (ou use SQLite em desenvolvimento)
 
 ### 2. Instalação
+
 ```bash
 cd src/backend
-python -m venv venv
+python3 -m venv venv
 
 # Linux/Mac
 source venv/bin/activate
 # Windows
 venv\Scripts\activate
 
-pip install -r requirements.txt
+pip3 install -r requirements.txt
 ```
 
 ### 3. Configuração
+
 Copie o arquivo `.env-sample` para `.env` e ajuste a `DATABASE_URL` se necessário:
+
 ```env
 DATABASE_URL=postgresql://postgres:postgres@localhost:5432/smartparking
 SECRET_KEY=sua_chave_secreta_de_producao_aqui
 ```
 
 ### 4. Rodar o servidor
+
 ```bash
-python main.py
+python3 main.py
 ```
 
 A API estará disponível em `http://0.0.0.0:8000` (acessível pelo seu celular na mesma rede Wi-Fi para testar com Expo/React Native).
 
 ### 5. Documentação
-- Swagger UI: http://localhost:8000/docs (teste todos os endpoints diretamente no navegador)
-- Redoc: http://localhost:8000/redoc
 
-## Endpoints implementados (exatamente o escopo que você pediu):
+- Swagger UI: <http://localhost:8000/docs> (teste todos os endpoints diretamente no navegador)
+- Redoc: <http://localhost:8000/redoc>
+
+## Endpoints implementados (exatamente o escopo que você pediu)
 
 | Método | Rota | Descrição | Autenticação |
-|--------|------|-----------|--------------|
+| -------- | ------ | ----------- | -------------- |
 | GET | `/` | Status da API | Não |
 | GET | `/api/status` | Status do backend | Não |
 | GET | `/api/health` | Health check (banco de dados incluso) | Não |
@@ -99,6 +107,7 @@ A API estará disponível em `http://0.0.0.0:8000` (acessível pelo seu celular 
 | GET | `/api/relatorios/ocupacao` | Taxa de ocupação e dados por andar (mapas de calor) | Não |
 
 ## Diferença para o seu código inicial
+
 1. **Desacoplamento total**: Toda lógica de negócio foi movida para a pasta `rules/` como serviços reutilizáveis — suas rotas em `api/` são finas e só tratam HTTP.
 2. **Configurações centralizadas**: Todas as variáveis de ambiente são carregadas via pydantic-settings no `core/config.py`
 3. **Segurança melhorada**: Adicionei hash de senha com bcrypt e dependência de usuário logado reutilizável em todas as rotas que precisam de autenticação.
@@ -108,7 +117,9 @@ A API estará disponível em `http://0.0.0.0:8000` (acessível pelo seu celular 
 7. **Histórico automático**: Quando uma vaga muda de status para ocupada/livre o sistema já automaticamente registra entrada/saída para os relatórios.
 
 ## Para desenvolvimento com SQLite (sem precisar instalar PostgreSQL)
+
 Basta alterar a `DATABASE_URL` no `.env`:
+
 ```env
 DATABASE_URL=sqlite:///./smartparking.db
 ```

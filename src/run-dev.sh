@@ -14,8 +14,8 @@ echo "✅ PostgreSQL está pronto na porta 5432"
 
 echo ""
 echo "3/3 Instalando dependências do backend e iniciando servidor..."
-cd src/backend
-pip3 install -q -r requirements.txt
+cd backend
+pip3 install -r "requirements.txt"
 
 echo ""
 echo "✅ Iniciando FastAPI na porta 8000..."
