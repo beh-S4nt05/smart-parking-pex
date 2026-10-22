@@ -22,6 +22,8 @@ class StatusReserva(str, enum.Enum):
     CONFIRMADA = "confirmada"
     CANCELADA = "cancelada"
     CONCLUIDA = "concluida"
+    # RF-23 (marca 3): vencida sem uso — o varredor libera a vaga
+    EXPIRADA = "expirada"
 
 
 class TipoVaga(str, enum.Enum):

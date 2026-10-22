@@ -1,9 +1,9 @@
-from datetime import datetime
 from typing import List, Optional
 
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
+from core.timeutils import utc_agora
 from models.db_models import Vaga, StatusVaga, Historico, Andar
 from models.schemas import VagaCreate, VagaAtualizaStatus, VagaLoteStatusUpdate
 
@@ -76,12 +76,32 @@ def _registrar_transicao(
     andar = db.query(Andar).filter(Andar.id == vaga.andar_id).first()
     estacionamento_id = andar.estacionamento_id if andar else None
 
-    # Registra entrada quando a vaga passa a ser ocupada
-    if novo_status == StatusVaga.OCUPADA and status_anterior == StatusVaga.LIVRE:
+    # RF-25 (marca 2 ⬜→✅ · ACH-10): chegada em vaga RESERVADA também abre a
+    # estadia e dá baixa na reserva ativa daquela vaga (concluída).
+    if novo_status == StatusVaga.OCUPADA and status_anterior == StatusVaga.RESERVADA:
+        from models.db_models import Reserva, StatusReserva
+
+        reserva_ativa = (
+            db.query(Reserva)
+            .filter(
+                Reserva.vaga_id == vaga.id,
+                Reserva.status == StatusReserva.CONFIRMADA,
+            )
+            .order_by(Reserva.criado_em.desc())
+            .first()
+        )
+        if reserva_ativa:
+            reserva_ativa.status = StatusReserva.CONCLUIDA
+
+    # Registra entrada quando a vaga passa a ser ocupada (livre OU reservada)
+    if novo_status == StatusVaga.OCUPADA and status_anterior in (
+        StatusVaga.LIVRE,
+        StatusVaga.RESERVADA,
+    ):
         registro = Historico(
             estacionamento_id=estacionamento_id,
             vaga_id=vaga.id,
-            entrada_em=datetime.now(),
+            entrada_em=utc_agora(),
             origem=origem or "sensor",
         )
         db.add(registro)
@@ -95,14 +115,14 @@ def _registrar_transicao(
         ).order_by(Historico.entrada_em.desc()).first()
 
         if ultimo_registro:
-            ultimo_registro.saida_em = datetime.now()
+            ultimo_registro.saida_em = utc_agora()
             tempo_perm = int(
                 (ultimo_registro.saida_em - ultimo_registro.entrada_em).total_seconds() / 60
             )
             ultimo_registro.tempo_permanencia_minutos = tempo_perm
 
     vaga.status = novo_status
-    vaga.ultima_atualizacao = datetime.now()
+    vaga.ultima_atualizacao = utc_agora()
 
 
 def atualizar_status_vaga(

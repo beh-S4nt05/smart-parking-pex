@@ -1,5 +1,7 @@
 from datetime import datetime, timedelta
 from math import ceil
+
+from core.timeutils import normalizar, utc_agora
 from typing import Optional
 
 from fastapi import HTTPException, status
@@ -80,7 +82,7 @@ def calcular_tarifa_estadia(db: Session, historico_id: str, cupom_codigo: Option
         if not cupom:
             raise HTTPException(status_code=400, detail="Cupom inválido ou não existe")
 
-        if cupom.data_validade and cupom.data_validade < datetime.utcnow():
+        if cupom.data_validade and normalizar(cupom.data_validade) < utc_agora():
             raise HTTPException(status_code=400, detail="Cupom expirado")
 
         if cupom.limite_usos is not None and cupom.usos_realizados >= cupom.limite_usos:
@@ -94,7 +96,8 @@ def calcular_tarifa_estadia(db: Session, historico_id: str, cupom_codigo: Option
         elif cupom.tipo_desconto == TipoDesconto.VALOR_FIXO.value:
             valor_desconto = min(cupom.valor_desconto, valor_bruto)
 
-        cupom.usos_realizados += 1
+        # ACH-07: marcar no histórico e SEGUIR — o uso do cupom só é
+        # consumido quando o pagamento efetivamente sai (em registrar).
         historico.cupom_aplicado = cupom.codigo
 
     valor_total = round(max(valor_bruto - valor_desconto, 0.0), 2)
@@ -149,7 +152,7 @@ def registrar_pagamento(
         valor_total=valor_total,
         metodo_pagamento=metodo_pagamento,
         status_pagamento=StatusPagamento.PAGO,
-        data_pagamento=datetime.utcnow(),
+        data_pagamento=utc_agora(),
         observacoes=observacoes
     )
     db.add(novo_pagamento)
@@ -158,6 +161,15 @@ def registrar_pagamento(
     historico.pagamento_id = novo_pagamento.id
     historico.status_pagamento = StatusPagamento.PAGO
     historico.forma_pagamento = metodo_pagamento
+
+    # ACH-07: único ponto que gasta o cupom — no pagamento confirmado.
+    if historico.cupom_aplicado:
+        cupom_usado = db.query(CupomDesconto).filter(
+            CupomDesconto.codigo == historico.cupom_aplicado
+        ).first()
+        if cupom_usado:
+            cupom_usado.usos_realizados = (cupom_usado.usos_realizados or 0) + 1
+
     db.commit()
     db.refresh(novo_pagamento)
 
@@ -200,6 +212,16 @@ def gerar_pagamento_pix(db: Session, historico_id: str):
         calcular_tarifa_estadia(db, historico_id)
         db.refresh(historico)
 
+    # ACH-07: reabrir a tela devolve o MESMO QR pendente — antes cada
+    # chamada criava um pagamento novo para a mesma estadia.
+    existente = db.query(Pagamento).filter(
+        Pagamento.historico_id == historico.id,
+        Pagamento.metodo_pagamento == MetodoPagamento.PIX.value,
+        Pagamento.status_pagamento == StatusPagamento.PENDENTE,
+    ).first()
+    if existente:
+        return existente
+
     novo_pagamento = Pagamento(
         historico_id=historico_id,
         estacionamento_id=historico.estacionamento_id,
@@ -235,7 +257,7 @@ def confirmar_pagamento_online(db: Session, pagamento_id: str):
         return pagamento
 
     pagamento.status_pagamento = StatusPagamento.PAGO
-    pagamento.data_pagamento = datetime.utcnow()
+    pagamento.data_pagamento = utc_agora()
 
     historico = db.query(Historico).filter(Historico.id == pagamento.historico_id).first()
     historico.status_pagamento = StatusPagamento.PAGO
@@ -273,7 +295,7 @@ def fechar_caixa(db: Session, caixa_id: str, valor_sangria: float, observacoes: 
     if caixa.fechado:
         raise HTTPException(status_code=400, detail="Este caixa já está fechado")
 
-    caixa.data_fechamento = datetime.utcnow()
+    caixa.data_fechamento = utc_agora()
     caixa.usuario_fechamento_id = usuario_operador.id
     caixa.valor_sangria = valor_sangria
     caixa.observacoes = observacoes

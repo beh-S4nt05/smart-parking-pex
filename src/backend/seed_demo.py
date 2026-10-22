@@ -136,7 +136,7 @@ SHOPPINGS = [
     },
     {
         "nome": "Shopping Phelippe Daou",
-        "endereco": "Av. Camapuã, 1480 - Jorge Teixeira, Manaus - AM",
+        "endereco": "Av. Camapuã, 4475 - Jorge Teixeira, Manaus - AM",
         "bairro": "Jorge Teixeira",
         "latitude": -3.0550,
         "longitude": -59.9558,
@@ -392,6 +392,10 @@ def popular_database(db: Session) -> dict:
             (TipoVaga.COMUM.value, 1.0),
             (TipoVaga.MOTO.value, 0.5),
             (TipoVaga.ELETRICO.value, 1.2),
+            # ACH-07: sem PCD/idoso o modal "cartão especial" ficava sem preço
+            # e o calcular-tarifa respondia "Preço não configurado".
+            (TipoVaga.PCD.value, 1.0),
+            (TipoVaga.IDOSO.value, 1.0),
         ):
             existe = (
                 db.query(ConfiguracaoPreco)

@@ -3,8 +3,34 @@ from typing import List, Optional
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
+from core.timeutils import utc_agora
 from models.db_models import Reserva, Vaga, StatusVaga, StatusReserva, Usuario, Andar
 from models.schemas import ReservaCreate
+
+
+def expirar_reservas_vencidas(db: Session) -> int:
+    """
+    RF-23 (marca 3 · ACH-10): reservas CONFIRMADA com horário de fim no
+    passado viram EXPIRADA e a vaga é liberada (se ainda estiver presa a
+    ela). Idempotente — chamado nas leituras do app/painel e pelo loop de
+    fundo do `main.py` (60 s). Retorna quantas expiraram.
+    """
+    agora = utc_agora()
+    vencidas = db.query(Reserva).filter(
+        Reserva.status == StatusReserva.CONFIRMADA,
+        Reserva.horario_fim < agora,
+    ).all()
+
+    for reserva in vencidas:
+        reserva.status = StatusReserva.EXPIRADA
+        vaga = db.query(Vaga).filter(Vaga.id == reserva.vaga_id).first()
+        if vaga and vaga.status == StatusVaga.RESERVADA:
+            vaga.status = StatusVaga.LIVRE
+            vaga.ultima_atualizacao = agora
+
+    if vencidas:
+        db.commit()
+    return len(vencidas)
 
 
 def criar_reserva(db: Session, dados: ReservaCreate, usuario_logado: Usuario) -> Reserva:
@@ -103,7 +129,8 @@ def cancelar_reserva(db: Session, reserva_id: str, usuario_logado: Usuario) -> R
 
 
 def listar_reservas_usuario(db: Session, usuario_id: str) -> List[Reserva]:
-    """Lista todas as reservas de um usuário específico"""
+    """Lista todas as reservas de um usuário específico (expira as vencidas antes)."""
+    expirar_reservas_vencidas(db)
     reservas = db.query(Reserva).filter(Reserva.usuario_id == usuario_id).all()
 
     # Adiciona dados do andar em cada vaga

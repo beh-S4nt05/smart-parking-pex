@@ -1,4 +1,5 @@
 from typing import List, Optional
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -65,6 +66,11 @@ class Settings(BaseSettings):
     # Em time, deixe false para o erro aparecer na cara — evita "dados fantasmas" no SQLite
     DB_AUTO_SQLITE: bool = True
 
+    # OAuth Providers (autenticação social). ACH-08/ADR-06: o fluxo social
+    # tem bugs conhecidos (Apple JWKS/Facebook sem app validation), então as
+    # rotas só existem com a flag ligada — desligada, respondem 404.
+    LOGIN_SOCIAL_ENABLED: bool = False
+
     # OAuth Providers (autenticação social)
     GOOGLE_CLIENT_ID: Optional[str] = None
     GOOGLE_CLIENT_SECRET: Optional[str] = None
@@ -72,6 +78,22 @@ class Settings(BaseSettings):
     FACEBOOK_CLIENT_SECRET: Optional[str] = None
     APPLE_CLIENT_ID: Optional[str] = None
     APPLE_CLIENT_SECRET: Optional[str] = None
+
+    # ACH-02/ADR-06 (M2-02): o servidor RECUSA subir em produção com as
+    # chaves de exemplo — falha no boot é melhor que segredo fraco no ar.
+    @model_validator(mode="after")
+    def _travar_producao(self):
+        if str(self.ENVIRONMENT).lower() == "production":
+            if self.SECRET_KEY == "sua_chave_secreta_de_producao_aqui":
+                raise ValueError(
+                    "ENVIRONMENT=production exige SECRET_KEY própria no .env "
+                    "(a chave de exemplo está bloqueada)."
+                )
+            if self.APP_SIGNING_SECRET == "smartparking_default_signing_key_change_in_production":
+                raise ValueError(
+                    "ENVIRONMENT=production exige APP_SIGNING_SECRET própria no .env."
+                )
+        return self
 
 
 settings = Settings()

@@ -1,36 +1,22 @@
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Optional
 
 from fastapi import HTTPException, status
-from sqlalchemy import func, case
 from sqlalchemy.orm import Session
 
+from core.timeutils import janela_manaus
 from models.db_models import (
     Pagamento, Historico, ConfiguracaoPreco, Estacionamento,
-    Vaga, TipoVaga, TipoUsuario
+    Vaga, TipoUsuario
 )
-from models.schemas import (
-    ConfiguracaoPrecoCreate, RegistrarPagamentoRequest
-)
+from models.schemas import ConfiguracaoPrecoCreate
 
 
 def _calcular_periodo(periodo: str) -> tuple[datetime, datetime]:
-    """Calcula data de início e fim baseado no período solicitado"""
-    hoje = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
-
-    if periodo == "diario":
-        return hoje, hoje + timedelta(days=1)
-    elif periodo == "semanal":
-        inicio_semana = hoje - timedelta(days=hoje.weekday())
-        return inicio_semana, inicio_semana + timedelta(days=7)
-    elif periodo == "mensal":
-        inicio_mes = hoje.replace(day=1)
-        if inicio_mes.month == 12:
-            fim_mes = inicio_mes.replace(year=inicio_mes.year + 1, month=1)
-        else:
-            fim_mes = inicio_mes.replace(month=inicio_mes.month + 1)
-        return inicio_mes, fim_mes
-    else:
+    """Janela do período no calendário de Manaus (RN-12/ADR-05), em naive-UTC."""
+    try:
+        return janela_manaus(periodo)
+    except ValueError:
         raise HTTPException(
             status_code=400,
             detail="Período inválido. Use: diario, semanal ou mensal"
@@ -70,42 +56,8 @@ def listar_precos_estacionamento(db: Session, estacionamento_id: str):
 
 
 # --- Pagamentos ---
-def registrar_pagamento(db: Session, dados: RegistrarPagamentoRequest, usuario_logado) -> Pagamento:
-    """Registra um pagamento de estadia"""
-    historico = db.query(Historico).filter(Historico.id == dados.historico_id).first()
-    if not historico:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Registro de estadia não encontrado"
-        )
-
-    # Se for financeiro/gestor, só permite registrar pagamento no seu estacionamento
-    if usuario_logado.role in [TipoUsuario.FINANCEIRO.value, TipoUsuario.GESTOR.value]:
-        if historico.estacionamento_id != usuario_logado.estacionamento_id:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Você não tem permissão para registrar pagamentos em outro estacionamento"
-            )
-
-    # Atualiza o valor total no histórico
-    historico.valor_total = dados.valor_total
-
-    novo_pagamento = Pagamento(
-        historico_id=dados.historico_id,
-        estacionamento_id=historico.estacionamento_id,
-        usuario_id=historico.usuario_id,
-        valor_total=dados.valor_total,
-        metodo_pagamento=dados.metodo_pagamento,
-        comprovante_url=dados.comprovante_url,
-        observacoes=dados.observacoes,
-        status_pagamento="pago"
-    )
-
-    db.add(novo_pagamento)
-    db.commit()
-    db.refresh(novo_pagamento)
-    return novo_pagamento
-
+# (o registrar vive APENAS em pagamento_service — ADR-08; a versão
+#  antiga daqui quebrava: `comprovante_url` não existe na tabela Pagamento)
 
 def listar_pagamentos_estacionamento(
     db: Session,
@@ -177,12 +129,13 @@ def obter_resumo_financeiro(
     ticket_medio = faturamento_total / total_pagamentos if total_pagamentos > 0 else 0.0
 
     # Contagem e valor por método de pagamento
+    CARTOES = ("cartao_credito", "cartao_debito")
     pagamentos_pix = sum(1 for p in pagamentos if p.metodo_pagamento == "pix")
-    pagamentos_cartao = sum(1 for p in pagamentos if p.metodo_pagamento == "cartao")
+    pagamentos_cartao = sum(1 for p in pagamentos if p.metodo_pagamento in CARTOES)
     pagamentos_dinheiro = sum(1 for p in pagamentos if p.metodo_pagamento == "dinheiro")
 
     valor_pix = sum(p.valor_total for p in pagamentos if p.metodo_pagamento == "pix")
-    valor_cartao = sum(p.valor_total for p in pagamentos if p.metodo_pagamento == "cartao")
+    valor_cartao = sum(p.valor_total for p in pagamentos if p.metodo_pagamento in CARTOES)
     valor_dinheiro = sum(p.valor_total for p in pagamentos if p.metodo_pagamento == "dinheiro")
 
     # Faturamento por dia
@@ -194,6 +147,25 @@ def obter_resumo_financeiro(
         dias[data_str] += p.valor_total
 
     faturamento_por_dia = [{"data": k, "valor": round(v, 2)} for k, v in sorted(dias.items())]
+
+    # Faturamento por tipo de vaga (RF-53): pagamento → histórico → vaga
+    hist_ids = list({p.historico_id for p in pagamentos if p.historico_id})
+    tipo_por_hist = {}
+    if hist_ids:
+        rows = (
+            db.query(Historico.id, Vaga.tipo)
+            .join(Vaga, Vaga.id == Historico.vaga_id)
+            .filter(Historico.id.in_(hist_ids))
+            .all()
+        )
+        tipo_por_hist = {hid: (tipo or "comum") for hid, tipo in rows}
+    tipos: dict[str, float] = {}
+    for p in pagamentos:
+        t = tipo_por_hist.get(p.historico_id, "outros")
+        tipos[t] = tipos.get(t, 0.0) + p.valor_total
+    faturamento_por_tipo_vaga = [
+        {"tipo_vaga": k, "valor": round(v, 2)} for k, v in sorted(tipos.items())
+    ]
 
     # Nome do estacionamento se filtrado
     est_nome = None
@@ -216,5 +188,5 @@ def obter_resumo_financeiro(
         "valor_cartao": round(valor_cartao, 2),
         "valor_dinheiro": round(valor_dinheiro, 2),
         "faturamento_por_dia": faturamento_por_dia,
-        "faturamento_por_tipo_vaga": []
+        "faturamento_por_tipo_vaga": faturamento_por_tipo_vaga,
     }

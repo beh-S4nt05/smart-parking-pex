@@ -7,8 +7,9 @@ from sqlalchemy import func
 
 from core.config import settings
 from core.deps import get_usuario_admin, get_usuario_financeiro, get_usuario_gestor, permissao_necessaria, get_usuario_autenticado
+from core.deps import garantir_escopo_estacionamento
 from models.database import get_db
-from models.db_models import Usuario, Estacionamento, Andar, Vaga, TipoUsuario, FechamentoCaixa
+from models.db_models import Usuario, Estacionamento, Andar, Vaga, TipoUsuario, FechamentoCaixa, Historico, Pagamento
 from models.schemas import (
     EstacionamentoDetalhadoResponse as EstacionamentoResponse,
     EstacionamentoCreate,
@@ -16,7 +17,7 @@ from models.schemas import (
     VagaResponse, VagaCreate,
     UsuarioResponse, UsuarioAdminCreate, UsuarioAdminUpdate,
     ConfiguracaoPrecoResponse, ConfiguracaoPrecoCreate,
-    PagamentoResponse, RegistrarPagamentoRequest,
+    PagamentoResponse,
     ResumoFinanceiroResponse
 )
 from rules import admin_service, estacionamento_service, financeiro_service, simulador_service, eventos_service
@@ -42,6 +43,7 @@ class LoteVagasCreate(BaseModel):
     andar_id: str
     quantidade: int
     prefixo_codigo: str = ""
+    tipo: str = "comum"  # ACH-17: sem isto o lote só criava "comum"
 
 
 # ======================================================================
@@ -128,7 +130,8 @@ async def criar_vagas_em_lote(
         db,
         andar_id=dados.andar_id,
         quantidade=dados.quantidade,
-        prefixo_codigo=dados.prefixo_codigo
+        prefixo_codigo=dados.prefixo_codigo,
+        tipo=dados.tipo,
     )
 
 
@@ -301,6 +304,8 @@ async def eventos_recentes(
     usuario: Usuario = Depends(get_usuario_gestor),
 ):
     """Últimas movimentações de vagas com origem (sensor/simulador/app)."""
+    # ACH-16/ADR-07: gestor/financeiro veem SÓ o próprio estacionamento
+    estacionamento_id = garantir_escopo_estacionamento(usuario, estacionamento_id, "ver eventos deste estacionamento")
     return eventos_service.listar_eventos_recentes(db, estacionamento_id, limite)
 
 
@@ -311,6 +316,7 @@ async def ocupacao_por_andar(
     usuario: Usuario = Depends(get_usuario_gestor),
 ):
     """Percentual de ocupação por andar — barras do dashboard."""
+    garantir_escopo_estacionamento(usuario, estacionamento_id, "ver ocupação deste estacionamento")
     return eventos_service.ocupacao_por_andar(db, estacionamento_id)
 
 
@@ -325,8 +331,11 @@ async def configurar_preco_vaga(
 ):
     """
     Configura/atualiza preço por tipo de vaga em um estacionamento.
-    Acesso: Admin e Gestor
+    Acesso: Admin e Gestor (gestor só no SEU estacionamento — ADR-07)
     """
+    dados.estacionamento_id = garantir_escopo_estacionamento(
+        usuario, dados.estacionamento_id, "configurar preços deste estacionamento"
+    ) or dados.estacionamento_id
     return financeiro_service.criar_configuracao_preco(db, dados)
 
 
@@ -338,23 +347,17 @@ async def listar_precos_estacionamento(
 ):
     """
     Lista todos os preços configurados para um estacionamento.
-    Acesso: Admin, Gestor e Financeiro
+    Acesso: Admin, Gestor e Financeiro (escopo próprio — ADR-07)
     """
+    estacionamento_id = garantir_escopo_estacionamento(
+        usuario, estacionamento_id, "ver preços deste estacionamento"
+    )
     return financeiro_service.listar_precos_estacionamento(db, estacionamento_id)
 
 
-@router.post("/financeiro/pagamentos", response_model=PagamentoResponse, status_code=201)
-async def registrar_pagamento(
-    dados: RegistrarPagamentoRequest,
-    db: Session = Depends(get_db),
-    usuario: Usuario = Depends(get_usuario_financeiro)
-):
-    """
-    Registra um pagamento de estadia.
-    Métodos aceitos: pix, cartao, dinheiro
-    Acesso: Admin, Gestor e Financeiro
-    """
-    return financeiro_service.registrar_pagamento(db, dados, usuario)
+# (removido, ADR-08/P14: este POST chamava financeiro_service.registrar_pagamento,
+#  que gravava `comprovante_url` — coluna que NÃO existe em Pagamentos — e quebrava
+#  com 500. O fluxo real e testável de pagamento é POST /financeiro/pagamento/registrar)
 
 
 @router.get("/financeiro/pagamentos/{estacionamento_id}", response_model=List[PagamentoResponse])
@@ -366,8 +369,11 @@ async def listar_pagamentos(
 ):
     """
     Lista todos os pagamentos de um estacionamento no período.
-    Acesso: Admin, Gestor e Financeiro
+    Acesso: Admin, Gestor e Financeiro (escopo próprio — ADR-07)
     """
+    estacionamento_id = garantir_escopo_estacionamento(
+        usuario, estacionamento_id, "ver pagamentos deste estacionamento"
+    )
     return financeiro_service.listar_pagamentos_estacionamento(db, estacionamento_id, periodo)
 
 
@@ -464,7 +470,12 @@ async def calcular_tarifa(
     db: Session = Depends(get_db),
     usuario: Usuario = Depends(get_usuario_financeiro)
 ):
-    """Calcula valor da tarifa de estadia, aplicando cupom se fornecido"""
+    """Calcula valor da tarifa de estadia, aplicando cupom se fornecido.
+    O consumo do cupom (RF: limite de usos) acontece SÓ no registrar (ACH-07)."""
+    hist = db.query(Historico).filter(Historico.id == historico_id).first()
+    if not hist:
+        raise HTTPException(status_code=404, detail="Estadia não encontrada")
+    garantir_escopo_estacionamento(usuario, hist.estacionamento_id, "cobrar esta estadia")
     return pagamento_service.calcular_tarifa_estadia(db, historico_id, dados.cupom_codigo)
 
 
@@ -475,6 +486,10 @@ async def registrar_pagamento_presencial(
     usuario: Usuario = Depends(get_usuario_financeiro)
 ):
     """Registra pagamento presencial em dinheiro ou cartão no caixa"""
+    hist = db.query(Historico).filter(Historico.id == dados.historico_id).first()
+    if not hist:
+        raise HTTPException(status_code=404, detail="Estadia não encontrada")
+    garantir_escopo_estacionamento(usuario, hist.estacionamento_id, "registrar pagamento desta estadia")
     result = pagamento_service.registrar_pagamento(db, dados.historico_id, dados.metodo_pagamento, dados.valor_recebido, dados.observacoes, usuario)
     return {
         "id": result["pagamento"].id,
@@ -493,6 +508,15 @@ async def gerar_qr_pix(
     usuario: Usuario = Depends(get_usuario_autenticado)
 ):
     """Gera QR Code PIX para pagamento pelo app"""
+    hist = db.query(Historico).filter(Historico.id == historico_id).first()
+    if not hist:
+        raise HTTPException(status_code=404, detail="Estadia não encontrada")
+    if usuario.role == TipoUsuario.ADMIN.value:
+        pass
+    elif usuario.role in (TipoUsuario.GESTOR.value, TipoUsuario.FINANCEIRO.value):
+        garantir_escopo_estacionamento(usuario, hist.estacionamento_id, "cobrar esta estadia")
+    elif hist.usuario_id != usuario.id:
+        raise HTTPException(status_code=403, detail="Esta estadia não pertence a você")
     pagamento = pagamento_service.gerar_pagamento_pix(db, historico_id)
     return {
         "id": pagamento.id,
@@ -514,6 +538,10 @@ async def confirmar_pagamento(
     usuario: Usuario = Depends(get_usuario_financeiro)
 ):
     """Confirma pagamento (webhook ou confirmação manual)"""
+    pag = db.query(Pagamento).filter(Pagamento.id == id).first()
+    if not pag:
+        raise HTTPException(status_code=404, detail="Pagamento não encontrado")
+    garantir_escopo_estacionamento(usuario, pag.estacionamento_id, "confirmar este pagamento")
     return pagamento_service.confirmar_pagamento_online(db, id)
 
 
@@ -524,6 +552,9 @@ async def abrir_caixa(
     usuario: Usuario = Depends(get_usuario_financeiro)
 ):
     """Abre um novo caixa para início de turno"""
+    dados.estacionamento_id = garantir_escopo_estacionamento(
+        usuario, dados.estacionamento_id, "abrir caixa deste estacionamento"
+    ) or dados.estacionamento_id
     return pagamento_service.abrir_caixa(db, dados.estacionamento_id, dados.valor_inicial, usuario)
 
 
@@ -535,6 +566,10 @@ async def fechar_caixa(
     usuario: Usuario = Depends(get_usuario_financeiro)
 ):
     """Fecha o caixa com valores consolidados"""
+    caixa = db.query(FechamentoCaixa).filter(FechamentoCaixa.id == id).first()
+    if not caixa:
+        raise HTTPException(status_code=404, detail="Caixa não encontrado")
+    garantir_escopo_estacionamento(usuario, caixa.estacionamento_id, "fechar este caixa")
     return pagamento_service.fechar_caixa(db, id, dados.valor_sangria, dados.observacoes, usuario)
 
 
@@ -545,6 +580,7 @@ async def obter_caixa_aberto(
     usuario: Usuario = Depends(get_usuario_financeiro)
 ):
     """Retorna o caixa aberto atualmente no estacionamento"""
+    garantir_escopo_estacionamento(usuario, estacionamento_id, "ver caixa deste estacionamento")
     return db.query(FechamentoCaixa).filter(
         FechamentoCaixa.estacionamento_id == estacionamento_id,
         FechamentoCaixa.fechado == False
@@ -558,6 +594,10 @@ async def criar_cupom_desconto(
     admin: Usuario = Depends(get_usuario_gestor)
 ):
     """Cria um novo cupom de desconto"""
+    # ADR-07: gestor só cria cupom para o SEU estacionamento (admin global)
+    dados.estacionamento_id = garantir_escopo_estacionamento(
+        admin, dados.estacionamento_id, "criar cupom neste estacionamento"
+    ) or dados.estacionamento_id
     return pagamento_service.criar_cupom(db, dados.model_dump())
 
 
@@ -568,4 +608,7 @@ async def listar_cupons(
     admin: Usuario = Depends(get_usuario_financeiro)
 ):
     """Lista todos cupons do estacionamento"""
+    estacionamento_id = garantir_escopo_estacionamento(
+        admin, estacionamento_id, "ver cupons deste estacionamento"
+    )
     return pagamento_service.listar_cupons_estacionamento(db, estacionamento_id)
