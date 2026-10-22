@@ -4,7 +4,8 @@
 > ocupa a tela / barra nativa comendo os alvos de toque; botão "Entrar" do
 > login sem render de cor). Este doc registra **como medir** cada ponto, o que
 > foi medido e o resultado — para a suíte poder ser re-executada a qualquer
-> momento sem depender de memória.
+> momento sem depender de memória. Ver também o [`MAPA_APLICACAO.md`](MAPA_APLICACAO.md) — §7
+> (tokens de animação) e §8 (amarrações de erro).
 
 ## 1. Princípio: medir o artefato, não a opinião
 
