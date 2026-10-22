@@ -1,43 +1,42 @@
 import csv
 import io
-from datetime import datetime
-from typing import Optional
 
-from fastapi import APIRouter, Depends, Query, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
-from sqlalchemy.orm import Session
 from sqlalchemy import text
+from sqlalchemy.orm import Session
 
 from core.config import settings
-from core.rate_limiter import limiter, LIMITS
+from core.timeutils import utc_agora
 from core.deps import (
     get_usuario_financeiro,
     get_usuario_gestor,
     get_usuario_logado,
 )
+from core.rate_limiter import LIMITS, limiter
 from models.database import get_db
 from models.db_models import Andar, TipoUsuario, Usuario, Vaga
 from models.schemas import (
     EstacionamentoDetalhadoResponse,
-    VagaResponse,
+    FluxoPublicoResponse,
+    FluxoResponse,
+    HealthCheckResponse,
     MapaVagasResponse,
+    OcupacaoResponse,
     ProximaVagaResponse,
     ReservaCreate,
     ReservaResponse,
-    FluxoResponse,
-    FluxoPublicoResponse,
-    OcupacaoResponse,
     StatusResponse,
-    HealthCheckResponse,
     VagaAtualizaStatus,
-    VagaLoteStatusUpdate,
     VagaLoteResponse,
+    VagaLoteStatusUpdate,
+    VagaResponse,
 )
 from rules import (
     estacionamento_service,
-    vaga_service,
-    reserva_service,
     relatorio_service,
+    reserva_service,
+    vaga_service,
 )
 
 router = APIRouter(prefix=settings.API_V2_PREFIX, tags=["SmartParking"])
@@ -112,7 +111,7 @@ async def mapa_vagas(id: str, db: Session = Depends(get_db)):
 @router.get("/estacionamentos/{id}/proxima-vaga", response_model=ProximaVagaResponse)
 async def proxima_vaga(
     id: str,
-    tipo_vaga: Optional[str] = Query(
+    tipo_vaga: str | None = Query(
         None, description="Tipo de vaga: comum, idoso, pcd, moto, eletrico"
     ),
     db: Session = Depends(get_db),
@@ -172,10 +171,10 @@ async def listar_minhas_reservas(
 # --- Rotas de Vagas ---
 @router.get("/vagas", response_model=list[VagaResponse])
 async def listar_vagas(
-    estacionamento_id: Optional[str] = Query(None, description="Filtra por estacionamento"),
-    andar_id: Optional[str] = Query(None, description="Filtra por andar"),
-    status: Optional[str] = Query(None, description="livre, ocupada, reservada ou inativa"),
-    tipo: Optional[str] = Query(None, description="comum, idoso, pcd, moto ou eletrico"),
+    estacionamento_id: str | None = Query(None, description="Filtra por estacionamento"),
+    andar_id: str | None = Query(None, description="Filtra por andar"),
+    status: str | None = Query(None, description="livre, ocupada, reservada ou inativa"),
+    tipo: str | None = Query(None, description="comum, idoso, pcd, moto ou eletrico"),
     db: Session = Depends(get_db),
 ):
     """Lista vagas com filtros opcionais (consulta rápida para o mapa do app)"""
@@ -210,8 +209,8 @@ def garantir_vagas_no_escopo(db: Session, usuario: Usuario, vaga_ids: list[str])
 
 
 def garantir_escopo_relatorio(
-    usuario: Usuario, estacionamento_id: Optional[str]
-) -> Optional[str]:
+    usuario: Usuario, estacionamento_id: str | None
+) -> str | None:
     """
     Admin vê o todo (ou o estacionamento que filtrar). Gestor/financeiro:
     forçado ao próprio estacionamento; pedir o dos outros é 403, não dados
@@ -274,7 +273,7 @@ async def atualizar_status_vaga(
 async def relatorio_fluxo(
     request: Request,
     periodo: str = Query(..., description="Período: diario, semanal, mensal"),
-    estacionamento_id: Optional[str] = Query(None),
+    estacionamento_id: str | None = Query(None),
     db: Session = Depends(get_db),
     usuario: Usuario = Depends(get_usuario_financeiro),
 ):
@@ -287,7 +286,7 @@ async def relatorio_fluxo(
 @router.get("/relatorios/fluxo/publico", response_model=FluxoPublicoResponse)
 async def relatorio_fluxo_publico(
     periodo: str = Query("diario", description="Período: diario, semanal, mensal"),
-    estacionamento_id: Optional[str] = Query(None),
+    estacionamento_id: str | None = Query(None),
     db: Session = Depends(get_db),
 ):
     """
@@ -312,7 +311,7 @@ async def relatorio_fluxo_publico(
 async def relatorio_ocupacao(
     request: Request,
     periodo: str = Query(..., description="Período: diario, semanal, mensal"),
-    estacionamento_id: Optional[str] = Query(None),
+    estacionamento_id: str | None = Query(None),
     db: Session = Depends(get_db),
     usuario: Usuario = Depends(get_usuario_financeiro),
 ):
@@ -334,7 +333,7 @@ def _csv_response(nome: str, linhas: list[list]) -> StreamingResponse:
     w = csv.writer(buf, delimiter=";", lineterminator="\r\n")
     for ln in linhas:
         w.writerow(ln)
-    stamp = datetime.utcnow().strftime("%Y%m%d_%H%M")
+    stamp = utc_agora().strftime("%Y%m%d_%H%M")
     return StreamingResponse(
         iter([buf.getvalue()]),
         media_type="text/csv; charset=utf-8",
@@ -347,7 +346,7 @@ def _csv_response(nome: str, linhas: list[list]) -> StreamingResponse:
 async def relatorio_ocupacao_historica(
     request: Request,
     periodo: str = Query("semanal", description="Período: diario, semanal, mensal"),
-    estacionamento_id: Optional[str] = Query(None),
+    estacionamento_id: str | None = Query(None),
     db: Session = Depends(get_db),
     usuario: Usuario = Depends(get_usuario_financeiro),
 ):
@@ -365,7 +364,7 @@ async def relatorio_ocupacao_historica(
 async def relatorio_rotacao(
     request: Request,
     periodo: str = Query("diario", description="Período: diario, semanal, mensal"),
-    estacionamento_id: Optional[str] = Query(None),
+    estacionamento_id: str | None = Query(None),
     db: Session = Depends(get_db),
     usuario: Usuario = Depends(get_usuario_financeiro),
 ):
@@ -380,7 +379,7 @@ async def relatorio_rotacao(
 async def relatorio_fluxo_csv(
     request: Request,
     periodo: str = Query("diario"),
-    estacionamento_id: Optional[str] = Query(None),
+    estacionamento_id: str | None = Query(None),
     db: Session = Depends(get_db),
     usuario: Usuario = Depends(get_usuario_financeiro),
 ):
@@ -390,7 +389,7 @@ async def relatorio_fluxo_csv(
     )
     linhas = [["id", "entrada_em", "saida_em", "placa", "tempo_min", "valor_total"]]
     for r in dados["registros"]:
-        linhas.append([
+        linhas.append([  # noqa: PERF401 (linhas de 6 colunas montadas à mão)
             r["id"],
             r["entrada_em"].isoformat(sep=" ", timespec="minutes") if r["entrada_em"] else "",
             r["saida_em"].isoformat(sep=" ", timespec="minutes") if r["saida_em"] else "",
@@ -406,7 +405,7 @@ async def relatorio_fluxo_csv(
 async def relatorio_financeiro_csv(
     request: Request,
     periodo: str = Query("diario"),
-    estacionamento_id: Optional[str] = Query(None),
+    estacionamento_id: str | None = Query(None),
     db: Session = Depends(get_db),
     usuario: Usuario = Depends(get_usuario_financeiro),
 ):
@@ -423,7 +422,7 @@ async def relatorio_financeiro_csv(
         q = q.filter(Pagamento.estacionamento_id == est)
     linhas = [["id", "data", "metodo", "status", "valor_bruto", "desconto", "valor_total"]]
     for p in q.order_by(Pagamento.data_pagamento.desc()).all():
-        linhas.append([
+        linhas.append([  # noqa: PERF401 (idem)
             p.id,
             p.data_pagamento.strftime("%Y-%m-%d %H:%M") if p.data_pagamento else "",
             p.metodo_pagamento, p.status_pagamento,

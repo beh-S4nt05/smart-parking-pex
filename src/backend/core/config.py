@@ -1,4 +1,4 @@
-from typing import List, Optional
+
 from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -20,6 +20,11 @@ class Settings(BaseSettings):
     DEBUG: bool = True
     API_V2_PREFIX: str = "/api"
 
+    # Segurança — janela anti-duplicidade do middleware (produção): POSTs/PUTs
+    # idênticos da MESMA origem em <1s recebem 429. Desligado por padrão para
+    # não estrangular integrações legítimas em rajada; ligue no .env.
+    BLOQUEIO_DUPLICIDADE: bool = False
+
     # Banco de dados (PostgreSQL padrão como no seu database.py).
     # Driver EXPLÍCITO psycopg2: sem o sufixo, SQLAlchemy>=2.1 procura o
     # psycopg v3 (não instalado) e o app "cai" no SQLite achando que o
@@ -33,14 +38,14 @@ class Settings(BaseSettings):
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
     # CORS
-    CORS_ORIGINS: List[str] = ["*"]
+    CORS_ORIGINS: list[str] = ["*"]
 
     # Hosts aceitos pelo TrustedHostMiddleware (só vale com ENVIRONMENT=production).
     # Wildcards fnmatch funcionam; os padrões abaixo cobrem localhost, IP da LAN
     # (banca/presentação) e containers na rede interna do Docker. Em produção com
     # domínio próprio, acrescente via .env:
     # TRUSTED_HOSTS='["meudominio.com","localhost","192.168.*.*"]'
-    TRUSTED_HOSTS: List[str] = [
+    TRUSTED_HOSTS: list[str] = [
         "localhost",
         "127.0.0.1",
         "host.docker.internal",
@@ -72,12 +77,12 @@ class Settings(BaseSettings):
     LOGIN_SOCIAL_ENABLED: bool = False
 
     # OAuth Providers (autenticação social)
-    GOOGLE_CLIENT_ID: Optional[str] = None
-    GOOGLE_CLIENT_SECRET: Optional[str] = None
-    FACEBOOK_CLIENT_ID: Optional[str] = None
-    FACEBOOK_CLIENT_SECRET: Optional[str] = None
-    APPLE_CLIENT_ID: Optional[str] = None
-    APPLE_CLIENT_SECRET: Optional[str] = None
+    GOOGLE_CLIENT_ID: str | None = None
+    GOOGLE_CLIENT_SECRET: str | None = None
+    FACEBOOK_CLIENT_ID: str | None = None
+    FACEBOOK_CLIENT_SECRET: str | None = None
+    APPLE_CLIENT_ID: str | None = None
+    APPLE_CLIENT_SECRET: str | None = None
 
     # ACH-02/ADR-06 (M2-02): o servidor RECUSA subir em produção com as
     # chaves de exemplo — falha no boot é melhor que segredo fraco no ar.

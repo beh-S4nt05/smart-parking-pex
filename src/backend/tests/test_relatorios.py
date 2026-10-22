@@ -1,15 +1,15 @@
 """Tarefas M3-01/M3-02 (ACH-01/18) e RN-10/RN-12 — fuso, denominador, heat."""
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from core.timeutils import FUSO_MANAUS, inicio_dia_manaus, janela_manaus, utc_agora
-from models.db_models import Historico, StatusVaga, Vaga
+from models.db_models import Historico, StatusVaga
 from rules import relatorio_service
 
 
 def test_dia_local_de_manaus_vira_0300_utc():
     # 22/10 01:00 UTC = 21/10 22:00 em Manaus → "hoje" local é dia 21
-    ref = datetime(2026, 10, 22, 1, 0, tzinfo=timezone.utc)
+    ref = datetime(2026, 10, 22, 1, 0, tzinfo=UTC)
     inicio = inicio_dia_manaus(ref)
     assert inicio == datetime(2026, 10, 21, 3, 0)  # 21/10 00:00-03:00 → 03:00 UTC
 
@@ -59,7 +59,7 @@ def test_ocupacao_historica_bucket_atual_e_cheio_e_madrugada_zerada(db, fab):
     linha = dados["dados_por_andar"][0]
     lista = linha["ocupacao_por_hora"]
     assert len(lista) == 24
-    hora_local = agora.replace(tzinfo=timezone.utc).astimezone(FUSO_MANAUS).hour
+    hora_local = agora.replace(tzinfo=UTC).astimezone(FUSO_MANAUS).hour
     assert lista[hora_local] > 0
     # uma estadia de 45 min pode tocar NO MÁXIMO 2 buckets (o seu e o vizinho
     # do começo da hora); todo o resto tem que estar zerado

@@ -1,9 +1,14 @@
 import uuid
+<<<<<<< HEAD
 from datetime import datetime, timedelta, timezone
 from typing import Any, Union
+=======
+from datetime import UTC, datetime, timedelta
+from typing import Any
+>>>>>>> eb64687f68d74c589beca0aaf9d41bbce94aeffd
 
-import jwt
 import bcrypt
+import jwt
 
 from core.config import settings
 
@@ -23,7 +28,7 @@ def verificar_senha(senha_limpa: str, senha_hash: str) -> bool:
 
 
 def criar_token(
-    subject: Union[str, Any],
+    subject: str | Any,
     tipo_token: str,
     expiracao_delta: timedelta | None = None
 ) -> str:
@@ -31,7 +36,7 @@ def criar_token(
     Cria um JWT token (access ou refresh)
     Implementação igual ao seu auth.py original, porém desacoplada
     """
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     if expiracao_delta:
         expira = now + expiracao_delta

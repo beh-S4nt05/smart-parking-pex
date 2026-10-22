@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 from logging.config import fileConfig
 import os
 import sys
@@ -6,12 +7,25 @@ from sqlalchemy import engine_from_config
 from sqlalchemy import pool
 
 from alembic import context
+=======
+import os
+import sys
+from logging.config import fileConfig
+
+from alembic import context
+from sqlalchemy import engine_from_config, pool
+>>>>>>> eb64687f68d74c589beca0aaf9d41bbce94aeffd
 
 # garante o import do projeto quando chamado pela raiz do backend
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+<<<<<<< HEAD
 from models.database import Base  # noqa: E402
 from models import db_models  # noqa: F401,E402  (registra todas as tabelas)
+=======
+from models import db_models  # noqa: F401  (registra todas as tabelas)
+from models.database import Base
+>>>>>>> eb64687f68d74c589beca0aaf9d41bbce94aeffd
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

@@ -1,0 +1,27 @@
+# Ruff - portao de correcao do backend (rodada 4, out/26).
+# Regras que PEGAM BUG ligadas (E9/F/B/S/SIM/PERF/C4/RUF/DTZ); estilo opinativo
+# (pydocstyle/UP/isort) deliberadamente fora para nao gerar barulho de reforma.
+line-length = 118
+target-version = "py310"
+
+[lint]
+select = ["E9", "F", "B", "S", "SIM", "PERF", "C4", "RUF", "DTZ"]
+ignore = [
+    "B008",    # Depends()/Query() em default = idiom FastAPI, nao e bug
+    "S101",    # assert em testes
+    "S104",    # bind 0.0.0.0 do uvicorn e requisito do Expo/lan
+    "S105",    # placeholders de senha no .env exemplo / bootstrap
+    "S106",    # idem
+    "RUF012",  # config de classe tipada (pydantic) - falso-positivo padrao
+    "DTZ005",  # datetime.now(tz) em scripts locais
+    "B904",    # HTTPException dentro de except: ocultar a causa e intencional (nao vaza interno p/ cliente)
+    "RUF001",  # "x"/"~" etc. ambiguo em strings pt-BR
+    "RUF002",  # idem em docstrings
+    "RUF003",  # idem em comentarios (usamos "x" de multiplicacao em rotulos)
+]
+
+[lint.per-file-ignores]
+"tests/*" = ["S", "DTZ001", "DTZ003"]
+"scripts/*" = ["S", "DTZ"]
+"seed_demo.py" = ["S311"]
+"gunicorn_config.py" = ["S108"]

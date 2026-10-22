@@ -1,17 +1,16 @@
 from datetime import datetime
-from typing import Optional, List
 
 from pydantic import BaseModel, EmailStr, Field
 
-from models.db_models import StatusVaga, TipoVaga, StatusReserva
+from models.db_models import StatusReserva, StatusVaga, TipoVaga
 
 
 # --- Schemas de Usuário ---
 class UsuarioBase(BaseModel):
     nome: str = Field(..., min_length=2, max_length=120)
     email: EmailStr
-    telefone: Optional[str] = None
-    placa_veiculo: Optional[str] = Field(None, max_length=10)
+    telefone: str | None = None
+    placa_veiculo: str | None = Field(None, max_length=10)
 
 
 class UsuarioCreate(UsuarioBase):
@@ -22,7 +21,7 @@ class UsuarioResponse(UsuarioBase):
     id: str
     is_ativo: bool
     role: str
-    estacionamento_id: Optional[str] = None
+    estacionamento_id: str | None = None
     criado_em: datetime
 
     model_config = {"from_attributes": True}
@@ -31,7 +30,7 @@ class UsuarioResponse(UsuarioBase):
 class UsuarioMeResponse(UsuarioResponse):
     """Resposta de /auth/me com o nome do estacionamento vinculado (painel web/mobile)"""
 
-    estacionamento_nome: Optional[str] = None
+    estacionamento_nome: str | None = None
 
 
 # --- Schemas de Autenticação ---
@@ -50,7 +49,7 @@ class TokenResponse(BaseModel):
     access_token: str
     refresh_token: str
     token_type: str = "bearer"
-    user: Optional[UsuarioResponse] = None
+    user: UsuarioResponse | None = None
 
 
 class RefreshRequest(BaseModel):
@@ -60,15 +59,15 @@ class RefreshRequest(BaseModel):
 # --- Schemas de Estacionamento ---
 class EstacionamentoBase(BaseModel):
     nome: str = Field(..., min_length=2, max_length=150)
-    endereco: Optional[str] = None
+    endereco: str | None = None
     total_andares: int = Field(default=1, ge=1)
     total_vagas: int = Field(default=0, ge=0)
-    hora_abertura: Optional[str] = "06:00"
-    hora_fechamento: Optional[str] = "22:00"
+    hora_abertura: str | None = "06:00"
+    hora_fechamento: str | None = "22:00"
     taxa_hora: float = Field(default=0.0, ge=0)
-    telefone: Optional[str] = None
-    latitude: Optional[float] = None
-    longitude: Optional[float] = None
+    telefone: str | None = None
+    latitude: float | None = None
+    longitude: float | None = None
 
 
 class EstacionamentoCreate(EstacionamentoBase):
@@ -90,8 +89,8 @@ class AndarResponse(AndarBase):
     id: str
     estacionamento_id: str
     criado_em: datetime
-    vagas_livres: Optional[int] = 0
-    vagas_ocupadas: Optional[int] = 0
+    vagas_livres: int | None = 0
+    vagas_ocupadas: int | None = 0
 
     model_config = {"from_attributes": True}
 
@@ -99,8 +98,8 @@ class AndarResponse(AndarBase):
 class EstacionamentoDetalhadoResponse(EstacionamentoBase):
     id: str
     criado_em: datetime
-    andares: List[AndarResponse] = []
-    vagas_disponiveis_total: Optional[int] = 0
+    andares: list[AndarResponse] = []
+    vagas_disponiveis_total: int | None = 0
 
     model_config = {"from_attributes": True}
 
@@ -109,8 +108,8 @@ class EstacionamentoDetalhadoResponse(EstacionamentoBase):
 class VagaBase(BaseModel):
     codigo: str = Field(..., min_length=1, max_length=10, description="Ex: A1, B12")
     tipo: TipoVaga = TipoVaga.COMUM
-    posicao_x: Optional[int] = None
-    posicao_y: Optional[int] = None
+    posicao_x: int | None = None
+    posicao_y: int | None = None
 
 
 class VagaCreate(VagaBase):
@@ -119,7 +118,7 @@ class VagaCreate(VagaBase):
 
 class VagaAtualizaStatus(BaseModel):
     status: StatusVaga
-    origem: Optional[str] = Field(
+    origem: str | None = Field(
         None,
         pattern="^(sensor|simulador|app_motorista|manual)$",
         description="De onde veio a mudança (feed de eventos do dashboard)",
@@ -129,9 +128,9 @@ class VagaAtualizaStatus(BaseModel):
 class VagaLoteStatusUpdate(BaseModel):
     """Atualização de status em lote (simulador de sensores / ações rápidas)"""
 
-    vaga_ids: List[str] = Field(..., min_length=1, max_length=500)
+    vaga_ids: list[str] = Field(..., min_length=1, max_length=500)
     status: StatusVaga
-    origem: Optional[str] = Field(
+    origem: str | None = Field(
         None,
         pattern="^(sensor|simulador|app_motorista|manual)$",
         description="De onde veio a mudança (feed de eventos do dashboard)",
@@ -142,8 +141,8 @@ class VagaResponse(VagaBase):
     id: str
     andar_id: str
     status: StatusVaga
-    numero_andar: Optional[int] = None
-    ultima_atualizacao: Optional[datetime] = None
+    numero_andar: int | None = None
+    ultima_atualizacao: datetime | None = None
 
     model_config = {"from_attributes": True}
 
@@ -151,8 +150,8 @@ class VagaResponse(VagaBase):
 class MapaVagasResponse(BaseModel):
     estacionamento_id: str
     estacionamento_nome: str
-    andares: List[AndarResponse]
-    vagas: List[VagaResponse]
+    andares: list[AndarResponse]
+    vagas: list[VagaResponse]
 
 
 class VagaLoteResponse(BaseModel):
@@ -160,14 +159,14 @@ class VagaLoteResponse(BaseModel):
 
     solicitadas: int
     atualizadas: int
-    nao_encontradas: List[str] = []
-    vagas: List[VagaResponse] = []
+    nao_encontradas: list[str] = []
+    vagas: list[VagaResponse] = []
 
 
 class ProximaVagaResponse(BaseModel):
     estacionamento_id: str
-    vaga: Optional[VagaResponse] = None
-    andar_numero: Optional[int] = None
+    vaga: VagaResponse | None = None
+    andar_numero: int | None = None
     mensagem: str
 
 
@@ -176,7 +175,7 @@ class ReservaBase(BaseModel):
     vaga_id: str
     horario_inicio: datetime
     horario_fim: datetime
-    observacoes: Optional[str] = None
+    observacoes: str | None = None
 
 
 class ReservaCreate(ReservaBase):
@@ -188,7 +187,7 @@ class ReservaResponse(ReservaBase):
     usuario_id: str
     status: StatusReserva
     criado_em: datetime
-    vaga: Optional[VagaResponse] = None
+    vaga: VagaResponse | None = None
 
     model_config = {"from_attributes": True}
 
@@ -196,18 +195,18 @@ class ReservaResponse(ReservaBase):
 # --- Schemas de Relatórios ---
 class FluxoResponse(BaseModel):
     periodo: str
-    estacionamento_id: Optional[str] = None
+    estacionamento_id: str | None = None
     total_entradas: int
     total_saidas: int
     tempo_medio_permanencia_min: float
-    registros: List[dict]
+    registros: list[dict]
 
 
 class FluxoPublicoResponse(BaseModel):
     """Versão sem `registros` para telas públicas (Home) — só agregados."""
 
     periodo: str
-    estacionamento_id: Optional[str] = None
+    estacionamento_id: str | None = None
     total_entradas: int
     total_saidas: int
     tempo_medio_permanencia_min: float
@@ -215,11 +214,11 @@ class FluxoPublicoResponse(BaseModel):
 
 class OcupacaoResponse(BaseModel):
     periodo: str
-    estacionamento_id: Optional[str] = None
+    estacionamento_id: str | None = None
     taxa_ocupacao_media: float
     total_vagas: int
     vagas_ocupadas: int
-    dados_por_andar: List[dict]
+    dados_por_andar: list[dict]
 
 
 # --- Schemas genéricos ---
@@ -238,23 +237,23 @@ class HealthCheckResponse(BaseModel):
 # --- Schemas de Usuário para Admin ---
 class UsuarioAdminCreate(UsuarioCreate):
     role: str = "usuario"
-    estacionamento_id: Optional[str] = None
+    estacionamento_id: str | None = None
 
 
 class UsuarioAdminUpdate(BaseModel):
-    nome: Optional[str] = None
-    telefone: Optional[str] = None
-    placa_veiculo: Optional[str] = None
-    role: Optional[str] = None
-    is_ativo: Optional[bool] = None
-    estacionamento_id: Optional[str] = None
+    nome: str | None = None
+    telefone: str | None = None
+    placa_veiculo: str | None = None
+    role: str | None = None
+    is_ativo: bool | None = None
+    estacionamento_id: str | None = None
 
 
 # --- Schemas de Finanças ---
 class ConfiguracaoPrecoBase(BaseModel):
     tipo_vaga: str
     valor_hora: float = Field(..., ge=0)
-    valor_diaria: Optional[float] = Field(None, ge=0)
+    valor_diaria: float | None = Field(None, ge=0)
     tolerancia_minutos: int = 15
 
 
@@ -269,18 +268,18 @@ class ConfiguracaoPrecoResponse(ConfiguracaoPrecoBase):
     # RF-60: expõe fração/minimo. A COLUNA nasceu com acento (valor_fração_15min);
     # a API devolve o nome limpo — validation_alias lê o ORM, serialization_alias
     # vale porque o FastAPI serializa response_model com by_alias=True.
-    valor_fracao_15min: Optional[float] = Field(
+    valor_fracao_15min: float | None = Field(
         None, validation_alias="valor_fração_15min", serialization_alias="valor_fracao_15min"
     )
     cobrar_valor_minimo: bool = True
-    valor_minimo: Optional[float] = None
+    valor_minimo: float | None = None
 
     model_config = {"from_attributes": True, "populate_by_name": True}
 
 
 class ResumoFinanceiroResponse(BaseModel):
-    estacionamento_id: Optional[str] = None
-    estacionamento_nome: Optional[str] = None
+    estacionamento_id: str | None = None
+    estacionamento_nome: str | None = None
     periodo: str
     faturamento_total: float
     ticket_medio: float
@@ -291,31 +290,31 @@ class ResumoFinanceiroResponse(BaseModel):
     valor_pix: float
     valor_cartao: float
     valor_dinheiro: float
-    faturamento_por_dia: List[dict]
-    faturamento_por_tipo_vaga: List[dict]
+    faturamento_por_dia: list[dict]
+    faturamento_por_tipo_vaga: list[dict]
 
 
 
 # --- Schemas do Módulo de Pagamentos ---
 class CalcularTarifaRequest(BaseModel):
-    cupom_codigo: Optional[str] = None
+    cupom_codigo: str | None = None
 
 class PagamentoRequest(BaseModel):
     historico_id: str
     metodo_pagamento: str = Field(..., pattern="^(pix|cartao_credito|cartao_debito|dinheiro)$")
-    valor_recebido: Optional[float] = None
-    observacoes: Optional[str] = None
+    valor_recebido: float | None = None
+    observacoes: str | None = None
 
 class PagamentoResponse(BaseModel):
     id: str
     valor_total: float
     metodo_pagamento: str
     status_pagamento: str
-    copia_cola_pix: Optional[str] = None
-    qr_code_pix: Optional[str] = None
-    link_pagamento: Optional[str] = None
-    data_pagamento: Optional[datetime] = None
-    troco: Optional[float] = 0.0
+    copia_cola_pix: str | None = None
+    qr_code_pix: str | None = None
+    link_pagamento: str | None = None
+    data_pagamento: datetime | None = None
+    troco: float | None = 0.0
 
     model_config = {"from_attributes": True}
 
@@ -325,26 +324,26 @@ class TarifaResponse(BaseModel):
     valor_bruto: float
     desconto_aplicado: float
     valor_total: float
-    cupom_aplicado: Optional[str] = None
+    cupom_aplicado: str | None = None
 
 class CupomCreate(BaseModel):
     estacionamento_id: str
     codigo: str
     tipo_desconto: str = Field(..., pattern="^(porcentagem|valor_fixo|isencao_total)$")
     valor_desconto: float = Field(..., ge=0)
-    descricao: Optional[str] = None
-    limite_usos: Optional[int] = None
-    data_validade: Optional[datetime] = None
+    descricao: str | None = None
+    limite_usos: int | None = None
+    data_validade: datetime | None = None
 
 class CupomResponse(BaseModel):
     id: str
     codigo: str
     tipo_desconto: str
     valor_desconto: float
-    descricao: Optional[str]
-    limite_usos: Optional[int]
+    descricao: str | None
+    limite_usos: int | None
     usos_realizados: int
-    data_validade: Optional[datetime]
+    data_validade: datetime | None
     ativo: bool
 
     model_config = {"from_attributes": True}
@@ -355,12 +354,12 @@ class AbrirCaixaRequest(BaseModel):
 
 class FecharCaixaRequest(BaseModel):
     valor_sangria: float = 0.0
-    observacoes: Optional[str] = None
+    observacoes: str | None = None
 
 class FechamentoCaixaResponse(BaseModel):
     id: str
     data_abertura: datetime
-    data_fechamento: Optional[datetime]
+    data_fechamento: datetime | None
     valor_inicial_caixa: float
     valor_pix: float
     valor_cartao_credito: float

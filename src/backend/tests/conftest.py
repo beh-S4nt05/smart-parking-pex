@@ -30,15 +30,20 @@ os.environ.update({
     "APP_SIGNING_SECRET": "assinatura-de-teste",
 })
 
-import pytest  # noqa: E402
-from fastapi.testclient import TestClient  # noqa: E402
-from sqlalchemy.orm import sessionmaker  # noqa: E402
+import pytest
+from fastapi.testclient import TestClient
+from sqlalchemy.orm import sessionmaker
 
-from core.security import criar_hash_senha, criar_token  # noqa: E402
-from models.database import Base, engine  # noqa: E402
-from models.db_models import (  # noqa: E402
-    Andar, Estacionamento, StatusReserva, StatusVaga, TipoUsuario, TipoVaga,
-    Usuario, Vaga,
+from core.security import criar_hash_senha, criar_token
+from models.database import Base, engine
+from models.db_models import (
+    Andar,
+    Estacionamento,
+    StatusVaga,
+    TipoUsuario,
+    TipoVaga,
+    Usuario,
+    Vaga,
 )
 
 Base.metadata.create_all(bind=engine)

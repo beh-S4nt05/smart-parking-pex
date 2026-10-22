@@ -1,19 +1,35 @@
-from typing import List, Optional
 
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
 from core.security import criar_hash_senha
 from models.db_models import (
-    Estacionamento, Andar, Vaga, Usuario, TipoVaga,
-    StatusVaga, TipoUsuario, Historico, Reserva, Pagamento
+    Andar,
+    Estacionamento,
+    FechamentoCaixa,
+    Historico,
+    Pagamento,
+    Reserva,
+    Sensor,
+    SensorEvento,
+    StatusVaga,
+    TipoUsuario,
+    TipoVaga,
+    Usuario,
+    Vaga,
 )
-from models.schemas import EstacionamentoCreate, AndarCreate, VagaCreate, UsuarioAdminCreate, UsuarioAdminUpdate
+from models.schemas import (
+    AndarCreate,
+    EstacionamentoCreate,
+    UsuarioAdminCreate,
+    UsuarioAdminUpdate,
+    VagaCreate,
+)
 
 
 # --- Purga operacional compartilhada pelos "deletar_*" ---
-def _purgar_operacional(db: Session, estacionamento_id: Optional[str] = None,
-                        vaga_ids: Optional[List[str]] = None) -> None:
+def _purgar_operacional(db: Session, estacionamento_id: str | None = None,
+                        vaga_ids: list[str] | None = None) -> None:
     """
     Apaga na ordem certa os dados OPERACIONAIS (pagamentos → históricos →
     reservas) antes de deletar estacionamento/andar/vaga.
@@ -34,16 +50,58 @@ def _purgar_operacional(db: Session, estacionamento_id: Optional[str] = None,
             .join(Andar, Vaga.andar_id == Andar.id)
             .filter(Andar.estacionamento_id == estacionamento_id)
         ]
+        # ORDEM importada (auditoria 22/10-n): em Postgres o FK
+        # historicos.pagamento_id é RESTRICT — apagar os pagamentos ANTES de
+        # soltar a referência derrubava o DELETE com 500. Primeiro NULL-out.
+        db.query(Historico).filter(
+            Historico.estacionamento_id == estacionamento_id,
+            Historico.pagamento_id.isnot(None),
+        ).update({Historico.pagamento_id: None}, synchronize_session=False)
         db.query(Pagamento).filter(Pagamento.estacionamento_id == estacionamento_id).delete(synchronize_session=False)
-        # históricos DO estacionamento inteiro (pagamentos já fora do caminho)
         db.query(Historico).filter(Historico.estacionamento_id == estacionamento_id).delete(synchronize_session=False)
+        # caixa: o cascade do ORM cobriria, mas deletamos ANTES de mexer nos
+        # usuários que abriram os caixas (FK RESTRICT em usuarios.id)
+        db.query(FechamentoCaixa).filter(
+            FechamentoCaixa.estacionamento_id == estacionamento_id
+        ).delete(synchronize_session=False)
+        # dispositivos de medição do estacionamento (tabela nova de 22/10 —
+        # sem relationship no ORM; sem isto sobrariam linhas órfãs/403)
+        sensores_ids = [sid for (sid,) in db.query(Sensor.id).filter(Sensor.estacionamento_id == estacionamento_id)]
+        if sensores_ids:
+            db.query(SensorEvento).filter(SensorEvento.sensor_id.in_(sensores_ids)).delete(synchronize_session=False)
+            db.query(Sensor).filter(Sensor.id.in_(sensores_ids)).delete(synchronize_session=False)
+        # gestores/financeiros vinculados: ficam órfãos (SQLite) ou travam o
+        # DELETE (Postgres, FK RESTRICT) — a conta só existe PARA a filial.
+        vinculados = [
+            uid for (uid,) in db.query(Usuario.id).filter(
+                Usuario.estacionamento_id == estacionamento_id,
+                Usuario.role.in_([TipoUsuario.GESTOR.value, TipoUsuario.FINANCEIRO.value]),
+            )
+        ]
+        if vinculados:
+            db.query(Reserva).filter(Reserva.usuario_id.in_(vinculados)).delete(synchronize_session=False)
+            db.query(Pagamento).filter(Pagamento.usuario_id.in_(vinculados)).update(
+                {Pagamento.usuario_id: None}, synchronize_session=False
+            )
+            db.query(Usuario).filter(Usuario.id.in_(vinculados)).delete(synchronize_session=False)
+        # sessões QR do simulador apontando para a filial morta (estado em
+        # memória — revogar explicitamente, senão o QR vive sem dono)
+        from rules import simulador_service
+        simulador_service.revogar_por_estacionamento(estacionamento_id)
     if vaga_ids:
         # pagamentos ATRAVÉS dos históricos destas vagas também (cobre o DELETE
         # de andar/vaga isolado, onde o branch de estacionamento não rodou)
         historicos_afetados = db.query(Historico.id).filter(Historico.vaga_id.in_(vaga_ids))
+        db.query(Historico).filter(
+            Historico.vaga_id.in_(vaga_ids), Historico.pagamento_id.isnot(None)
+        ).update({Historico.pagamento_id: None}, synchronize_session=False)
         db.query(Pagamento).filter(Pagamento.historico_id.in_(historicos_afetados)).delete(synchronize_session=False)
         db.query(Historico).filter(Historico.vaga_id.in_(vaga_ids)).delete(synchronize_session=False)
         db.query(Reserva).filter(Reserva.vaga_id.in_(vaga_ids)).delete(synchronize_session=False)
+        # log bruto de sensor perde a vaga (não a estadia): desanexa, preserva auditoria
+        db.query(SensorEvento).filter(SensorEvento.vaga_id.in_(vaga_ids)).update(
+            {SensorEvento.vaga_id: None}, synchronize_session=False
+        )
     db.flush()
 
 
@@ -109,6 +167,28 @@ def atualizar_usuario_admin(db: Session, usuario_id: str, dados: UsuarioAdminUpd
 
     dados_dict = dados.model_dump(exclude_unset=True)
 
+    # Guarda anti-lockout (22/10-n): o ÚLTIMO admin ativo não pode ser
+    # rebaixado nem desativado — sem isto, um PUT malicioso/sem atenção
+    # deixava o sistema sem ninguém capaz de gerenciar nada.
+    perde_admin = (
+        usuario.role == TipoUsuario.ADMIN.value
+        and (
+            ("role" in dados_dict and dados_dict["role"] != TipoUsuario.ADMIN.value)
+            or dados_dict.get("is_ativo") is False
+        )
+    )
+    if perde_admin:
+        restantes = db.query(Usuario).filter(
+            Usuario.role == TipoUsuario.ADMIN.value,
+            Usuario.is_ativo.is_(True),
+            Usuario.id != usuario.id,
+        ).count()
+        if restantes == 0:
+            raise HTTPException(
+                status_code=422,
+                detail="Não é possível rebaixar/desativar o último administrador ativo do sistema",
+            )
+
     # Valida role se estiver sendo alterada
     if "role" in dados_dict:
         roles_validos = [r.value for r in TipoUsuario]
@@ -119,14 +199,17 @@ def atualizar_usuario_admin(db: Session, usuario_id: str, dados: UsuarioAdminUpd
             )
 
         # Se for alterar para gestor/financeiro, garante estacionamento
-        if dados_dict["role"] in [TipoUsuario.GESTOR.value, TipoUsuario.FINANCEIRO.value]:
-            if not dados_dict.get("estacionamento_id") and not usuario.estacionamento_id:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Gestores e usuários de finanças devem estar vinculados a um estacionamento"
-                )
+        if (
+            dados_dict["role"] in [TipoUsuario.GESTOR.value, TipoUsuario.FINANCEIRO.value]
+            and not dados_dict.get("estacionamento_id")
+            and not usuario.estacionamento_id
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Gestores e usuários de finanças devem estar vinculados a um estacionamento"
+            )
 
-    if "estacionamento_id" in dados_dict and dados_dict["estacionamento_id"]:
+    if dados_dict.get("estacionamento_id"):
         est = db.query(Estacionamento).filter(Estacionamento.id == dados_dict["estacionamento_id"]).first()
         if not est:
             raise HTTPException(
@@ -142,7 +225,7 @@ def atualizar_usuario_admin(db: Session, usuario_id: str, dados: UsuarioAdminUpd
     return usuario
 
 
-def listar_todos_usuarios(db: Session) -> List[Usuario]:
+def listar_todos_usuarios(db: Session) -> list[Usuario]:
     """Lista todos os usuários do sistema (apenas admin)"""
     return db.query(Usuario).all()
 
@@ -312,8 +395,13 @@ def reset_senha_admin(db: Session, usuario_id: str) -> str:
     alfabeto = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789abcdefghjkmnpqrstuvwxyz"
     temporaria = "".join(_sec.choice(alfabeto) for _ in range(10))
     usuario.senha_hash = criar_hash_senha(temporaria)
+<<<<<<< HEAD
     from models.db_models import RevogacaoToken
     from core.timeutils import utc_agora
+=======
+    from core.timeutils import utc_agora
+    from models.db_models import RevogacaoToken
+>>>>>>> eb64687f68d74c589beca0aaf9d41bbce94aeffd
     db.add(RevogacaoToken(jti=None, usuario_id=usuario.id, motivo="reset_admin", criado_em=utc_agora()))
     db.commit()
     return temporaria
@@ -359,7 +447,7 @@ def criar_vagas_em_lote(
     quantidade: int,
     prefixo_codigo: str = "",
     tipo: str = TipoVaga.COMUM,
-) -> List[Vaga]:
+) -> list[Vaga]:
     """Cria várias vagas de uma vez em um andar (útil para cadastro rápido).
 
     ACH-17: o lote agora aceita `tipo` e mantém `andares.capacidade` e

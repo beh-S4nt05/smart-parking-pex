@@ -12,7 +12,7 @@ Regra única para todo o backend:
   Python (SQLite devolve naive, Postgres devolve aware — `normalizar` unifica).
 """
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta, timezone
 
 # America/Manaus: UTC-3 permanente (sem DST) — evita dependência de tzdata
 FUSO_MANAUS = timezone(timedelta(hours=-3))
@@ -20,19 +20,19 @@ FUSO_MANAUS = timezone(timedelta(hours=-3))
 
 def utc_agora() -> datetime:
     """Agora em UTC, naive — formato canônico de GRAVAÇÃO no banco."""
-    return datetime.now(timezone.utc).replace(tzinfo=None)
+    return datetime.now(UTC).replace(tzinfo=None)
 
 
 def normalizar(dt: datetime) -> datetime:
     """Qualquer datetime vindo do banco → naive-UTC (comparável com utc_agora())."""
     if dt.tzinfo is not None:
-        dt = dt.astimezone(timezone.utc)
+        dt = dt.astimezone(UTC)
     return dt.replace(tzinfo=None)
 
 
 def inicio_dia_manaus(ref: datetime | None = None) -> datetime:
     """Meia-noite do "dia de hoje" (calendário de Manaus) em naive-UTC."""
-    base = ref or datetime.now(timezone.utc)
+    base = ref or datetime.now(UTC)
     local = base.astimezone(FUSO_MANAUS)
     return normalizar(local.replace(hour=0, minute=0, second=0, microsecond=0))
 

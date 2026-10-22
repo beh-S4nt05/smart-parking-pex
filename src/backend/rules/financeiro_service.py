@@ -1,13 +1,16 @@
 from datetime import datetime
-from typing import Optional
 
-from fastapi import HTTPException, status
+from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 from core.timeutils import janela_manaus
 from models.db_models import (
-    Pagamento, Historico, ConfiguracaoPreco, Estacionamento,
-    Vaga, TipoUsuario
+    ConfiguracaoPreco,
+    Estacionamento,
+    Historico,
+    Pagamento,
+    TipoUsuario,
+    Vaga,
 )
 from models.schemas import ConfiguracaoPrecoCreate
 
@@ -78,7 +81,7 @@ def listar_pagamentos_estacionamento(
 def obter_resumo_financeiro(
     db: Session,
     periodo: str = "diario",
-    estacionamento_id: Optional[str] = None,
+    estacionamento_id: str | None = None,
     usuario_logado = None
 ) -> dict:
     """

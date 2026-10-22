@@ -1,10 +1,12 @@
+import re
+import time
+
+from core.config import settings
+from collections import defaultdict
+
 from fastapi import Request, Response
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
-import re
-from typing import Set, Dict
-import time
-from collections import defaultdict
 
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
@@ -41,9 +43,10 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     def __init__(self, app, environment: str = "development"):
         super().__init__(app)
         self.environment = environment
+        self._idem_cache: dict = {}  # chave sha256 -> monotonic (janela de 1s)
         # Rastreamento de requisições para anti-duplicação/abuso (simples em memória)
         # Para produção com múltiplos workers use Redis
-        self.request_tracker: Dict[str, list] = defaultdict(list)
+        self.request_tracker: dict[str, list] = defaultdict(list)
 
     async def dispatch(self, request: Request, call_next):
         # Em desenvolvimento desativa anti-duplicação para facilitar testes
@@ -72,10 +75,23 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         #    texto livre. Bloqueio de SCANNERS (UA) e limite de corpo seguem.)
         client_ip = request.client.host if request.client else "unknown"
 
-        # 4. Anti-duplicação de requisições: bloqueia requisições idênticas feitas em menos de 1s
-        # Evita cliques duplicados e ataques de repetição
+        # 4. Anti-duplicação de requisições (rodada 4 — "amarração": o bloco
+        # existia mas NUNCA consultava a chave; agora o guard é real).
+        # BLOQUEIO_DUPLICIDADE=true no .env liga; só escreções com corpo.
         body = await request.body()
-        request_key = f"{client_ip}:{request.method}:{request.url.path}:{body}"
+        if settings.BLOQUEIO_DUPLICIDADE and request.method in {"POST", "PUT", "PATCH", "DELETE"}:
+            import hashlib
+            chave = hashlib.sha256(f"{client_ip}:{request.method}:{request.url.path}".encode() + body).hexdigest()
+            agora = time.monotonic()
+            anterior = self._idem_cache.get(chave)
+            if anterior is not None and agora - anterior < 1.0:
+                return JSONResponse(
+                    status_code=429,
+                    content={"detail": "Requisição duplicada detectada (<1s). Espere e tente novamente."},
+                )
+            if len(self._idem_cache) > 10000:  # teto de memória: descarta os mais antigos
+                self._idem_cache = {k: v for k, v in self._idem_cache.items() if agora - v < 60}
+            self._idem_cache[chave] = agora
 
         # Devolve o body lido para os handlers do FastAPI conseguirem reler
         async def _cached_receive():
@@ -141,7 +157,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         Retorna um JSONResponse 400 quando algo é bloqueado, None caso contrário.
         """
         # Verifica parâmetros de query string
-        for chave, valor in request.query_params.items():
+        for valor in request.query_params.values():
             if self._contem_sql_injection(valor):
                 return JSONResponse(
                     status_code=400,
@@ -159,8 +175,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
                     res = await self._verificar_objeto_injection(body)
                     if res is not None:
                         return res
-                except Exception:
-                    # Se não for JSON válido deixa passar pra validação do Pydantic tratar
+                except Exception:  # noqa: S110 — JSON malformado pertence ao Pydantic, não ao middleware
                     pass
 
         return None
@@ -169,10 +184,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         """Verifica se um texto contém padrões de SQL Injection/XSS"""
         if not isinstance(texto, str):
             return False
-        for padrao in self.SQL_INJECTION_PATTERNS:
-            if padrao.search(texto):
-                return True
-        return False
+        return any(padrao.search(texto) for padrao in self.SQL_INJECTION_PATTERNS)
 
     async def _verificar_objeto_injection(self, obj):
         """Percorre recursivamente o JSON do corpo verificando injection"""
@@ -188,8 +200,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
                 res = await self._verificar_objeto_injection(item)
                 if res is not None:
                     return res
-        elif isinstance(obj, str):
-            if self._contem_sql_injection(obj):
+        elif isinstance(obj, str) and self._contem_sql_injection(obj):
                 return JSONResponse(
                     status_code=400,
                     content={

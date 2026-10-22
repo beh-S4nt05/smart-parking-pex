@@ -10,14 +10,28 @@ não gera segunda estadia no Histórico.
 
 import hashlib
 import secrets
+<<<<<<< HEAD
 from typing import List, Tuple
 
 from fastapi import HTTPException, status
+=======
+
+from fastapi import HTTPException
+>>>>>>> eb64687f68d74c589beca0aaf9d41bbce94aeffd
 from sqlalchemy.orm import Session
 
 from core.timeutils import utc_agora
 from models.db_models import (
+<<<<<<< HEAD
     Andar, Estacionamento, Sensor, SensorEvento, StatusVaga, Vaga,
+=======
+    Andar,
+    Estacionamento,
+    Sensor,
+    SensorEvento,
+    StatusVaga,
+    Vaga,
+>>>>>>> eb64687f68d74c589beca0aaf9d41bbce94aeffd
 )
 from models.schemas import VagaAtualizaStatus
 from rules import vaga_service
@@ -62,10 +76,17 @@ def autenticar_chave(db: Session, chave: str) -> Sensor:
     return sensor
 
 
+<<<<<<< HEAD
 def registrar_eventos(db: Session, sensor: Sensor, eventos: List[dict]) -> dict:
     """Aplica um lote; retorna {aceitos, duplicados, ignorados, erros[]}."""
     aceitos = duplicados = ignorados = 0
     erros: List[str] = []
+=======
+def registrar_eventos(db: Session, sensor: Sensor, eventos: list[dict]) -> dict:
+    """Aplica um lote; retorna {aceitos, duplicados, ignorados, erros[]}."""
+    aceitos = duplicados = ignorados = 0
+    erros: list[str] = []
+>>>>>>> eb64687f68d74c589beca0aaf9d41bbce94aeffd
     agora = utc_agora()
     for i, ev in enumerate(eventos):
         seq = ev.get("seq")
