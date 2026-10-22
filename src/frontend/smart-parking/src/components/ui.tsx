@@ -26,8 +26,11 @@ import { colors, ocupacaoColor } from "../theme";
 // ---------------------------------------------------------- animações (RN core)
 /**
  * Entrada suave (fade + leve subida) para listas e cards — usa só o
- * `Animated` do React Native (nenhuma dependência nova) e `useNativeDriver`,
- * que vale tanto no app (iOS/Android) quanto no web (wasm/JS driver).
+ * `Animated` do React Native (nenhuma dependência nova). `useNativeDriver`
+ * SÓ existe no nativo — na web é sempre driver JS (na web `true` dispara o
+ * warning "native animated module is missing" no console; correção da
+ * auditoria de 22/10 rod.7). Onde a animação roda nas duas plataformas
+ * (Botao, SeloAoVivo, ModalForma) o flag é `Platform.OS !== "web"`.
  */
 export function AnimarEntrada({
   children,
@@ -174,7 +177,7 @@ export function Botao({
       // wobble longo atrasa a percepcao de resposta ao toque
       friction: 7,
       tension: 180,
-      useNativeDriver: true,
+      useNativeDriver: !ehWeb,
     }).start();
 
   const base = "flex-row items-center justify-center gap-2 rounded-xl px-5 py-3.5";
@@ -280,13 +283,13 @@ export function SeloAoVivo() {
           toValue: 0.35,
           duration: 900,
           easing: Easing.inOut(Easing.quad),
-          useNativeDriver: true,
+          useNativeDriver: Platform.OS !== "web",
         }),
         Animated.timing(pulso, {
           toValue: 1,
           duration: 900,
           easing: Easing.inOut(Easing.quad),
-          useNativeDriver: true,
+          useNativeDriver: Platform.OS !== "web",
         }),
       ]),
     );
@@ -666,7 +669,7 @@ export function ModalForma({
         toValue: 1,
         duration: 170,
         easing: Easing.out(Easing.quad),
-        useNativeDriver: true,
+        useNativeDriver: Platform.OS !== "web",
       }).start();
     }
   }, [visivel, surg]);

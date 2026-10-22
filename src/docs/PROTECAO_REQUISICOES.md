@@ -117,3 +117,34 @@ Nenhuma proteção cliente-side é 100% inquebrável. Um atacante com conhecimen
 ✅ Limite de ações por usuário.
 
 Essa combinação barra a maior parte dos casos comuns de usuários tentando burlar o app pelo navegador/Postman — lembrando (nota acima) que um atacante que extraia a chave do bundle contorna a assinatura; o que continua valendo contra ele é auth + escopo por estacionamento + rate limit.
+
+---
+
+## 📊 O que é BARRADO na prática (matriz executada, não prometida)
+
+Medidor reproduzível: `./scripts/e2e_validacao.sh` (blocos C e D) — validado
+contra API viva em 22/10 com **zero falhas** (27 pontos de matriz de acesso
++ 28 checkpoints de jornada). O que o controle de acesso faz, visto no
+executar (não em tabela de design):
+
+| Ação indevida | Barreira | Resultado real |
+|---|---|---|
+| GET/POST em `/api/admin/*` sem token | `permissao_necessaria` | **401** |
+| Motorista tentando criar estacionamento / operar vaga no mapa / emitir sensor | role check | **403** (D5a no E2E) |
+| Não-declarado reservando vaga PCD | regra RF-47 no serviço | **403 "exclusiva…"** (D3e) |
+| Dispositivo com chave revogada | tabela de revogação | **401** (D6e) |
+| QR de simulador já revogado | sessão de simulação | **410** (D7d) |
+| Brute-force de login | rate limiter `10/min` | **429 + Retry-After** |
+| Flood de cadastro | rate limiter `5/min` | **429** |
+
+**O 429 é mecanismo funcionando, não pane.** Ele já derrubou diagnóstico
+aqui: rodar `check_conexao`/smokes em loop estoura o bucket e o login do
+app passa a "recusar" por 1 minuto — parece "sem conexão", é proteção.
+O E2E lida com isso como cliente educado (espera `retry_after` e segue).
+
+No frontend a mesma régua é espelhada em duas camadas: guardas de rota
+(`dashboard` exige painel, `simulador*` exigem admin — e nada é renderizado
+antes da validação, inclusive com cache local: sem token o cache de usuário
+é descartado no boot, fechando a "sessão fantasma" pós-logout achada na
+auditoria de 22/10) **e** o backend, que é a autoridade: mesmo com o
+front adulterado, os códigos acima continuam valendo.
