@@ -7,6 +7,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from slowapi import _rate_limit_exceeded_handler  # noqa: F401  (mantido p/ compatibilidade)
+import sqlalchemy as sa
 from sqlalchemy.exc import IntegrityError, ProgrammingError
 
 from api.admin import router as admin_router
@@ -25,6 +26,52 @@ from models.db_models import Estacionamento, TipoUsuario, Usuario
 with contextlib.suppress(ProgrammingError, IntegrityError):
     # Tabelas já existem (corrida entre workers/processos) — segue em frente
     Base.metadata.create_all(bind=engine)
+
+
+# Colunas que tabelas "velhas" ganharam e que `create_all` não recupera —
+# só entram aqui colunas com DEFAULT seguro (sem backfill; o default É a
+# semântica de quem não tem a coluna). Ao adicionar coluna no modelo numa
+# rodada sem alembic no container Docker: uma linha aqui + a revisão no
+# `migrations/` (ver MIGRACOES.md).
+CORRECOES_ESQUEMA = {
+    "usuarios": {"is_pcd": "BOOLEAN NOT NULL DEFAULT false"},  # RF-47 / a7e41c9d0b52
+}
+
+
+def reparar_esquema_antigo(eng=None) -> None:
+    """
+    Reparo de compatibilidade para volumes antigos (lição da RF-47, 22/10):
+    `create_all` cria tabelas NOVAS mas nunca adiciona coluna em tabela que
+    já existe — e a imagem Docker não roda alembic. Resultado: um Postgres
+    de volume pré-RF-47 quebrava o boot em `garantir_admin_padrao`
+    (UndefinedColumn → gunicorn não sobe → healthcheck TCP falha → compose
+    "dependency backend failed to start", visto na máquina do usuário).
+    Idempotente, vale para Postgres e SQLite, roda também em produção; com
+    alembic à mão (host/dev) prefira `alembic upgrade head` p/ parity total.
+    """
+    eng = eng or engine
+    try:
+        insp = sa.inspect(eng)
+        tabelas = set(insp.get_table_names())
+    except Exception:  # reparo nunca pode derrubar o boot
+        return
+    for tabela, correcoes in CORRECOES_ESQUEMA.items():
+        if tabela not in tabelas:
+            continue
+        existentes = {c["name"] for c in insp.get_columns(tabela)}
+        for coluna, ddl in correcoes.items():
+            if coluna in existentes:
+                continue
+            with eng.begin() as conn:
+                conn.execute(sa.text(f"ALTER TABLE {tabela} ADD COLUMN {coluna} {ddl}"))
+            print(
+                f"🔧 reparar_esquema_antigo: adicionou {tabela}.{coluna} "
+                "(volume antigo; equivale à revisão correspondente em "
+                "migrations/ — rode `alembic upgrade head` quando houver alembic)"
+            )
+
+
+reparar_esquema_antigo()
 
 
 def garantir_admin_padrao() -> None:
