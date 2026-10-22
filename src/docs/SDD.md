@@ -446,6 +446,16 @@ Maestro), Alembic (ADR-04/M4-02), sessões Postgres (H-01), sensores com `X-Devi
 perfil (RF-15), cache offline persistido (RF-06), "como chegar" (RF-07), UI de edição
 RF-31..34, RF-24 `[decisão Q-08 — texto da decisão não veio no upload]`, TLS no nginx.
 
+### Evidências — 22/10 (auditoria QA-101: "permanece sem conexão")
+
+| Evidência | Resultado |
+|---|---|
+| Bundle com o `.env` envenenado (build real `expo export`) | PROVA: `API_URL` vira constante `"http://localhost:8000"` e o minificador remove `hostUri` do bundle (0 ocorrências) — o `.env` local do usuário congelava tudo mesmo pós-fix |
+| `app.json` (auditoria minuciosa) | PEÇA FALTANTE achada e posta: `android.usesCleartextTraffic` + iOS ATS `NSAllowsArbitraryLoads` — sem elas, dev build/APK bloqueia `http://` da LAN (Expo Go é isento: por isso "aqui funciona, lá não") |
+| `requestSigner.ts` | chave HMAC era só literal — agora lê `EXPO_PUBLIC_APP_SIGNING_SECRET` (espelho do backend; `tsc` 0, `expo export` ok) |
+| `scripts/check_conexao.sh` (novo) | testado AO VIVO no sandbox: sem backend → exit 1 com "o que fazer"; com backend real → 10 ✔ (login, /me, /estacionamentos, /proxima-vaga anônimo+token, preflight CORS com allow-headers ecoando `x-request-*`); `.env` envenenado de propósito → detecta → `--fix` comenta preservando o nome + backup → re-run 0 crítico/exit 0 |
+| Suspeitos ELIMINADOS com teste | CORS do backend (preflight real 200 + `allow-headers` completo), TrustedHost em dev (200 com Host `10.x`), URLs duras nas telas (zero fora de api.ts), `@expo/metro-runtime` (presente via expo), `global.css` casing ✓, `.dockerignore`/`.gitignore` cobrindo `.env` ✓ |
+
 ### Evidências — 22/10 (conexão multi-plataforma, ACH-20/21)
 
 | Evidência | Resultado |

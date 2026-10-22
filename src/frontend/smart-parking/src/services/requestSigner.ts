@@ -17,9 +17,15 @@ import { InternalAxiosRequestConfig } from "axios";
 
 /**
  * Chave compartilhada com o backend (APP_SIGNING_SECRET).
+ * ⚠️ QA-101/22/10: antes era SÓ literal — seguir o conselho do
+ * `src/backend/.env.example` ("troque a chave em produção") sem espelhar aqui
+ * 403-ava TODAS as escritas quando `ENVIRONMENT=production`. Agora lê
+ * `EXPO_PUBLIC_APP_SIGNING_SECRET` do .env do app (default mantém a demo).
  * Em produção real: ofuscar/injetar via CI e rotacionar.
  */
-const APP_SECRET = "smartparking_default_signing_key_change_in_production";
+const APP_SECRET =
+  process.env.EXPO_PUBLIC_APP_SIGNING_SECRET ||
+  "smartparking_default_signing_key_change_in_production";
 
 export interface RequestSignerConfig {
   /** Assinar apenas requisições que modificam dados (padrão true) */

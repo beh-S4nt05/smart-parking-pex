@@ -486,6 +486,21 @@ Não existe "API da web" e "API do mobile" — seria divergência de contrato; o
 existe é UM backend com UM endereço por ambiente, resolvido pelo cliente. O token é
 o mesmo entre web e mobile (mesma origem de storage por dispositivo).
 
+**Peças que FALTAVAM no projeto para conexão fora do Expo Go (achadas e postas em
+22/10 — auditoria "permanece sem conexão"):**
+- `app.json → android.usesCleartextTraffic: true` — sem ele, dev build/APK bloqueia
+  todo `http://<IP>:8000` com "CLEARTEXT communication not permitted" (o Expo Go é
+  isento, por isso "no simulador funciona e no aparelho não").
+- `app.json → ios.infoDictionary.NSAppTransportSecurity.NSAllowsArbitraryLoads` —
+  mesmo papel no iOS. Produção real: API em HTTPS e remover os dois.
+- `requestSigner.ts` agora lê `EXPO_PUBLIC_APP_SIGNING_SECRET` — quem seguir o
+  conselho do `.env.example` do backend ("troque a chave em produção") sem espelhar
+  aqui toma **403 em toda escrita** sob `ENVIRONMENT=production`.
+- **Verificador**: `./scripts/check_conexao.sh` — aponta (e com `--fix`, conserta)
+  o `.env` envenenado da QA-101, testa health/login/me/proxima-vaga/CORS/preflight,
+  inspeciona o bundle servido pelo Metro, checa os candidatos de LAN (firewall) e
+  o estado dos containers. Exit code 0/1 — utilizável como gate de pré-banca.
+
 ### Fluxo admin: QR do simulador
 1. Painel → aba **Simulador QR** (`/simulador-qr`): escolhe shopping + andar +
    validade → `POST /api/admin/simulador/sessoes` retorna
