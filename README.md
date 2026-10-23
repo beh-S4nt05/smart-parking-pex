@@ -184,12 +184,17 @@ banca: roda de qualquer pasta, sem dependência além de `curl`.
 
 ```bash
 cd src/frontend/smart-parking
-npm install
+npm ci --no-audit --no-fund
 cp .env.example .env    # opcional: o app resolve a URL sozinho por plataforma
                         # (web → host atual; Expo Go → IP do "npx expo start");
                         # o .env só p/ porta != 8000, túnel ou produção
 npx expo start          # pressione: w (web) · a (Android) · i (iOS) · ou escaneie o QR
 ```
+
+> O SDK 58 está **fixado** no `package.json` e no `package-lock.json`. Para
+> instalar ou recuperar o frontend, use `npm ci` — não `npm install`, que pode
+> recalcular a árvore. `npm install` só é apropriado quando você pretende
+> alterar dependências de propósito.
 
 > **Achas de configuração (importante pro time todo):**
 > - O **único** env do app é `EXPO_PUBLIC_API_URL`. Env chamada `DEFAULT_API_URL`
@@ -213,6 +218,53 @@ O **web e o mobile usam as mesmas rotas** (layout responsivo): `/` home ·
 
 > 📖 **Documentação da API:** [http://localhost:8000/docs](http://localhost:8000/docs) (Swagger interativo)
 > 🐘 **PgAdmin:** [http://localhost:5050](http://localhost:5050) · `admin@admin.com` / `admin`
+
+#### 🧯 `expo install --check` ou `npm audit fix --force` misturou as versões?
+
+**Não aceite o “Fix dependencies?” nem rode `npm audit fix --force` para
+consertar o SDK.** O `expo install` usa o pacote `expo` que está em
+`node_modules`; se essa pasta ainda for do SDK 57, ele propõe dependências do
+57 mesmo com o `package.json` atualizado. Já o `audit fix --force` pode trocar
+majeures sem relação com o problema (no incidente de 23/10, chegou a sugerir
+Expo 44, RN 0.72 e NativeWind 2). O resultado é uma árvore mista — não uma
+correção de vulnerabilidades.
+
+Recupere **somente os arquivos de dependências** e reinstale do lockfile. Na
+raiz do repositório, primeiro desfaça as alterações automáticas e depois
+atualize a cópia, se necessário:
+
+```bash
+# opcional, mas recomendado: guarda o diff antes de descartar as alterações
+# automáticas; não toca em código, telas, .env ou backend
+git diff -- src/frontend/smart-parking/package.json \
+            src/frontend/smart-parking/package-lock.json > /tmp/smart-parking-deps.diff
+
+git restore --source=HEAD -- \
+  src/frontend/smart-parking/package.json \
+  src/frontend/smart-parking/package-lock.json
+
+# só se a cópia ainda não tiver o commit 3a28ae9 (ou posterior):
+git pull --ff-only
+git log -1 --oneline
+
+cd src/frontend/smart-parking
+rm -rf node_modules .expo
+npm ci --no-audit --no-fund
+
+# tem que imprimir 58.0.17; se imprimir 57.x, pare e confira a cópia/branch
+node -p "require('./node_modules/expo/package.json').version"
+npx expo start -c
+```
+
+Se houver alterações manuais nesses dois arquivos, preserve-as no diff e
+reaplique depois — o `restore` acima descarta apenas as mudanças não
+commitadas deles. O `git log` precisa mostrar `3a28ae9` ou um commit posterior
+do SDK 58; não tente fazer o upgrade restaurando arquivos de outra cópia.
+
+Depois do `npm ci`, o `npx expo install --check` é apenas uma verificação
+opcional: se ele anunciar **SDK 57**, pressione `Ctrl+C` e repita a checagem do
+`node_modules`; não autorize a instalação. `npm audit` pode ser lido à parte,
+mas seus avisos transitivos não devem derrubar os pins do SDK.
 
 #### 📱 Expo Go no celular: "Failed to download remote update"
 
