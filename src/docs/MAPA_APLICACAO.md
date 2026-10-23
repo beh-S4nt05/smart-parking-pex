@@ -16,7 +16,7 @@
 
 ```
 usuário (Expo Go / navegador)
-  └─ src/frontend/smart-parking          RN + Expo SDK 57 + NativeWind 4
+  └─ src/frontend/smart-parking          RN + Expo SDK 58 + NativeWind 4
        src/app/*.tsx        telas (router)
        src/components/ui.tsx  primitivas visuais + animações (RN core Animated)
        src/services/api.ts    48 métodos → UM ponto de saída HTTP

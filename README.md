@@ -7,8 +7,8 @@ com dashboard, mapa de vagas por andar e simulador de sensores por QR Code.
 
 ![Python](https://img.shields.io/badge/Python-3.11-3776AB?logo=python&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.110+-009688?logo=fastapi&logoColor=white)
-![React Native](https://img.shields.io/badge/React_Native-0.86-61DAFB?logo=react&logoColor=black)
-![Expo](https://img.shields.io/badge/Expo_SDK-57-000020?logo=expo&logoColor=white)
+![React Native](https://img.shields.io/badge/React_Native-0.88-61DAFB?logo=react&logoColor=black)
+![Expo](https://img.shields.io/badge/Expo_SDK-58-000020?logo=expo&logoColor=white)
 ![TypeScript](https://img.shields.io/badge/TypeScript-6-3178C6?logo=typescript&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15-4169E1?logo=postgresql&logoColor=white)
 ![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)
@@ -89,7 +89,7 @@ com dashboard, mapa de vagas por andar e simulador de sensores por QR Code.
 | **Validação** | Pydantic v2 (schemas de entrada/saída), e-mail, limites, padrões | `models/schemas.py` |
 | **Autenticação** | JWT (access 15 min + refresh 7 dias), hash bcrypt com salt, papéis e permissões (admin/gestor/financeiro/motorista) | `core/security.py`, `core/deps.py` |
 | **Segurança de APIs** | Assinatura **HMAC-SHA256** com anti-replay (timestamp + nonce), rate limiting em 2 camadas, anti-SQLi, headers de segurança, bloqueio de scanners | `core/request_validator.py`, `core/rate_limiter.py`, `core/security_middleware.py`, `nginx/` |
-| **Frontend mobile + web** | React Native 0.86 + Expo SDK 57, **um código para Android/iOS/Web** (react-native-web), TypeScript estrito | `src/frontend/smart-parking/` |
+| **Frontend mobile + web** | React Native 0.88 + Expo SDK 58 (versões **fixas/exatas** em `package.json`), **um código para Android/iOS/Web** (react-native-web), TypeScript estrito | `src/frontend/smart-parking/` |
 | **UI cross-platform** | NativeWind (Tailwind no RN), componentização, design responsivo sem CSS grid, acessibilidade de toque (Pressable) | `src/components/` |
 | **Estado e integração** | React Context + hooks customizados, interceptors Axios (token + refresh automático + assinatura), storage seguro multiplataforma | `src/context/`, `src/hooks/`, `src/services/` |
 | **DevOps/Infra** | Docker Compose (nginx + backend + postgres + pgadmin), proxy reverso com load balancing (`least_conn`), health checks | `src/docker-compose.yml`, `src/nginx/` |
@@ -220,9 +220,12 @@ Esse erro **não é do código do app** — o projeto não usa OTA/EAS Update (n
 `expo-updates` nem `eas.json`); é o Expo Go tentando baixar o bundle do servidor
 da Expo em vez de conectar ao Metro do PC. Cheque nesta ordem:
 
-1. **Expo Go compatível com o SDK 57 do projeto** — atualize o Expo Go na Play
-   Store. Um Expo Go de versão antiga não abre o SDK novo e "cai" na tentativa de
-   update remoto (a `IOException`).
+1. **Expo Go compatível com o SDK 58 do projeto** — o Expo Go das lojas segue o
+   SDK mais recente e a build para o SDK 58 saiu ~2–3 semanas após o release
+   (15/10/2026). Se a sua Play Store ainda mostrar só o Expo Go do SDK 57, ele
+   NÃO abre projeto 58 ("Failed to download remote update" é o sintoma): aguarde
+   a atualização do app OU rode por navegador (`npx expo start --web`) / Android
+   Studio emulator, ou migre para dev build (`npx expo run:android`).
 2. **Abra pelo QR do terminal**, não pela aba "Projects/Recentes" do Expo Go (esse
    caminho vai no expo.dev, que exige projeto publicado → update remoto → falha).
    Rode `npx expo start` no terminal e escaneie o QR dali (ou digite

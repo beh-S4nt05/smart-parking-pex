@@ -8,7 +8,6 @@
     "scheme": "smartparking",
     "userInterfaceStyle": "light",
     "backgroundColor": "#F8FAFC",
-    "newArchEnabled": true,
     "splash": {
       "image": "./src/assets/imgs/splash-icon.png",
       "resizeMode": "contain",
@@ -24,7 +23,6 @@
     },
     "android": {
       "usesCleartextTraffic": true,
-      "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "adaptiveIcon": {
         "foregroundImage": "./src/assets/imgs/adaptive-icon.png",
