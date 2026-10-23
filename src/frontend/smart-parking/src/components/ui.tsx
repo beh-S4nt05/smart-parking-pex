@@ -182,11 +182,11 @@ export function Botao({
 
   const base = "flex-row items-center justify-center gap-2 rounded-xl px-5 py-3.5";
   const variants: Record<string, string> = {
-    primario: "bg-blue-600 active:bg-blue-700",
-    contorno: "border border-blue-600 bg-white active:bg-blue-50",
-    fantasma: "bg-transparent",
-    perigo: "bg-red-500 active:bg-red-600",
-    sucesso: "bg-emerald-500 active:bg-emerald-600",
+    primario: "bg-blue-600 hover:bg-blue-700 active:bg-blue-800",
+    contorno: "border border-blue-600 bg-white hover:bg-blue-50 active:bg-blue-100",
+    fantasma: "bg-transparent hover:bg-blue-100/70 active:bg-blue-200/70",
+    perigo: "bg-red-500 hover:bg-red-600 active:bg-red-700",
+    sucesso: "bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700",
   };
   const labelColor: Record<string, string> = {
     primario: "text-white",

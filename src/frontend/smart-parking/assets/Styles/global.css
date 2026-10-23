@@ -1,3 +1,19 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+/* ─── botões: fim do "flash branco" padrão do navegador (rod.12) ───
+   RN-web renderiza Pressable como <button>; o UA stylesheet pinta
+   buttonface (bracinza) em hover/active/focus quando o elemento não tem
+   cor própria — era o "efeito branco" dos botões. Aqui TODO botão parte de
+   uma cor e o navegador nunca mais decide o estado de pressed por nós. */
+button {
+  background-color: transparent;
+  -webkit-tap-highlight-color: transparent;
+}
+button:focus {
+  outline: none;
+}
+button:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}
