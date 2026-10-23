@@ -34,42 +34,28 @@ import type {
   VagaStatus,
   VagaTipo,
 } from "../types/api";
+import { resolverApiURLBase } from "./apiBaseUrl";
 
 // ======================================================================
-// URL base da API — UMA API, UMA RESOLUÇÃO POR PLATAFORMA (ACH-21, 22/10).
-// O erro clássico que derrubava o celular inteiro: localhost no telefone é
-// o próprio telefone. Em vez de "uma API para web e outra para mobile", o
-// cliente resolve sozinho o host certo e o backend continua um só:
-//   · override manual EXPO_PUBLIC_API_URL (túnel ngrok, domínio próprio,
-//     porta fora de 8000) → manda em tudo;
-//   · web servida no :80/:443 (ex.: export + nginx) → same-origin;
-//   · web dev (:8081) → mesmo host na 8000;
-//   · Expo Go/dev client → o IP LAN que o próprio `expo start` publica em
-//     Constants.expoConfig.hostUri (mudou de Wi-Fi? mudou o IP? nada a fazer);
-//   · emulador Android → 10.0.2.2 (alias do host); iOS sim compartilha rede.
+// URL base da API — UMA API, UMA RESOLUÇÃO POR PLATAFORMA (ACH-21, 22/10;
+// chaves _WEB/_MOBILE + guarda de túnel, rod.13). A lógica pura mora em
+// ./apiBaseUrl (testável em node); aqui só injetamos o contexto real.
+// Prioridade: EXPO_PUBLIC_API_URL_WEB/_MOBILE → EXPO_PUBLIC_API_URL →
+// auto-resolução (web = host do navegador, nativo = IP LAN do hostUri do
+// Metro, emulador = 10.0.2.2). ./scripts/dev-front.sh mantém a chave
+// _MOBILE do .env sincronizada com o IP atual — mudou o Wi-Fi, rode de novo.
 // ======================================================================
 function resolverApiURL(): string {
-  const env = (process.env.EXPO_PUBLIC_API_URL || "").trim();
-  if (env) return env.replace(/\/+$/, "");
-
-  if (Platform.OS === "web" && typeof window !== "undefined") {
-    const { hostname, port, protocol } = window.location;
-    if (port === "" || port === "80" || port === "443") {
-      return `${protocol}//${hostname}`;
-    }
-    return `http://${hostname}:8000`;
-  }
-
-  // hostUri vem como "192.168.0.42:8081" ou "exp://192.168.0.42:8081"
-  const hostUri = Constants.expoConfig?.hostUri;
-  if (hostUri) {
-    const host = hostUri.split("://").pop()!.split(":")[0];
-    if (host && host !== "localhost" && host !== "127.0.0.1" && host !== "[::1]") {
-      return `http://${host}:8000`;
-    }
-  }
-  if (Platform.OS === "android") return "http://10.0.2.2:8000";
-  return "http://localhost:8000";
+  return resolverApiURLBase({
+    ehWeb: Platform.OS === "web",
+    envWeb: process.env.EXPO_PUBLIC_API_URL_WEB,
+    envMobile: process.env.EXPO_PUBLIC_API_URL_MOBILE,
+    envGlobal: process.env.EXPO_PUBLIC_API_URL,
+    location: typeof window !== "undefined" ? window.location : null,
+    hostUri: Constants.expoConfig?.hostUri ?? null,
+    ehAndroid: Platform.OS === "android",
+    warn: __DEV__ ? (m) => console.warn(`[smart-parking] ${m}`) : undefined,
+  });
 }
 
 export const API_URL: string = resolverApiURL();
