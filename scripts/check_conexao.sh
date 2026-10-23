@@ -65,43 +65,82 @@ printf '%s\n═══ SMARTPARKING — VERIFICADOR DE CONEXÃO (QA-101) ══�
 # ───────────────────────────────────────────────────────────── 1. .env front
 echo "── 1. Configuração do app (src/frontend/smart-parking/.env)"
 ENV_DIRTY=0
-if [ -f "$FRONT_ENV" ]; then
-    LINHA=$(grep -nE '^[[:space:]]*EXPO_PUBLIC_API_URL=' "$FRONT_ENV" | head -1 || true)
-    if [ -n "$LINHA" ]; then
-        N=${LINHA%%:*}
-        VAL=${LINHA#*EXPO_PUBLIC_API_URL=}
-        if grep -qE 'localhost|127\.0\.0\.1|\[::1\]' <<<"$VAL"; then
-            if [ "$FIX" = 1 ]; then
-                cp "$FRONT_ENV" "$FRONT_ENV.bak-qa101"
-                # só PREPÕE "# " — mantém o nome e o valor para restauração fácil
-                sed -i "${N}s|^|# QA-101 (check_conexao --fix): |" "$FRONT_ENV"
-                if grep -qE '^[[:space:]]*EXPO_PUBLIC_API_URL=' "$FRONT_ENV"; then
-                    fail "tentei comentar via --fix mas a linha continua ativa" "edite $FRONT_ENV e comente EXPO_PUBLIC_API_URL manualmente, depois: npx expo start -c"
-                else
-                    pass "--fix: linha envenenada COMENTADA (nome preservado p/ restaurar) — backup .env.bak-qa101; REINICIE com: npx expo start -c"
-                fi
-            else
-                fail "linha ATIVA EXPO_PUBLIC_API_URL=$VAL (QA-101: congela a URL no bundle — no celular, localhost é o próprio celular; o minificador APAGA o auto-detector)" \
-                     "rode:  ./scripts/check_conexao.sh --fix   (comenta a linha + backup)   — e depois REINICIE:  npx expo start -c"
-                ENV_DIRTY=1
-            fi
-        else
-            pass "EXPO_PUBLIC_API_URL=$VAL (override manual — o .env manda em tudo; confirme que é a URL que o SEU celular alcança)"
-        fi
-    else
-        pass "sem override ativo no .env → o app resolve a URL sozinho por plataforma (resolverApiURL)"
-    fi
-else
-    pass "não existe .env (nem precisa: auto-detecção por plataforma está viva)"
-fi
-
-# ───────────────────────────────────────────────────────── 2. backend vivo
-echo "── 2. Backend alcançável? (3 candidatos)"
+# LAN_IP calculado cedo (rod.13): usado aqui e na seção 2
 LAN_IP=""
 if command -v ip >/dev/null 2>&1; then
     LAN_IP=$(ip route get 1.1.1.1 2>/dev/null | awk '{for(i=1;i<=NF;i++) if($i=="src"){print $(i+1); exit}}')
 fi
 [ -z "$LAN_IP" ] && command -v hostname >/dev/null 2>&1 && LAN_IP=$(hostname -I 2>/dev/null | awk '{print $1}')
+
+if [ -f "$FRONT_ENV" ]; then
+    ENV_ACHOU=0
+    # as TRÊS chaves que o resolver (src/services/apiBaseUrl.ts) respeita,
+    # já na ordem de prioridade: _WEB/_MOBILE por plataforma, global depois
+    for PAR in "EXPO_PUBLIC_API_URL_WEB:web" "EXPO_PUBLIC_API_URL_MOBILE:mobil" "EXPO_PUBLIC_API_URL:any"; do
+        K="${PAR%%:*}"; ESC="${PAR##*:}"
+        LINHA=$(grep -nE "^[[:space:]]*${K}=" "$FRONT_ENV" | head -1 || true)
+        [ -z "$LINHA" ] && continue
+        ENV_ACHOU=1
+        N=${LINHA%%:*}
+        VAL=${LINHA#*=}
+        case "$VAL" in
+            exp://*)
+                if [ "$FIX" = 1 ]; then
+                    cp "$FRONT_ENV" "$FRONT_ENV.bak-qa101"
+                    sed -i "${N}s|^\(${K}=\)exp://|\1http://|" "$FRONT_ENV"
+                    pass "--fix: $K usava exp:// (deep-link do QR) → convertida para http://; REINICIE com: npx expo start -c"
+                else
+                    fail "$K=$VAL começa com exp:// — é o deep-link do QR do Expo Go, não URL de API (o runtime agora converte sozinho, mas o .env deveria estar certo)"                          "rode:  ./scripts/check_conexao.sh --fix   (converte p/ http://)   ou   ./scripts/dev-front.sh"
+                    ENV_DIRTY=1
+                fi ;;
+            *)
+                if [[ "$VAL" == *:8081* ]]; then
+                    fail "$K=$VAL mira a porta 8081 — essa é o METRO (serve o bundle), a API FastAPI é a $BACKEND_PORT"                          "rode ./scripts/dev-front.sh — ele escreve a URL certa (http://IP-LAN:$BACKEND_PORT) no .env"
+                    ENV_DIRTY=1
+                elif [ "$ESC" != "web" ] && grep -qE 'localhost|127\.0\.0\.1|\[::1\]' <<<"$VAL"; then
+                    if [ "$FIX" = 1 ]; then
+                        cp "$FRONT_ENV" "$FRONT_ENV.bak-qa101"
+                        sed -i "${N}s|^|# QA-101 (check_conexao --fix): |" "$FRONT_ENV"
+                        pass "--fix: $K apontava p/ localhost (no celular, localhost é o PRÓPRIO celular) — linha COMENTADA, app cai na auto-detecção; backup .env.bak-qa101; REINICIE com npx expo start -c"
+                    else
+                        fail "$K=$VAL contém localhost — em Expo Go o celular vai procurar a API dentro dele mesmo (a web até aceitaria, mas esse valor global/amarrado congela as duas plataformas)"                              "rode:  ./scripts/dev-front.sh   (grava o IP LAN atual)   ou   ./scripts/check_conexao.sh --fix   (comenta a linha)"
+                        ENV_DIRTY=1
+                    fi
+                elif [ "$ESC" != "web" ] && [ -n "$LAN_IP" ] && [[ "$VAL" =~ ^https?://([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+) ]]; then
+                    IPVAR="${BASH_REMATCH[1]}"
+                    if [ "$IPVAR" != "$LAN_IP" ]; then
+                        if [ "$FIX" = 1 ]; then
+                            cp "$FRONT_ENV" "$FRONT_ENV.bak-qa101"
+                            sed -i "${N}s|://${IPVAR}|://${LAN_IP}|" "$FRONT_ENV"
+                            pass "--fix: $K tinha IP desatualizado ($IPVAR, rede mudou) → $LAN_IP; REINICIE com npx expo start -c"
+                        else
+                            fail "$K aponta para http://$IPVAR mas esta máquina hoje é $LAN_IP — IP do Wi-Fi mudou e o valor congelou no .env"                                  "rode:  ./scripts/dev-front.sh   ou   ./scripts/check_conexao.sh --fix   (ambos atualizam p/ $LAN_IP)"
+                            ENV_DIRTY=1
+                        fi
+                    else
+                        pass "$K=$VAL (IP LAN atual ✓ — same network do celular p/ este PC)"
+                    fi
+                else
+                    pass "$K=$VAL (override por plataforma — o app usa isto antes de auto-resolver)"
+                fi ;;
+        esac
+    done
+    if [ "$ENV_ACHOU" = 0 ]; then
+        pass "sem override ativo no .env → o app resolve a URL sozinho por plataforma (apiBaseUrl.ts)"
+    fi
+else
+    pass "não existe .env (nem precisa: auto-detecção por plataforma está viva; p/ fixar o IP do celular use ./scripts/dev-front.sh)"
+fi
+
+# ───────────────────────────────────────────────────────── 2. backend vivo
+echo "── 2. Backend alcançável? (3 candidatos)"
+# LAN_IP já veio da seção 1 (hoist da rod.13); recalcula só se estiver vazio
+if [ -z "$LAN_IP" ]; then
+    if command -v ip >/dev/null 2>&1; then
+        LAN_IP=$(ip route get 1.1.1.1 2>/dev/null | awk '{for(i=1;i<=NF;i++) if($i=="src"){print $(i+1); exit}}')
+    fi
+    [ -z "$LAN_IP" ] && command -v hostname >/dev/null 2>&1 && LAN_IP=$(hostname -I 2>/dev/null | awk '{print $1}')
+fi
 
 declare -a CANDIDATOS=()
 [ -n "${BACKEND_URL:-}" ] && CANDIDATOS+=("$BACKEND_URL")
