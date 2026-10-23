@@ -3,6 +3,9 @@
 import "../../assets/Styles/global.css";
 
 import { Platform } from "react-native";
+import { instalarAlertaWeb } from "../services/web-alert-shim";
+
+instalarAlertaWeb(); // Alert.alert é no-op no RN-web — shim p/ window.alert/confirm (ver módulo)
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useSafeAreaInsets } from "react-native-safe-area-context";

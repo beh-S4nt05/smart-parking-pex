@@ -113,3 +113,34 @@ o grep do pré-render pega.
 Sem `react-native-reanimated`/`expo-camera`/pacote de safe-area novo — a
 política "zero npm install na V-02" segue; toda correção desta rodada coube em
 RN core + dependências que o template Expo 57 já instala.
+
+---
+
+## Rodada 12 (22/10) — dois defeitos de WEB capturados pelo E2E
+
+**1. `Alert.alert` é NO-OP no react-native-web 0.21.** A implementação é
+`class Alert { static alert() {} }` — nenhum diálogo abre e os `onPress`
+nunca rodam. Tradução para o usuário: **cancelar reserva na web "não fazia
+nada"** (idem excluir estacionamento/andar, sair, trocar senha — ~50 call
+sites). Corrigido com `src/services/web-alert-shim.ts`: instalado no boot do
+`_layout`, substitui `Alert.alert` SOMENTE na web mapeando para
+`window.alert`/`window.confirm` (sem botões → alert; 1 botão → alert +
+`onPress`; ≥2 → confirm: OK dispara o botão não-cancel, Cancelar dispara o
+`style:"cancel"`). As telas ficaram intocadas — o fluxo de cada uma
+(onPress → API → refresh) é o mesmo do nativo. O E2E cobriu o backend do
+cancelamento (D4a–D4d: reservar→minhas→cancelar→**vaga LIVRE no mapa** por
+GET real), que sempre funcionou; o que faltava era a UI da web chegar até ele.
+
+**2. "Flash branco" nos botões.** O UA stylesheet do navegador pinta
+`buttonface` (brancinza) em hover/active de `<button>` sem cor própria — o
+efeito padrão relatado. `assets/Styles/global.css` agora zera isso
+(`button { background-color: transparent; -webkit-tap-highlight-color:
+transparent }`) e todas as variantes do `Botao` ganharam cor em TODOS os
+estados (hover E active), incluindo a `fantasma`; `:focus-visible` azul
+preserva a navegação por teclado.
+
+Validado: tsc · `expo export` (regras confirmadas no bundle `web-*.css` e
+shim no `entry-*.js`) · E2E `--full` exit 0 · shim simulado em node 4/4
+(confirma→roda API · cancela→não roda · aviso simples · botão único navega).
+**Não validado (sem navegador no ambiente):** a aparência final do diálogo
+`window.confirm` e o hover em dispositivo — conferir com F5 no navegador.
