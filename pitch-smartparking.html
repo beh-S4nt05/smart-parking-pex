@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SmartParking · Pitch PEX — 12 slides</title>
+<style>
+  :root{
+    --azul:#2563EB; --azul-escuro:#1e3a8a; --fundo:#0b1220; --card:#111c33;
+    --texto:#e6edf7; --suave:#93a4c3; --verde:#34d399; --ambar:#fbbf24; --verm:#f87171;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{font-family:"Segoe UI",system-ui,-apple-system,Roboto,Ubuntu,sans-serif;background:var(--fundo);color:var(--texto)}
+  .slide{min-height:100vh;scroll-snap-align:start;display:flex;flex-direction:column;justify-content:center;
+         padding:6vh 8vw;position:relative;border-bottom:1px solid #1c2b4a;
+         background:radial-gradient(1200px 600px at 85% -10%,rgba(37,99,235,.16),transparent 60%),
+                    radial-gradient(900px 500px at -10% 110%,rgba(30,58,138,.22),transparent 55%),var(--fundo)}
+  body{scroll-snap-type:y mandatory}
+  .num{position:absolute;top:3.2vh;right:5vw;font-size:.8rem;color:var(--suave);letter-spacing:.14em}
+  .marca{position:absolute;bottom:2.6vh;left:8vw;font-size:.72rem;color:#5c6f92;letter-spacing:.08em}
+  .tag{display:inline-block;font-size:.74rem;font-weight:700;letter-spacing:.16em;text-transform:uppercase;
+       color:var(--azul);border:1px solid rgba(37,99,235,.45);padding:.32rem .8rem;border-radius:999px;margin-bottom:1.4rem}
+  h1{font-size:clamp(2.1rem,5.4vw,3.9rem);line-height:1.06;font-weight:800}
+  h2{font-size:clamp(1.6rem,3.4vw,2.5rem);line-height:1.12;font-weight:800;margin-bottom:.5rem}
+  .sub{color:var(--suave);font-size:clamp(.95rem,1.5vw,1.15rem);margin-top:.9rem;max-width:62ch;line-height:1.5}
+  .grade{display:grid;gap:1rem;margin-top:2rem}
+  .g2{grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}
+  .g3{grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
+  .g4{grid-template-columns:repeat(auto-fit,minmax(190px,1fr))}
+  .card{background:var(--card);border:1px solid #1e3050;border-radius:14px;padding:1.1rem 1.25rem;line-height:1.45}
+  .card b{color:#fff}
+  .card .ic{font-size:1.5rem;display:block;margin-bottom:.45rem}
+  .card h3{font-size:1.02rem;margin-bottom:.4rem;color:#fff}
+  .card p{font-size:.88rem;color:var(--suave)}
+  .big{font-size:clamp(1.7rem,3.2vw,2.6rem);font-weight:800;color:#fff;line-height:1}
+  .big small{font-size:.95rem;color:var(--suave);font-weight:600;display:block;margin-top:.35rem}
+  ul{list-style:none}
+  li{padding:.42rem 0 .42rem 1.7rem;position:relative;font-size:.95rem;line-height:1.45;color:#c7d4ea}
+  li::before{content:"▸";position:absolute;left:.4rem;color:var(--azul);font-weight:900}
+  li.ok::before{content:"✔";color:var(--verde)}
+  li.on::before{content:"◉";color:var(--ambar)}
+  code,.mono{font-family:ui-monospace,Consolas,monospace;background:#0d1830;border:1px solid #223558;
+             border-radius:7px;padding:.14rem .45rem;font-size:.85em;color:#9dc1ff}
+  .fluxo{display:flex;flex-wrap:wrap;gap:.55rem;align-items:center;margin-top:1.6rem}
+  .etapa{background:#0e1a31;border:1px solid #24406f;border-radius:10px;padding:.6rem .85rem;font-size:.86rem}
+  .etapa b{display:block;color:#fff;font-size:.9rem}
+  .etapa span{color:var(--suave);font-size:.78rem}
+  .seta{color:var(--azul);font-weight:900;font-size:1.1rem}
+  .term{background:#050b18;border:1px solid #1d2f52;border-radius:12px;padding:1rem 1.2rem;
+        font-family:ui-monospace,Consolas,monospace;font-size:.84rem;line-height:1.66;color:#a9d3a2;overflow-x:auto}
+  .term .c{color:#5c7299}.term .p{color:#7fb2ff}
+  table{width:100%;border-collapse:collapse;margin-top:1.4rem;font-size:.9rem}
+  th{color:#fff;text-align:left;padding:.55rem .7rem;border-bottom:2px solid #24406f;font-size:.8rem;letter-spacing:.06em;text-transform:uppercase}
+  td{padding:.55rem .7rem;border-bottom:1px solid #182944;color:#c7d4ea}
+  td .pill{display:inline-block;border-radius:999px;padding:.1rem .6rem;font-size:.74rem;font-weight:700}
+  .p-ok{background:rgba(52,211,153,.14);color:var(--verde)}
+  .p-on{background:rgba(251,191,36,.14);color:var(--ambar)}
+  .p-fu{background:rgba(147,164,195,.14);color:var(--suave)}
+  .linha-tempo{display:grid;gap:.85rem;margin-top:1.8rem}
+  .t{display:grid;grid-template-columns:7.4rem 1fr;gap:1rem;align-items:start}
+  .t .quando{font-weight:800;font-size:.92rem;color:#fff;text-align:right}
+  .t .quando small{display:block;color:var(--suave);font-weight:500}
+  .t .oq{border-left:3px solid var(--azul);padding-left:1rem}
+  .t .oq b{color:#fff}
+  .t .oq p{font-size:.85rem;color:var(--suave);margin-top:.15rem;line-height:1.45}
+  .t.done .oq{border-left-color:var(--verde)} .t.now .oq{border-left-color:var(--ambar)}
+  .camadas{display:grid;gap:.7rem;margin-top:1.7rem}
+  .camada{display:grid;grid-template-columns:15rem 1fr;gap:1rem;align-items:center;background:var(--card);
+          border:1px solid #1e3050;border-radius:12px;padding:.85rem 1.15rem}
+  .camada .n{font-weight:800;color:#fff} .camada .d{font-size:.86rem;color:var(--suave);line-height:1.5}
+  .nav{position:fixed;bottom:2.2vh;right:3vw;display:flex;gap:.5rem;z-index:9}
+  .nav button{background:var(--card);color:var(--texto);border:1px solid #2a436e;border-radius:10px;
+              width:42px;height:38px;font-size:1.05rem;cursor:pointer}
+  .nav button:hover{background:var(--azul)}
+  @media print{
+    body{scroll-snap-type:none}
+    .slide{min-height:99vh;page-break-after:always;border:none}
+    .nav{display:none}
+  }
+</style>
+</head>
+<body>
+
+<!-- 1 · CAPA -->
+<section class="slide" id="s1">
+  <div class="num">01 / 12</div>
+  <div class="tag">Projeto PEX · Manaus/AM · 2026</div>
+  <h1>🅿️ Smart Parking<br><span style="color:var(--azul)">Monitoramento inteligente de vagas de shopping</span></h1>
+  <p class="sub">Menos tempo procurando vaga. Mais tempo no shopping. App do motorista, painel do
+     gestor e sensores IoT — validados de ponta a ponta, com <b>falhas zero</b> na véspera da entrega.</p>
+  <div class="grade g3" style="margin-top:2.4rem">
+    <div class="card"><span class="ic">✍️</span><h3>Breno Santos</h3><p>Autor · Liderança · Desenvolvimento</p></div>
+    <div class="card"><span class="ic">🛠️</span><h3>Gabriel Almeida</h3><p>Desenvolvimento</p></div>
+    <div class="card"><span class="ic">🎨</span><h3>Jonas Almeida</h3><p>Desenvolvimento de UI</p></div>
+  </div>
+  <p class="sub" style="font-size:.8rem">FastAPI · React Native (Expo) · PostgreSQL · Docker · MIT License</p>
+  <div class="marca">smart-parking-pex · github.com/beh-S4nt05</div>
+</section>
+
+<!-- 2 · PROBLEMA -->
+<section class="slide" id="s2">
+  <div class="num">02 / 12</div>
+  <div class="tag">O problema</div>
+  <h2>Estacionar é o pior pedaço de ir ao shopping</h2>
+  <div class="grade g4">
+    <div class="card"><div class="big">~20 min<small>é o tempo médio que um motorista gira até achar vaga em shoppings cheios</small></div></div>
+    <div class="card"><div class="big">0 dados<small>o gestor decide lotação no "olhômetro"; histórico não vira relatório</small></div></div>
+    <div class="card"><div class="big">⚖️ risco<small>vagas PCD/idoso ocupadas indevidamente — direito desrespeitado e multa evitável</small></div></div>
+    <div class="card"><div class="big">fila no portão<small>sem reserva nem leitura de placa, entrada e saída viram gargalho nos horários de pico</small></div></div>
+  </div>
+  <p class="sub">Shoppings de Manaus operam com planilha e catraca manual. O motorista paga o preço em tempo,
+     combustível e estresse; o shopping, em ocupação mal distribuída e receita não medida.</p>
+  <div class="marca">Smart Parking · pitch PEX · 2026</div>
+</section>
+
+<!-- 3 · SOLUÇÃO -->
+<section class="slide" id="s3">
+  <div class="num">03 / 12</div>
+  <div class="tag">A solução</div>
+  <h2>Um sistema, três pontas: <span style="color:var(--azul)">motorista · gestor · sensor</span></h2>
+  <div class="grade g3" style="margin-top:1.6rem">
+    <div class="card"><span class="ic">📱</span><h3>App do motorista</h3>
+      <p>Veja o <b>mapa de vagas por andar em tempo real</b>, peça a <b>próxima vaga</b> (o sistema escolhe por você),
+      reserve, gerencie cancelamentos e acesse perfil, placa e pagamento.</p></div>
+    <div class="card"><span class="ic">🖥️</span><h3>Painel do gestor</h3>
+      <p>Dashboard com ocupação, CRUD de estacionamentos/andares/vagas em lote,
+      <b>relatórios e faturamento</b>, usuários, pagamentos e <b>simulador QR</b> para validar operação na portaria.</p></div>
+    <div class="card"><span class="ic">📡</span><h3>Sensores IoT (RF-45)</h3>
+      <p>Dispositivos reportam livre/ocupada <b>sem login humano</b>, com chave única por aparelho,
+      idempotência por sequência e revogação instantânea. A vaga muda <b>no mapa</b> na hora.</p></div>
+  </div>
+  <p class="sub"><b>Diferencial de cidadania:</b> vagas PCD são um contrato — o algoritmo nunca entrega vaga especial
+  a quem não se declarou, bloqueia reserva indevida com explicação, e prioriza quem tem direito. Sem lockout: se não
+  houver PCD livre, o sistema avisa e rebaixa com transparência.</p>
+  <div class="marca">Smart Parking · pitch PEX · 2026</div>
+</section>
+
+<!-- 4 · PRODUTO (MOTORISTA) -->
+<section class="slide" id="s4">
+  <div class="num">04 / 12</div>
+  <div class="tag">O produto · jornada do motorista</div>
+  <h2>Quatro toques entre "cheguei" e "estacionei"</h2>
+  <div class="fluxo">
+    <div class="etapa"><b>🔍 Explorar</b><span>shoppings credenciados, distância e vagas livres ao vivo</span></div><span class="seta">→</span>
+    <div class="etapa"><b>🗺️ Mapa do shopping</b><span>andares, células coloridas por status (livre/ocupada/reservada), tipos PCD/idoso/moto/elétrico</span></div><span class="seta">→</span>
+    <div class="etapa"><b>🎯 "Próxima vaga"</b><span>atribuição automática inteligente — nunca sugere PCD às cegas</span></div><span class="seta">→</span>
+    <div class="etapa"><b>✅ Reserva</b><span>horário confirmado, "minhas reservas", cancelar devolve a vaga ao mapa</span></div>
+  </div>
+  <div class="grade g2" style="margin-top:1.5rem">
+    <div class="card"><h3>Entrada e saída descomplicadas</h3>
+      <p>Perfil com <b>placa do veículo</b>, login por e-mail <b>ou telefone</b>, sessão que renova sozinha e
+      <b>cache offline</b> — o app continua útil no subsolo sem sinal (a lista mostra o último estado com aviso).</p></div>
+    <div class="card"><h3>Uma base, qualquer shopping</h3>
+      <p>Seed de demonstração com <b>8 shoppings de Manaus</b> (Amazonas, Manauara, Sumaúma, Ponta Negra…)
+      e um mapa de <b>420 vagas em 4 andares</b> só no primeiro — pronto para o banco bater o olho.</p></div>
+  </div>
+  <div class="marca">Smart Parking · pitch PEX · 2026</div>
+</section>
+
+<!-- 5 · PRODUTO (GESTOR) -->
+<section class="slide" id="s5">
+  <div class="num">05 / 12</div>
+  <div class="tag">O produto · jornada do gestor</div>
+  <h2>Operação e dinheiro no mesmo painel</h2>
+  <div class="grade g3">
+    <div class="card"><span class="ic">🏬</span><h3>Operação</h3><p>Criar/editar estacionamento, andares, <b>vagas em lote</b> com códigos sequenciais, operar status manualmente quando o sensor falha — tudo refletido no mapa do app em segundos.</p></div>
+    <div class="card"><span class="ic">💰</span><h3>Financeiro</h3><p>Pagamentos com registro, <b>geração de Pix</b> (copia-e-cola) e confirmação; relatórios de ocupação e faturamento por período e por estacionamento.</p></div>
+    <div class="card"><span class="ic">🔐</span><h3>Controle & sensores</h3><p>Usuários por papel (admin/gestor/financeiro), emissão e <b>revogação de chave de sensor</b>, e simulador de QR de sessão para demonstrar validação na portaria.</p></div>
+  </div>
+  <p class="sub" style="margin-top:1.4rem">O gestor de cada shopping enxerga <b>apenas o próprio estacionamento</b> (escopo aplicado no backend,
+  não no olhar) — o admin global vê a rede inteira. É multi-tenant desde o MVP.</p>
+  <div class="marca">Smart Parking · pitch PEX · 2026</div>
+</section>
+
+<!-- 6 · ARQUITETURA -->
+<section class="slide" id="s6">
+  <div class="num">06 / 12</div>
+  <div class="tag">Como foi construído</div>
+  <h2>Arquitetura enxuta, camadas limpas</h2>
+  <div class="camadas">
+    <div class="camada"><span class="n">📱 Frontend</span><span class="d">React Native + Expo SDK 57 · TypeScript · NativeWind — <b>um código para Android, iOS e web</b> (11 telas: explore, mapa por andar, reservas, perfil, painel, simuladores…)</span></div>
+    <div class="camada"><span class="n">🌐 Borda</span><span class="d">nginx (dev/prod) — proxy reverso + cabeçalhos de segurança + CORS restrito ao app; <code>docker compose up</code> sobe tudo</span></div>
+    <div class="camada"><span class="n">⚙️ API · 71 rotas</span><span class="d">FastAPI + SQLAlchemy · Pydantic · <b>4 routers</b> (motorista, admin, auth, sensores) · gunicorn em produção</span></div>
+    <div class="camada"><span class="n">🗄️ Dados</span><span class="d">PostgreSQL 15 (SQLite no dev) · <b>migrações Alembic</b> com stamp-only até 02/11 · seed demo de 8 shoppings</span></div>
+    <div class="camada"><span class="n">📡 Dispositivos</span><span class="d">ingestão HTTP com <code>X-Device-Key</code> (hash SHA-256 no banco), idempotência por <code>seq</code> — sem JWT humano</span></div>
+  </div>
+  <p class="sub" style="margin-top:1.2rem">19 pull requests squash-merged · commits rastreáveis por marca de entrega · CI obrigatório verde para cada um.</p>
+  <div class="marca">Smart Parking · pitch PEX · 2026</div>
+</section>
+
+<!-- 7 · SEGURANÇA -->
+<section class="slide" id="s7">
+  <div class="num">07 / 12</div>
+  <div class="tag">Segurança & controle de acesso</div>
+  <h2>Não é promessa de design — é <span style="color:var(--azul)">matriz executada</span></h2>
+  <div class="grade g4">
+    <div class="card"><div class="big">401<small>sem token, chave revogada, sessão morta — negado na porta</small></div></div>
+    <div class="card"><div class="big">403<small>papel errado não opera vaga, não cria estacionamento, não reserva PCD</small></div></div>
+    <div class="card"><div class="big">410<small>QR revogado não reanima; token logout/bloqueado some da tabela de revogação</small></div></div>
+    <div class="card"><div class="big">429<small>brute-force de login e flood de cadastro: rate limit com Retry-After</small></div></div>
+  </div>
+  <div class="grade g3" style="margin-top:1.3rem">
+    <div class="card"><h3>🔑 Identidade real</h3><p>JWT curto + refresh, revogação por <code>jti</code> e por "usuário desde T" (troca de senha/bloqueio derrubam tudo), cache de sessão com revalidação no boot.</p></div>
+    <div class="card"><h3>🧾 Anti-replay</h3><p>Assinatura <b>HMAC obrigatória</b> em mutações + janela de timestamp: Postman/curl repetindo requisições alheias é barrado no middleware.</p></div>
+    <div class="card"><h3>🛡️ Defesa em profundidade</h3><p>Escopo por estacionamento no servidor · cabeçalhos de segurança · TLS documentado (com teste Wireshark) · validadores de payload.</p></div>
+  </div>
+  <p class="sub" style="margin-top:1rem">Cada código acima tem checkpoint de E2E que o produziu <b>ao vivo</b> (matriz de acesso: 27/27; jornadas: D3e, D5a, D6e, D7d).</p>
+  <div class="marca">Smart Parking · pitch PEX · 2026</div>
+</section>
+
+<!-- 8 · QUALIDADE -->
+<section class="slide" id="s8">
+  <div class="num">08 / 12</div>
+  <div class="tag">Qualidade · como provamos</div>
+  <h2>Falhas zero não é adjetivo. É <code style="font-size:.8em">exit 0</code>.</h2>
+  <div class="grade g2">
+    <div class="card"><h3>🤖 Um comando, seis camadas</h3>
+      <div class="term" style="margin-top:.7rem"><span class="p">$</span> ./scripts/e2e_validacao.sh --full<br>
+      <span class="c">✔ A · conexão (check_conexao: porta, LAN, CORS, .env)</span><br>
+      <span class="c">✔ B · smoke MVP ........... 10 OK / 0 FAIL</span><br>
+      <span class="c">✔ C · matriz de acesso .... 27 OK / 0 FAIL</span><br>
+      <span class="c">✔ D · jornadas D1–D7 ..... 28/28 ✔</span><br>
+      <span class="c">✔ E · 51 pytest + ruff limpo</span><br>
+      <span class="c">✔ F · tsc limpo</span>  <span class="c">→ exit 0</span></div></div>
+    <div class="card"><h3>🎯 E2E de verdade, não checklist</h3>
+      <p>~90 asserções <b>HTTP reais</b> contra a API no ar: cada estado afirmado é <b>lido de volta por GET</b>
+      (cancelou a reserva? a vaga está livre <i>no mapa</i>; o sensor ocupou? mudou <i>na consulta pública</i>).
+      O roteiro espelha os chamados exatos do app — se o contrato escapar, o script pega.</p>
+      <p style="margin-top:.7rem">Foi o E2E que <b>achou e matou</b> os últimos 3 defeitos: sessão-fantasma pós-logout (guarda de rota),
+      <code>Alert</code> no-op na web (cancelar "não fazia nada") e flash branco dos botões.</p></div>
+  </div>
+  <div class="grade g3" style="margin-top:1.2rem">
+    <div class="card"><div class="big">51<small>testes pytest (unidade + regras RF) · ruff sem queixa</small></div></div>
+    <div class="card"><div class="big">19/19<small>PRs com CI verde (backend + gates do front: tsc · export web)</small></div></div>
+    <div class="card"><div class="big">3<small>scripts de campo: check_conexao · smoke_mvp · smoke_acesso — para o usuário validar sozinho</small></div></div>
+  </div>
+  <div class="marca">Smart Parking · pitch PEX · 2026</div>
+</section>
+
+<!-- 9 · ROADMAP -->
+<section class="slide" id="s9">
+  <div class="num">09 / 12</div>
+  <div class="tag">Roadmap · as 5 marcas do PEX</div>
+  <h2>Entregas em ritmo, com uma adiantada</h2>
+  <div class="linha-tempo">
+    <div class="t done"><div class="quando">10/09<small>peso 1 · ✔</small></div><div class="oq"><b>1️⃣ Banco de dados modelado</b><p>Modelagem SQLAlchemy: usuários/3 papéis, estacionamentos → andares → vagas (tipos e status), reservas, pagamentos, sensores, revogação. Diagramas no SDD.</p></div></div>
+    <div class="t done"><div class="quando">22/10<small>peso 2 · ✔ esta entrega</small></div><div class="oq"><b>2️⃣ MVP operacional completo</b><p>API 71 rotas + app 11 telas + painel; RF-47 (PCD) de ponta a ponta; sensores IoT; QR; pagamentos/Pix; nginx+Docker; E2E exit 0 e 2 bugs de web caçados pela própria suíte.</p></div></div>
+    <div class="t done"><div class="quando">02/11<small>peso 1 · ✔ adiantado</small></div><div class="oq"><b>3️⃣ Relatórios prontos</b><p>7 endpoints de relatório (ocupação, faturamento, pico…) já entregues em 22/10 — painel os consome com escopo por estacionamento.</p></div></div>
+    <div class="t now"><div class="quando">09/11<small>peso 1 · 🟡</small></div><div class="oq"><b>4️⃣ Testes & documentação</b><p>Suíte em 51 testes + E2E versionado + docs de integração/arquitetura/segurança/marca-a-marca. Em curso: polimento do roteiro de demonstração para a banca.</p></div></div>
+    <div class="t"><div class="quando">12/11<small>peso 5 · ⬜</small></div><div class="oq"><b>5️⃣ Entrega Integrada Funcional</b><p>Apresentação final com fluxo completo ao vivo: sensor → mapa → reserva → cancelamento → relatório, no docker + Expo Go.</p></div></div>
+  </div>
+  <div class="marca">Smart Parking · pitch PEX · 2026</div>
+</section>
+
+<!-- 10 · COMO USAR / RODAR -->
+<section class="slide" id="s10">
+  <div class="num">10 / 12</div>
+  <div class="tag">Como usar · roda em qualquer máquina</div>
+  <h2>Três terminais e está no ar</h2>
+  <div class="grade g2">
+    <div class="card"><h3>🐳 Com Docker (produção de demonstração)</h3>
+      <div class="term" style="margin-top:.6rem"><span class="p">$</span> docker compose -f src/docker-compose.yml up<br>
+      <span class="c"># API+DB no :80 via nginx, app web já servido</span></div>
+      <p style="margin-top:.7rem">Sem Docker? <code>./src/run-dev.sh</code> cria o venv, aplica migrações, sobe seed e API no :8000.</p></div>
+    <div class="card"><h3>📱 App (Expo Go ou navegador)</h3>
+      <div class="term" style="margin-top:.6rem"><span class="p">$</span> cd src/frontend/smart-parking && npx expo start<br>
+      <span class="c"># celular na mesma LAN: aponte EXPO_PUBLIC_API_URL p/ seu IP</span></div>
+      <p style="margin-top:.7rem">Perdeu o IP de vista? <code>./scripts/check_conexao.sh --fix</code> acha e valida o caminho sozinho.</p></div>
+  </div>
+  <div class="grade g3" style="margin-top:1.3rem">
+    <div class="card"><h3>👤 Demonstração motorista</h3><p>Cadastre-se na tela (ou use <code>motorista@smartparking.com</code> do seed), explore o Amazonas Shopping, peça a próxima vaga e reserve.</p></div>
+    <div class="card"><h3>👨‍💼 Demonstração gestor</h3><p>Entre com <code>admin@smartparking.com / admin123</code>: crie um andar, gere 40 vagas em lote, abra o simulador QR e mostre o relatório de ocupação mudando.</p></div>
+    <div class="card"><h3>📡 Demonstração IoT</h3><p>Emita a chave de um sensor no painel e dispare <code>POST /api/sensores/eventos</code> com curl — a célula muda de cor <b>no mapa do celular</b> em tempo real.</p></div>
+  </div>
+  <div class="marca">Smart Parking · pitch PEX · 2026</div>
+</section>
+
+<!-- 11 · MELHORIAS COM O USO -->
+<section class="slide" id="s11">
+  <div class="num">11 / 12</div>
+  <div class="tag">O que vem com o uso</div>
+  <h2>Quanto mais roda, <span style="color:var(--azul)">mais inteligente fica</span></h2>
+  <div class="grade g2">
+    <div class="card"><h3>🔁 O ciclo de dados (já plantado no MVP)</h3>
+      <ul>
+        <li class="ok">Cada reserva, cancelamento e evento de sensor <b>engrossa histórico estruturado</b> no Postgres.</li>
+        <li class="ok">Histórico → <b>taxa de ocupação por andar/hora/dia</b>, hoje nos relatórios; amanhã, em previsão.</li>
+        <li class="ok">Previsão → "chegue até 14h: 87% de chance de vaga" e <b>dinâmica de preços</b> por faixa de pico.</li>
+        <li class="ok">Feedback do motorista (reserva usada/não compareceu) → punição suave de no-show e <b>fila de espera</b> por andar.</li>
+      </ul></div>
+    <div class="card"><h3>🧰 Melhorias básicas da próxima fase</h3>
+      <ul>
+        <li class="on">Notificações push (lembrete de expiração da vaga, "seu carro está no P2").</li>
+        <li class="on">Cobrança por minuto na saída via leitura de placa no portão + Pix automático (o fluxo de pagamento já existe).</li>
+        <li class="on">Integração real de catraca/gate (o QR de sessão e o contrato de sensores já são o encaixe pronto).</li>
+        <li class="on">Lista de espera com prioridade PCD/idoso e reserva recorrente (trabalhador do shopping).</li>
+        <li class="on">Cache offline → modo fila de sincronização quando o sinal voltar (base já no app).</li>
+      </ul></div>
+  </div>
+  <p class="sub">Nada disso exige retrabalho: os pontos de encaixe (histórico, QR, chaves de dispositivo, relatórios)
+  foram construídos <b>esta</b> rodada — melhorias viram extensão, não remendo.</p>
+  <div class="marca">Smart Parking · pitch PEX · 2026</div>
+</section>
+
+<!-- 12 · FECHAMENTO -->
+<section class="slide" id="s12">
+  <div class="num">12 / 12</div>
+  <div class="tag">Fechamento</div>
+  <h1 style="font-size:clamp(1.8rem,4vw,3rem)">Smart Parking não é um app de vaga.<br>É <span style="color:var(--azul)">infraestrutura de tempo</span> — e está rodando.</h1>
+  <div class="grade g4" style="margin-top:2.2rem">
+    <div class="card"><div class="big">71<small>rotas de API com papéis e escopo</small></div></div>
+    <div class="card"><div class="big">28/28<small>jornadas E2E reais + matriz 27/27</small></div></div>
+    <div class="card"><div class="big">51<small>testes automatizados, ruff e tsc limpos</small></div></div>
+    <div class="card"><div class="big">exit 0<small>falhas zero, véspera de banca, ao vivo</small></div></div>
+  </div>
+  <div class="grade g2" style="margin-top:1.8rem">
+    <div class="card"><h3>Pedido para a banca</h3><p>Abrir o app, reservar uma vaga no mapa, ver o sensor mudar a célula, cancelar e constatar: <b>o relatório respondeu na hora</b>. Segurança se mostra pelos 401/403/410 que a matriz exibe — ninguém precisa confiar em slide.</p></div>
+    <div class="card"><h3>Equipe & licença</h3><p><b>Breno Santos</b> · <b>Gabriel Almeida</b> · <b>Jonas Almeida</b><br>Projeto acadêmico PEX — Manaus/AM · MIT · github.com/beh-S4nt05/smart-parking-pex<br>contato: behsolutionsandautomations@gmail.com</p></div>
+  </div>
+  <p class="sub" style="text-align:center;margin-top:2.2rem;font-size:1.05rem">💙 <b>Obrigado — alguma pergunta?</b></p>
+  <div class="marca">Smart Parking · pitch PEX · 2026 · 12/12</div>
+</section>
+
+<div class="nav">
+  <button onclick="go(-1)" title="anterior (←)">←</button>
+  <button onclick="go(1)" title="próximo (→)">→</button>
+</div>
+<script>
+  const slides=[...document.querySelectorAll('.slide')];let i=0;
+  function go(d){i=Math.min(slides.length-1,Math.max(0,i+d));slides[i].scrollIntoView({behavior:'smooth'})}
+  addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key==='PageDown'||e.key===' '){e.preventDefault();go(1)}
+    if(e.key==='ArrowLeft'||e.key==='PageUp'){e.preventDefault();go(-1)}
+    if(e.key==='Home'){i=0;slides[0].scrollIntoView({behavior:'smooth'})}
+    if(e.key==='End'){i=slides.length-1;slides[i].scrollIntoView({behavior:'smooth'})}});
+  addEventListener('scroll',()=>{const y=scrollY+innerHeight/2;
+    slides.forEach((s,k)=>{if(s.offsetTop<=y&&s.offsetTop+s.offsetHeight>y)i=k})},{passive:true});
+</script>
+</body>
+</html>
