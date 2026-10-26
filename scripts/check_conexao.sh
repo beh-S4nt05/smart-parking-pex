@@ -12,8 +12,9 @@
 #   ADMIN_EMAIL=... ADMIN_SENHA=...        # credenciais p/ o aperto de mão
 #
 # O que ele verifica (na ordem, cada um com o "o que fazer" impresso):
-#   1. .env do front envenenado  → QA-101: linha EXPO_PUBLIC_API_URL=...localhost
-#      ativa CONGELA a URL no bundle (o minificador apaga o resolver inteiro).
+#   1. .env do front envenenado  → QA-101: overrides errados (localhost global,
+#      IP mobile antigo ou qualquer chave apontando para o Metro :8081) congelam
+#      a URL no bundle; --fix comenta o override inválido ou atualiza o IP.
 #   2. Backend vivo em 3 candidatos: http://localhost:8000 (run-dev/docker),
 #      :80 (nginx) e http://<IP-LAN>:8000 (o que o CELULAR usa — cai aqui, é
 #      rede/firewall, não código).
@@ -95,8 +96,14 @@ if [ -f "$FRONT_ENV" ]; then
                 fi ;;
             *)
                 if [[ "$VAL" == *:8081* ]]; then
-                    fail "$K=$VAL mira a porta 8081 — essa é o METRO (serve o bundle), a API FastAPI é a $BACKEND_PORT"                          "rode ./scripts/dev-front.sh — ele escreve a URL certa (http://IP-LAN:$BACKEND_PORT) no .env"
-                    ENV_DIRTY=1
+                    if [ "$FIX" = 1 ]; then
+                        cp "$FRONT_ENV" "$FRONT_ENV.bak-qa101"
+                        sed -i "${N}s|^|# QA-101 (check_conexao --fix): |" "$FRONT_ENV"
+                        pass "--fix: $K apontava para o Metro (:8081), não para a API — linha COMENTADA; a auto-detecção usa a porta $BACKEND_PORT; backup .env.bak-qa101; REINICIE com npx expo start -c"
+                    else
+                        fail "$K=$VAL mira a porta 8081 — essa é o METRO (serve o bundle), a API FastAPI é a $BACKEND_PORT" "rode ./scripts/check_conexao.sh --fix (comenta a linha e devolve a auto-detecção para a porta $BACKEND_PORT) ou remova essa chave"
+                        ENV_DIRTY=1
+                    fi
                 elif [ "$ESC" != "web" ] && grep -qE 'localhost|127\.0\.0\.1|\[::1\]' <<<"$VAL"; then
                     if [ "$FIX" = 1 ]; then
                         cp "$FRONT_ENV" "$FRONT_ENV.bak-qa101"
