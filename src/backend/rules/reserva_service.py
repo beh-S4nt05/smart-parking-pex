@@ -81,6 +81,7 @@ def criar_reserva(db: Session, dados: ReservaCreate, usuario_logado: Usuario) ->
 
     # Atualiza status da vaga
     vaga.status = StatusVaga.RESERVADA
+    vaga.ultima_atualizacao = utc_agora()
 
     db.add(nova_reserva)
     db.commit()
@@ -113,11 +114,13 @@ def cancelar_reserva(db: Session, reserva_id: str, usuario_logado: Usuario) -> R
             detail="Você não tem permissão para cancelar esta reserva"
         )
 
-    if reserva.status == StatusReserva.CANCELADA:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Reserva já está cancelada"
+    if reserva.status != StatusReserva.CONFIRMADA:
+        detalhe = (
+            "Reserva já está cancelada"
+            if reserva.status == StatusReserva.CANCELADA
+            else "Somente uma reserva confirmada pode ser cancelada"
         )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=detalhe)
 
     # Atualiza status da reserva
     reserva.status = StatusReserva.CANCELADA
@@ -126,6 +129,7 @@ def cancelar_reserva(db: Session, reserva_id: str, usuario_logado: Usuario) -> R
     vaga = db.query(Vaga).filter(Vaga.id == reserva.vaga_id).first()
     if vaga and vaga.status == StatusVaga.RESERVADA:
         vaga.status = StatusVaga.LIVRE
+        vaga.ultima_atualizacao = utc_agora()
 
     db.commit()
     db.refresh(reserva)

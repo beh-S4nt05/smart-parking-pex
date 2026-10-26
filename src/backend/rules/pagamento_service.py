@@ -17,6 +17,59 @@ from models.db_models import (
 )
 
 
+def _consumir_cupom(db: Session, historico: Historico) -> None:
+    """Consome o cupom uma única vez, quando o pagamento é confirmado."""
+    if not historico.cupom_aplicado:
+        return
+    cupom = db.query(CupomDesconto).filter(
+        CupomDesconto.codigo == historico.cupom_aplicado,
+        CupomDesconto.estacionamento_id == historico.estacionamento_id,
+    ).first()
+    if not cupom:
+        return
+    usos = cupom.usos_realizados or 0
+    if cupom.limite_usos is not None and usos >= cupom.limite_usos:
+        raise HTTPException(status_code=400, detail="Cupom atingiu o limite de usos")
+    cupom.usos_realizados = usos + 1
+
+
+def _cancelar_pagamentos_pendentes(db: Session, historico_id: str) -> None:
+    """Só um meio de pagamento pode fechar a estadia."""
+    pendentes = db.query(Pagamento).filter(
+        Pagamento.historico_id == historico_id,
+        Pagamento.status_pagamento.in_([
+            StatusPagamento.PENDENTE,
+            StatusPagamento.PROCESSANDO,
+        ]),
+    ).all()
+    for pendente in pendentes:
+        pendente.status_pagamento = StatusPagamento.CANCELADO
+        pendente.data_cancelamento = utc_agora()
+
+
+def _contabilizar_no_caixa(db: Session, pagamento: Pagamento, historico: Historico) -> None:
+    """Mesma contabilidade para caixa presencial e confirmação online."""
+    caixa = db.query(FechamentoCaixa).filter(
+        FechamentoCaixa.estacionamento_id == historico.estacionamento_id,
+        FechamentoCaixa.fechado == False,
+    ).first()
+    if not caixa:
+        return
+
+    valor = pagamento.valor_total or 0.0
+    if pagamento.metodo_pagamento == MetodoPagamento.PIX.value:
+        caixa.valor_pix = (caixa.valor_pix or 0.0) + valor
+    elif pagamento.metodo_pagamento == MetodoPagamento.CARTAO_CREDITO.value:
+        caixa.valor_cartao_credito = (caixa.valor_cartao_credito or 0.0) + valor
+    elif pagamento.metodo_pagamento == MetodoPagamento.CARTAO_DEBITO.value:
+        caixa.valor_cartao_debito = (caixa.valor_cartao_debito or 0.0) + valor
+    elif pagamento.metodo_pagamento == MetodoPagamento.DINHEIRO.value:
+        caixa.valor_dinheiro = (caixa.valor_dinheiro or 0.0) + valor
+    caixa.valor_total = (caixa.valor_total or 0.0) + valor
+    caixa.quantidade_pagamentos = (caixa.quantidade_pagamentos or 0) + 1
+    caixa.valor_descontos = (caixa.valor_descontos or 0.0) + (historico.valor_desconto or 0.0)
+
+
 def calcular_tarifa_estadia(db: Session, historico_id: str, cupom_codigo: str | None = None):
     """
     Calcula o valor total da estadia automaticamente baseado:
@@ -29,6 +82,8 @@ def calcular_tarifa_estadia(db: Session, historico_id: str, cupom_codigo: str | 
     historico = db.query(Historico).filter(Historico.id == historico_id).first()
     if not historico or not historico.saida_em:
         raise HTTPException(status_code=400, detail="Saída não registrada para este veículo")
+    if historico.status_pagamento == StatusPagamento.PAGO:
+        raise HTTPException(status_code=400, detail="Este ticket já está pago")
 
     if not historico.tempo_permanencia_minutos:
         tempo = int((historico.saida_em - historico.entrada_em).total_seconds() / 60)
@@ -92,7 +147,6 @@ def calcular_tarifa_estadia(db: Session, historico_id: str, cupom_codigo: str | 
 
         if cupom.tipo_desconto == TipoDesconto.ISENCAO_TOTAL.value:
             valor_desconto = valor_bruto
-            historico.status_pagamento = StatusPagamento.PAGO
         elif cupom.tipo_desconto == TipoDesconto.PORCENTAGEM.value:
             valor_desconto = round(valor_bruto * (cupom.valor_desconto / 100), 2)
         elif cupom.tipo_desconto == TipoDesconto.VALOR_FIXO.value:
@@ -101,6 +155,10 @@ def calcular_tarifa_estadia(db: Session, historico_id: str, cupom_codigo: str | 
         # ACH-07: marcar no histórico e SEGUIR — o uso do cupom só é
         # consumido quando o pagamento efetivamente sai (em registrar).
         historico.cupom_aplicado = cupom.codigo
+    else:
+        # Recalcular sem cupom é uma decisão explícita do operador; manter o
+        # código anterior descontaria/consumiria um cupom que não foi escolhido.
+        historico.cupom_aplicado = None
 
     valor_total = round(max(valor_bruto - valor_desconto, 0.0), 2)
 
@@ -137,7 +195,16 @@ def registrar_pagamento(
     if historico.status_pagamento == StatusPagamento.PAGO:
         raise HTTPException(status_code=400, detail="Este ticket já está pago")
 
+    if historico.valor_total is None:
+        # O fluxo documentado calcula automaticamente; exigir uma chamada
+        # anterior fazia dinheiro estourar TypeError e cartão virar 500 no FK.
+        calcular_tarifa_estadia(db, historico_id)
+        db.refresh(historico)
+
     valor_total = historico.valor_total
+    if valor_total is None:
+        raise HTTPException(status_code=400, detail="Não foi possível calcular a tarifa")
+
     troco = 0.0
     if metodo_pagamento == MetodoPagamento.DINHEIRO.value and valor_recebido is not None:
         if valor_recebido < valor_total:
@@ -164,36 +231,11 @@ def registrar_pagamento(
     historico.status_pagamento = StatusPagamento.PAGO
     historico.forma_pagamento = metodo_pagamento
 
-    # ACH-07: único ponto que gasta o cupom — no pagamento confirmado.
-    if historico.cupom_aplicado:
-        cupom_usado = db.query(CupomDesconto).filter(
-            CupomDesconto.codigo == historico.cupom_aplicado
-        ).first()
-        if cupom_usado:
-            cupom_usado.usos_realizados = (cupom_usado.usos_realizados or 0) + 1
-
+    _consumir_cupom(db, historico)
+    _cancelar_pagamentos_pendentes(db, historico.id)
+    _contabilizar_no_caixa(db, novo_pagamento, historico)
     db.commit()
     db.refresh(novo_pagamento)
-
-    # Atualiza caixa aberto
-    caixa_aberto = db.query(FechamentoCaixa).filter(
-        FechamentoCaixa.estacionamento_id == historico.estacionamento_id,
-        FechamentoCaixa.fechado == False
-    ).first()
-
-    if caixa_aberto:
-        if metodo_pagamento == MetodoPagamento.PIX.value:
-            caixa_aberto.valor_pix += valor_total
-        elif metodo_pagamento == MetodoPagamento.CARTAO_CREDITO.value:
-            caixa_aberto.valor_cartao_credito += valor_total
-        elif metodo_pagamento == MetodoPagamento.CARTAO_DEBITO.value:
-            caixa_aberto.valor_cartao_debito += valor_total
-        elif metodo_pagamento == MetodoPagamento.DINHEIRO.value:
-            caixa_aberto.valor_dinheiro += valor_total
-        caixa_aberto.valor_total += valor_total
-        caixa_aberto.quantidade_pagamentos += 1
-        caixa_aberto.valor_descontos += historico.valor_desconto or 0
-        db.commit()
 
     return {
         "pagamento": novo_pagamento,
@@ -210,6 +252,8 @@ def gerar_pagamento_pix(db: Session, historico_id: str):
     historico = db.query(Historico).filter(Historico.id == historico_id).first()
     if not historico:
         raise HTTPException(status_code=404, detail="Estadia não encontrada")
+    if historico.status_pagamento == StatusPagamento.PAGO:
+        raise HTTPException(status_code=400, detail="Este ticket já está pago")
     if historico.valor_total is None:
         calcular_tarifa_estadia(db, historico_id)
         db.refresh(historico)
@@ -239,12 +283,11 @@ def gerar_pagamento_pix(db: Session, historico_id: str):
         link_pagamento=f"https://seupagamento.com/pay/{historico.id}"
     )
     db.add(novo_pagamento)
-    db.commit()
-    db.refresh(novo_pagamento)
-
+    db.flush()
     historico.pagamento_id = novo_pagamento.id
     historico.forma_pagamento = MetodoPagamento.PIX.value
     db.commit()
+    db.refresh(novo_pagamento)
 
     return novo_pagamento
 
@@ -257,12 +300,27 @@ def confirmar_pagamento_online(db: Session, pagamento_id: str):
 
     if pagamento.status_pagamento == StatusPagamento.PAGO:
         return pagamento
+    if pagamento.status_pagamento not in (
+        StatusPagamento.PENDENTE,
+        StatusPagamento.PROCESSANDO,
+    ):
+        raise HTTPException(status_code=400, detail="Pagamento não está pendente")
+
+    historico = db.query(Historico).filter(Historico.id == pagamento.historico_id).first()
+    if not historico:
+        raise HTTPException(status_code=404, detail="Estadia não encontrada")
+    if historico.status_pagamento == StatusPagamento.PAGO:
+        raise HTTPException(status_code=400, detail="Este ticket já foi pago por outro método")
 
     pagamento.status_pagamento = StatusPagamento.PAGO
     pagamento.data_pagamento = utc_agora()
-
-    historico = db.query(Historico).filter(Historico.id == pagamento.historico_id).first()
+    historico.pagamento_id = pagamento.id
     historico.status_pagamento = StatusPagamento.PAGO
+    historico.forma_pagamento = pagamento.metodo_pagamento
+
+    _consumir_cupom(db, historico)
+    _cancelar_pagamentos_pendentes(db, historico.id)
+    _contabilizar_no_caixa(db, pagamento, historico)
     db.commit()
     db.refresh(pagamento)
     return pagamento

@@ -303,7 +303,7 @@ Status vem de leitura de código. Coluna **Marca** indica onde o item fecha.
 | RN-09 | Próxima vaga: primeira `livre` do tipo pedido; se não houver, qualquer `livre` |
 | RN-10 | Taxa de ocupação = (`ocupada` + `reservada`) ÷ total. ✅ Adotado: **`inativa` fora do denominador** (`test_ocupacao_snapshot_exclui_inativas_do_denominador`) |
 | RN-11 | Sessão QR: validade clampada em 1–48 h; token `secrets.token_urlsafe(8)` (~11 caracteres, 64 bits); revogável |
-| RN-12 | "Dia", "semana" e "mês" dos relatórios são calculados em `America/Manaus` ✅ (`core/timeutils.py`, `test_dia_local_de_manaus_vira_0300_utc`) |
+| RN-12 | "Dia", "semana" e "mês" dos relatórios são calculados em `America/Manaus` ✅ (`core/timeutils.py`, `test_dia_local_de_manaus_vira_0400_utc`) |
 
 ---
 

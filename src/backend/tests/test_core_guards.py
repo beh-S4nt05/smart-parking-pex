@@ -60,3 +60,56 @@ def test_rotas_sociais_404_com_flag_desligada(client):
     r = client.post("/auth/login/google", json={"id_token": "qualquer"})
     assert r.status_code == 404
     assert "desabilitado" in r.json()["detail"]
+
+
+@pytest.mark.parametrize(
+    ("host", "esperado"),
+    [
+        ("localhost", 200),
+        ("127.0.0.1:8000", 200),
+        ("192.168.1.14:8000", 200),
+        ("10.0.2.2", 200),
+        ("172.18.0.2:8000", 200),
+        ("192.168.1.14.evil.example", 400),
+        ("evil.example", 400),
+        ("192.168.1.14:porta-invalida", 400),
+    ],
+)
+def test_trusted_host_production_aceita_lan_sem_derrubar_stack(host, esperado):
+    """Os curingas de IP não podem virar 500 nem liberar um Host inválido."""
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+
+    from core.trusted_host import TrustedHostLANMiddleware
+
+    app = FastAPI()
+    app.add_middleware(
+        TrustedHostLANMiddleware,
+        allowed_hosts=[*Settings().TRUSTED_HOSTS, "*.example.com"],
+    )
+
+    @app.get("/")
+    def raiz():
+        return {"ok": True}
+
+    with TestClient(app, raise_server_exceptions=False) as cliente:
+        resposta = cliente.get("/", headers={"Host": host})
+        assert resposta.status_code == esperado
+
+
+def test_trusted_host_mantem_wildcard_de_dominio():
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+
+    from core.trusted_host import TrustedHostLANMiddleware
+
+    app = FastAPI()
+    app.add_middleware(TrustedHostLANMiddleware, allowed_hosts=["*.example.com"])
+
+    @app.get("/")
+    def raiz():
+        return {"ok": True}
+
+    with TestClient(app) as cliente:
+        assert cliente.get("/", headers={"Host": "api.example.com"}).status_code == 200
+        assert cliente.get("/", headers={"Host": "example.net"}).status_code == 400

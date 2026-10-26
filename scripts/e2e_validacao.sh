@@ -24,7 +24,7 @@
 #         idempotência por seq → revogada → 401 (RF-45 de ponta a ponta)
 #      D7 simulador QR: criar → validar → revogar → 410
 #   E. Suíte backend (FULL) . pytest + ruff via .venv do run-dev.sh, se houver
-#   F. Typecheck frontend (FULL) tsc --noEmit, se node_modules existir
+#   F. Frontend (FULL) tsc --noEmit + regras puras de autenticação
 #
 # Deps: curl · python3 (blocos D). Logs detalhados em /tmp/e2e-*.log.
 # ═══════════════════════════════════════════════════════════════════════════
@@ -294,21 +294,31 @@ else
     bloco "E" "suíte backend" skip "use --full"
 fi
 
-# ══════════════════════════════════════════════════════ F · typecheck front
+# ══════════════════════════════════════════════════════ F · frontend
 if [ "$FULL" = 1 ]; then
-    echo "── F. Typecheck do frontend"
+    echo "── F. Frontend (TypeScript + regras de autenticação)"
     if [ -d "$RAIZ/src/frontend/smart-parking/node_modules" ]; then
+        F_ERROS=""
         if (cd "$RAIZ/src/frontend/smart-parking" && ./node_modules/.bin/tsc --noEmit >/tmp/e2e-tsc.log 2>&1); then
             ok "tsc limpo (contratos api/types íntegros)"
-            bloco "F" "typecheck frontend" ok
         else
-            bloco "F" "typecheck frontend" fail "cat /tmp/e2e-tsc.log"
+            F_ERROS="typecheck"
+        fi
+        if node "$RAIZ/scripts/test_frontend_core.cjs" >/tmp/e2e-frontend-core.log 2>&1; then
+            ok "regras de autenticação/next íntegras"
+        else
+            F_ERROS="$F_ERROS authFlow"
+        fi
+        if [ -z "$F_ERROS" ]; then
+            bloco "F" "frontend" ok "tsc + authFlow"
+        else
+            bloco "F" "frontend" fail "$F_ERROS — cat /tmp/e2e-tsc.log /tmp/e2e-frontend-core.log"
         fi
     else
-        bloco "F" "typecheck frontend" skip "npm install pendente"
+        bloco "F" "frontend" skip "npm install pendente"
     fi
 else
-    bloco "F" "typecheck frontend" skip "use --full"
+    bloco "F" "frontend" skip "use --full"
 fi
 
 # ══════════════════════════════════════════════════════ veredito

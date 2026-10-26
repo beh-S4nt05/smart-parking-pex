@@ -8,11 +8,20 @@ import React, {
 } from "react";
 import { parkingApi } from "../services/api";
 import { storage } from "../services/storage";
+import { erroRevogaSessao, ROLES_PAINEL } from "../services/authFlow";
 import type { Tokens, Usuario } from "../types/api";
 
 export type { Usuario };
 
-const ROLES_PAINEL = ["admin", "gestor", "financeiro"];
+async function cachearUsuario(usuario: Usuario): Promise<void> {
+  try {
+    await storage.setUserCache(JSON.stringify(usuario));
+  } catch (error) {
+    // Cache acelera o boot, mas não é credencial: uma falha nele não pode
+    // transformar um login já autenticado em erro nem apagar os tokens.
+    console.warn("[smart-parking] Cache do usuário não foi atualizado", error);
+  }
+}
 
 export interface AuthContextData {
   user: Usuario | null;
@@ -49,38 +58,38 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   useEffect(() => {
     let alive = true;
     (async () => {
+      let usuarioCacheado: Usuario | null = null;
       try {
         const token = await storage.getAccessToken();
         const cached = await storage.getUserCache();
         if (!token) {
           // Sem token NÃO existe sessão — o cache de usuário é lixo de
-          // sessão anterior (logout parcial, expurgo do SecureStore,
-          // logout remoto). Confiar nele deixava o painel "aberto" para
-          // quem não está logado: guardas de rota veem um usuário fantasma
-          // e os dados reais vêm 401. Auditoria E2E de 22/10 (rod.12).
-          if (cached) await storage.clearUserCache();
-          setLoading(false);
+          // sessão anterior e nunca pode abrir guardas de rota sozinho.
+          if (cached) await storage.clearUserCache().catch(() => undefined);
           return;
         }
         if (cached) {
           try {
-            setUser(JSON.parse(cached));
+            usuarioCacheado = JSON.parse(cached) as Usuario;
+            setUser(usuarioCacheado);
           } catch {
-            /* cache corrompido — segue */
+            /* cache corrompido — a revalidação online decide */
           }
         }
-        if (token) {
-          try {
-            const me = await parkingApi.me();
-            if (!alive) return;
-            setUser(me);
-            await storage.setUserCache(JSON.stringify(me));
-          } catch {
-            if (!alive) return;
-            // se o refresh automático do interceptor também falhou,
-            // a sessão expirou de vez → limpa credenciais
-            await storage.clearTokens();
+        try {
+          const me = await parkingApi.me();
+          if (!alive) return;
+          setUser(me);
+          await cachearUsuario(me);
+        } catch (error) {
+          if (!alive) return;
+          if (erroRevogaSessao(error)) {
+            // 401/403 depois da tentativa de refresh: credencial inválida de
+            // fato. Rede, timeout, 429 e 5xx NÃO destroem uma sessão válida.
+            await storage.clearTokens().catch(() => undefined);
             setUser(null);
+          } else if (usuarioCacheado) {
+            setUser(usuarioCacheado);
           }
         }
       } finally {
@@ -95,14 +104,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
 
   const signIn = useCallback(async (credencial: string, senha: string) => {
     const data: Tokens = await parkingApi.login(credencial, senha);
-    const usuario =
-      data.user ??
-      (await parkingApi.me().catch(() => null));
-    if (usuario) {
-      setUser(usuario);
-      await storage.setUserCache(JSON.stringify(usuario));
-    }
-    if (!usuario) throw new Error("Não foi possível carregar o perfil");
+    const usuario = data.user ?? (await parkingApi.me());
+    setUser(usuario);
+    await cachearUsuario(usuario);
     return usuario;
   }, []);
 
@@ -110,7 +114,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     try {
       const me = await parkingApi.me();
       setUser(me);
-      await storage.setUserCache(JSON.stringify(me));
+      await cachearUsuario(me);
     } catch {
       /* offline mantém o cache — nada a fazer */
     }
@@ -129,8 +133,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   );
 
   const signOut = useCallback(async () => {
-    await parkingApi.logout();
-    setUser(null);
+    try {
+      await parkingApi.logout();
+    } catch (error) {
+      console.warn("[smart-parking] Não foi possível limpar toda a sessão local", error);
+    } finally {
+      setUser(null);
+    }
   }, []);
 
   const value = useMemo<AuthContextData>(

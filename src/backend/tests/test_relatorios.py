@@ -7,11 +7,16 @@ from models.db_models import Historico, StatusVaga
 from rules import relatorio_service
 
 
-def test_dia_local_de_manaus_vira_0300_utc():
-    # 22/10 01:00 UTC = 21/10 22:00 em Manaus → "hoje" local é dia 21
+def test_dia_local_de_manaus_vira_0400_utc():
+    # 22/10 01:00 UTC = 21/10 21:00 em Manaus (UTC-4) → "hoje" local é dia 21.
     ref = datetime(2026, 10, 22, 1, 0, tzinfo=UTC)
     inicio = inicio_dia_manaus(ref)
-    assert inicio == datetime(2026, 10, 21, 3, 0)  # 21/10 00:00-03:00 → 03:00 UTC
+    assert inicio == datetime(2026, 10, 21, 4, 0)  # 21/10 00:00-04:00 → 04:00 UTC
+
+    # Depois das 04:00 UTC já começou um novo dia no calendário local.
+    assert inicio_dia_manaus(datetime(2026, 10, 22, 5, 0, tzinfo=UTC)) == datetime(
+        2026, 10, 22, 4, 0
+    )
 
 
 def test_jornada_diaria_cobre_24h_e_periodo_invalido_estoura():
