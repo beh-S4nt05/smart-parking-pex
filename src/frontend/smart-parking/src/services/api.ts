@@ -189,9 +189,20 @@ export function apiErrorMessage(err: unknown, fallback = "Algo deu errado. Tente
     const first = detail[0] as { msg?: string };
     if (first?.msg) return humanizeValidationMessage(first.msg);
   }
-  if (e?.code === "ERR_NETWORK" || !e?.response) {
+  const message = typeof e?.message === "string" ? e.message : "";
+  const isNetworkError =
+    e?.code === "ERR_NETWORK" ||
+    e?.code === "ECONNABORTED" ||
+    e?.code === "ETIMEDOUT" ||
+    /^(network request failed|network error|failed to fetch)$/i.test(message);
+  if (isNetworkError) {
     return `Não foi possível alcançar a API em ${API_URL}. Confira: (1) o backend está rodando? (2) no celular, ele está na MESMA rede do PC e o app foi aberto pelo QR do "npx expo start"? (3) porta diferente de 8000? Ajuste EXPO_PUBLIC_API_URL em src/frontend/smart-parking/.env e reinicie com "npx expo start -c".`;
   }
+  // Um interceptor, o SecureStore ou outro código local também pode rejeitar
+  // uma Promise sem `response`. Isso NÃO comprova falha de rede; preservar a
+  // mensagem original é essencial para diagnosticar Android/iOS corretamente.
+  if (!e?.response && message) return message;
+  if (e?.response?.status) return `${fallback} (HTTP ${e.response.status})`;
   return fallback;
 }
 
@@ -214,9 +225,16 @@ export const parkingApi = {
       email: credencial.trim(),
       senha,
     });
-    await storage.setAccessToken(data.access_token);
-    await storage.setRefreshToken(data.refresh_token);
-    if (data.user) await storage.setUserCache(JSON.stringify(data.user));
+    try {
+      await storage.setAccessToken(data.access_token);
+      await storage.setRefreshToken(data.refresh_token);
+      if (data.user) await storage.setUserCache(JSON.stringify(data.user));
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : String(error);
+      throw new Error(
+        `A API autenticou, mas não foi possível salvar a sessão neste dispositivo: ${reason}`,
+      );
+    }
     return data;
   },
 

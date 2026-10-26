@@ -13,6 +13,7 @@
  * escritas em produção.
  */
 import CryptoJS from "crypto-js";
+import { getRandomBytes } from "expo-crypto";
 import { InternalAxiosRequestConfig } from "axios";
 
 /**
@@ -37,11 +38,17 @@ const DEFAULT_CONFIG: RequestSignerConfig = {
 };
 
 function gerarNonce(): string {
-  // 32 chars hex aleatórios — sem dependência externa
-  return (
-    CryptoJS.lib.WordArray.random(16).toString(CryptoJS.enc.Hex) +
-    Date.now().toString(16)
-  );
+  // Não usar CryptoJS.lib.WordArray.random(): desde crypto-js 4.x ele depende
+  // de globalThis.crypto.getRandomValues (ou do módulo crypto do Node), que não
+  // existe por padrão no Hermes. Nesse caso a exceção acontece no interceptor,
+  // antes do POST, e o login parece uma falha de rede. expo-crypto já é uma
+  // dependência fixada do SDK 58 e funciona em Android, iOS e Web.
+  const bytes = getRandomBytes(16);
+  let randomHex = "";
+  for (const byte of bytes) {
+    randomHex += byte.toString(16).padStart(2, "0");
+  }
+  return randomHex + Date.now().toString(16);
 }
 
 export function signRequest(
