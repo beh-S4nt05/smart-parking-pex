@@ -1,0 +1,55 @@
+name: Expo SDK update
+
+on:
+  # Verifica diariamente; uma mudança no canal latest vira PR, nunca push na main.
+  schedule:
+    - cron: "12 10 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: expo-sdk-update-main
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24.19.0"
+          cache: npm
+          cache-dependency-path: src/frontend/smart-parking/package-lock.json
+      - run: npm install --global npm@11.17.0
+      - run: npm ci --no-audit --no-fund
+        working-directory: src/frontend/smart-parking
+      - run: bash scripts/update_expo_sdk.sh
+      - run: npm run doctor
+        working-directory: src/frontend/smart-parking
+      - run: npm run check-native
+        working-directory: src/frontend/smart-parking
+      - uses: peter-evans/create-pull-request@v7
+        with:
+          base: main
+          branch: automation/expo-sdk-update
+          delete-branch: true
+          commit-message: "chore(expo): atualizar SDK e módulos nativos"
+          title: "chore(expo): atualizar SDK e módulos nativos"
+          body: |
+            Atualização gerada pelo fluxo oficial do Expo.
+
+            Verificações executadas antes da criação deste PR:
+            - `npm view expo version` e pins exatos;
+            - `expo install --fix` e `expo install --check`;
+            - `expo-doctor` e TypeScript;
+            - export Hermes Android/iOS + Web;
+            - `expo prebuild` Android/iOS.
+
+            Não há merge automático. A validação em dispositivo físico continua
+            sendo uma etapa separada antes de publicar o aplicativo.
