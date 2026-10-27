@@ -228,7 +228,6 @@ export const parkingApi = {
     try {
       await storage.setAccessToken(data.access_token);
       await storage.setRefreshToken(data.refresh_token);
-      if (data.user) await storage.setUserCache(JSON.stringify(data.user));
     } catch (error) {
       const reason = error instanceof Error ? error.message : String(error);
       throw new Error(

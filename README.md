@@ -196,6 +196,23 @@ npx expo start          # pressione: w (web) · a (Android) · i (iOS) · ou esc
 > recalcular a árvore. `npm install` só é apropriado quando você pretende
 > alterar dependências de propósito.
 
+#### 🔄 Verificação e atualização nativa do SDK
+
+```bash
+cd src/frontend/smart-parking
+npm run check-sdk      # canal latest + pins exatos + lockfile/node_modules
+npm run update-sdk     # expo install expo@latest + --fix, restaurando pins exatos
+npm run doctor         # diagnóstico oficial completo (requer acesso à API do Expo)
+npm run check-native   # export Hermes Android/iOS/Web + prebuild em pasta temporária
+```
+
+A CI executa essas verificações em pushes e PRs. O workflow
+[`expo-sdk-update.yml`](.github/workflows/expo-sdk-update.yml) também consulta o
+canal estável diariamente e abre um PR quando encontra atualização. Não há push
+nem merge automático na `main`: `expo-doctor`, TypeScript, export e prebuild
+precisam passar antes da criação do PR. Teste em aparelho físico continua sendo
+obrigatório antes de publicar uma build.
+
 > **Achas de configuração (importante pro time todo):**
 > - O **único** env do app é `EXPO_PUBLIC_API_URL`. Env chamada `DEFAULT_API_URL`
 >   **não existe** — se alguém colocar no `.env`, é ignorada. Sem env, o app resolve
@@ -251,7 +268,7 @@ cd src/frontend/smart-parking
 rm -rf node_modules .expo
 npm ci --no-audit --no-fund
 
-# tem que imprimir 58.0.17; se imprimir 57.x, pare e confira a cópia/branch
+# tem que imprimir 58.0.19; se imprimir outra major, pare e confira a cópia/branch
 node -p "require('./node_modules/expo/package.json').version"
 npx expo start -c
 ```
@@ -261,10 +278,11 @@ reaplique depois — o `restore` acima descarta apenas as mudanças não
 commitadas deles. O `git log` precisa mostrar `3a28ae9` ou um commit posterior
 do SDK 58; não tente fazer o upgrade restaurando arquivos de outra cópia.
 
-Depois do `npm ci`, o `npx expo install --check` é apenas uma verificação
-opcional: se ele anunciar **SDK 57**, pressione `Ctrl+C` e repita a checagem do
-`node_modules`; não autorize a instalação. `npm audit` pode ser lido à parte,
-mas seus avisos transitivos não devem derrubar os pins do SDK.
+Depois do `npm ci`, o `npx expo install --check` confirma a compatibilidade com
+o SDK instalado e também roda na CI. Se ele anunciar uma major inesperada,
+pressione `Ctrl+C`, repita a checagem do `node_modules` e use somente
+`npm run update-sdk` para uma atualização intencional. `npm audit` pode ser lido
+à parte, mas seus avisos transitivos não devem derrubar os pins do SDK.
 
 #### 📱 Expo Go no celular: "Failed to download remote update"
 

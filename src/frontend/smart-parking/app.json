@@ -4,25 +4,19 @@
     "slug": "smart-parking",
     "version": "1.0.0",
     "orientation": "default",
-    "icon": "./src/assets/imgs/logo.png",
+    "icon": "./src/assets/imgs/Logo.png",
     "scheme": "smartparking",
     "userInterfaceStyle": "light",
     "backgroundColor": "#F8FAFC",
-    "splash": {
-      "image": "./src/assets/imgs/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#2563EB"
-    },
     "ios": {
       "supportsTablet": true,
-      "infoDictionary": {
+      "infoPlist": {
         "NSAppTransportSecurity": {
           "NSAllowsArbitraryLoads": true
         }
       }
     },
     "android": {
-      "usesCleartextTraffic": true,
       "predictiveBackGestureEnabled": false,
       "adaptiveIcon": {
         "foregroundImage": "./src/assets/imgs/adaptive-icon.png",
@@ -35,7 +29,24 @@
       "favicon": "./src/assets/imgs/favicon.png"
     },
     "plugins": [
-      "expo-router"
+      "expo-router",
+      "expo-font",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./src/assets/imgs/splash-icon.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#2563EB"
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true
+          }
+        }
+      ]
     ]
   }
 }

@@ -17,13 +17,15 @@ import {
   View,
   useWindowDimensions,
 } from "react-native";
-import { Link, useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useAuth } from "../hooks/useAuth";
 import { apiErrorMessage } from "../services/api";
+import { destinoAposLogin } from "../services/authFlow";
 import { Botao, Campo, Logo } from "../components/ui";
 
 export default function Login() {
   const router = useRouter();
+  const { next } = useLocalSearchParams<{ next?: string | string[] }>();
   const { width } = useWindowDimensions();
   const isWide = width >= 900;
   const { signIn } = useAuth();
@@ -55,11 +57,9 @@ export default function Login() {
     setErro(null);
     try {
       const usuario = await signIn(email, senha);
-      if (["admin", "gestor", "financeiro"].includes(usuario.role)) {
-        router.replace("/dashboard");
-      } else {
-        router.replace("/");
-      }
+      // Retorna ao mapa/QR que pediu autenticação, sem aceitar URL externa
+      // nem liberar painel/simulador para um papel sem permissão.
+      router.replace(destinoAposLogin(next, usuario.role) as never);
     } catch (e) {
       setErro(apiErrorMessage(e, "Não foi possível entrar."));
     } finally {

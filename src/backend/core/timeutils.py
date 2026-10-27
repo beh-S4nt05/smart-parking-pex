@@ -6,7 +6,7 @@ Regra única para todo o backend:
   a parede UTC sem offset e o Postgres (coluna timestamptz, sessão UTC do
   container) interpreta o mesmo instante — os dois bancos ficam coerentes.
 - Compare janelas de relatório em **naive-UTC derivado do dia de Manaus**:
-  "hoje" = a meia-noite em America/Manaus convertida para UTC (UTC-3 fixo;
+  "hoje" = a meia-noite em America/Manaus convertida para UTC (UTC-4 fixo;
   o Amazonas não tem horário de verão, então não dependemos de tzdata).
 - Valores vindos do banco passam por `normalizar()` antes de comparação em
   Python (SQLite devolve naive, Postgres devolve aware — `normalizar` unifica).
@@ -14,8 +14,8 @@ Regra única para todo o backend:
 
 from datetime import UTC, datetime, timedelta, timezone
 
-# America/Manaus: UTC-3 permanente (sem DST) — evita dependência de tzdata
-FUSO_MANAUS = timezone(timedelta(hours=-3))
+# America/Manaus: UTC-4 permanente (sem DST) — evita dependência de tzdata
+FUSO_MANAUS = timezone(timedelta(hours=-4))
 
 
 def utc_agora() -> datetime:

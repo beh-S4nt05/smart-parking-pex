@@ -5,7 +5,7 @@
 
 export type VagaStatus = "livre" | "ocupada" | "reservada" | "inativa";
 export type VagaTipo = "comum" | "pcd" | "idoso" | "moto" | "eletrico";
-export type ReservaStatus = "confirmada" | "cancelada" | "concluida";
+export type ReservaStatus = "confirmada" | "cancelada" | "concluida" | "expirada";
 
 export interface Usuario {
   id: string;

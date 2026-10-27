@@ -36,7 +36,7 @@ export default function Simulador() {
     a?: string;
   }>();
   const router = useRouter();
-  const { isAdmin, isAuthenticated, loading: authLoading } = useAuth();
+  const { isAdmin, isAuthenticated, canAccessPanel, loading: authLoading } = useAuth();
 
   const [validando, setValidando] = useState(true);
   const [sessaoOk, setSessaoOk] = useState(false);
@@ -137,12 +137,18 @@ export default function Simulador() {
           </Text>
           <Pressable
             onPress={() =>
-              router.replace(isAuthenticated ? "/dashboard" : "/login")
+              router.replace(
+                isAuthenticated ? (canAccessPanel ? "/dashboard" : "/") : "/login",
+              )
             }
             className="mt-6 w-full items-center rounded-xl bg-blue-600 px-4 py-3 active:bg-blue-700"
           >
             <Text className="text-sm font-bold text-white">
-              {isAuthenticated ? "Voltar ao painel" : "Entrar como administrador"}
+              {isAuthenticated
+                ? canAccessPanel
+                  ? "Voltar ao painel"
+                  : "Voltar ao início"
+                : "Entrar como administrador"}
             </Text>
           </Pressable>
         </View>

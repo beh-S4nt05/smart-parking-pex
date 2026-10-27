@@ -1,5 +1,6 @@
 
 from fastapi import HTTPException, status
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from core.security import criar_hash_senha
@@ -198,16 +199,20 @@ def atualizar_usuario_admin(db: Session, usuario_id: str, dados: UsuarioAdminUpd
                 detail=f"Tipo de usuário inválido. Valores aceitos: {', '.join(roles_validos)}"
             )
 
-        # Se for alterar para gestor/financeiro, garante estacionamento
-        if (
-            dados_dict["role"] in [TipoUsuario.GESTOR.value, TipoUsuario.FINANCEIRO.value]
-            and not dados_dict.get("estacionamento_id")
-            and not usuario.estacionamento_id
-        ):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Gestores e usuários de finanças devem estar vinculados a um estacionamento"
-            )
+    # Valida o ESTADO FINAL, não apenas a transição: remover explicitamente o
+    # vínculo de um gestor já existente também o deixaria sem acesso ao painel.
+    role_final = dados_dict.get("role", usuario.role)
+    estacionamento_final = dados_dict.get(
+        "estacionamento_id", usuario.estacionamento_id
+    )
+    if (
+        role_final in [TipoUsuario.GESTOR.value, TipoUsuario.FINANCEIRO.value]
+        and not estacionamento_final
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Gestores e usuários de finanças devem estar vinculados a um estacionamento"
+        )
 
     if dados_dict.get("estacionamento_id"):
         est = db.query(Estacionamento).filter(Estacionamento.id == dados_dict["estacionamento_id"]).first()
@@ -324,6 +329,16 @@ def criar_andar(db: Session, dados: AndarCreate) -> Andar:
             detail="Estacionamento não encontrado"
         )
 
+    duplicado = db.query(Andar).filter(
+        Andar.estacionamento_id == dados.estacionamento_id,
+        Andar.numero_andar == dados.numero_andar,
+    ).first()
+    if duplicado:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"O estacionamento já tem um andar {dados.numero_andar}",
+        )
+
     novo_andar = Andar(**dados.model_dump())
     db.add(novo_andar)
     db.commit()
@@ -371,7 +386,11 @@ def atualizar_vaga(db: Session, vaga_id: str, dados: dict) -> Vaga:
         cod = str(dados["codigo"]).strip().upper()
         if not cod:
             raise HTTPException(status_code=422, detail="codigo vazio")
-        dup = db.query(Vaga).filter(Vaga.andar_id == vaga.andar_id, Vaga.codigo == cod, Vaga.id != vaga_id).first()
+        dup = db.query(Vaga).filter(
+            Vaga.andar_id == vaga.andar_id,
+            func.upper(Vaga.codigo) == cod,
+            Vaga.id != vaga_id,
+        ).first()
         if dup:
             raise HTTPException(status_code=409, detail=f"Já existe a vaga {cod} neste andar")
         vaga.codigo = cod
@@ -429,7 +448,22 @@ def criar_vaga(db: Session, dados: VagaCreate) -> Vaga:
             detail="Andar não encontrado"
         )
 
-    nova_vaga = Vaga(**dados.model_dump())
+    payload = dados.model_dump()
+    codigo = str(payload["codigo"]).strip().upper()
+    if not codigo:
+        raise HTTPException(status_code=422, detail="codigo vazio")
+    payload["codigo"] = codigo
+    duplicada = db.query(Vaga).filter(
+        Vaga.andar_id == dados.andar_id,
+        func.upper(Vaga.codigo) == codigo,
+    ).first()
+    if duplicada:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Já existe a vaga {codigo} neste andar",
+        )
+
+    nova_vaga = Vaga(**payload)
     db.add(nova_vaga)
     db.commit()
     db.refresh(nova_vaga)
@@ -466,11 +500,20 @@ def criar_vagas_em_lote(
         )
 
     vagas_existentes = db.query(Vaga).filter(Vaga.andar_id == andar_id).count()
+    codigos_existentes = {
+        (codigo or "").upper()
+        for (codigo,) in db.query(Vaga.codigo).filter(Vaga.andar_id == andar_id)
+    }
+    prefixo_codigo = prefixo_codigo.strip().upper()
     novas_vagas = []
 
     for i in range(quantidade):
         numero = vagas_existentes + i + 1
         codigo = f"{prefixo_codigo}{numero:02d}"
+        while codigo in codigos_existentes:
+            numero += 1
+            codigo = f"{prefixo_codigo}{numero:02d}"
+        codigos_existentes.add(codigo)
         vaga = Vaga(
             andar_id=andar_id,
             codigo=codigo,

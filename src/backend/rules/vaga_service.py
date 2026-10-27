@@ -1,9 +1,10 @@
 
 from fastapi import HTTPException, status
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from core.timeutils import utc_agora
-from models.db_models import Andar, Historico, StatusVaga, Vaga
+from models.db_models import Andar, Historico, StatusVaga, Usuario, Vaga
 from models.schemas import VagaAtualizaStatus, VagaCreate, VagaLoteStatusUpdate
 
 
@@ -52,7 +53,22 @@ def criar_vaga(db: Session, dados: VagaCreate) -> Vaga:
             detail="Andar não encontrado"
         )
 
-    nova_vaga = Vaga(**dados.model_dump())
+    payload = dados.model_dump()
+    codigo = str(payload["codigo"]).strip().upper()
+    if not codigo:
+        raise HTTPException(status_code=422, detail="codigo vazio")
+    payload["codigo"] = codigo
+    duplicada = db.query(Vaga).filter(
+        Vaga.andar_id == dados.andar_id,
+        func.upper(Vaga.codigo) == codigo,
+    ).first()
+    if duplicada:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Já existe a vaga {codigo} neste andar",
+        )
+
+    nova_vaga = Vaga(**payload)
     db.add(nova_vaga)
     db.commit()
     db.refresh(nova_vaga)
@@ -77,6 +93,7 @@ def _registrar_transicao(
 
     # RF-25 (marca 2 ⬜→✅ · ACH-10): chegada em vaga RESERVADA também abre a
     # estadia e dá baixa na reserva ativa daquela vaga (concluída).
+    usuario_estadia: Usuario | None = None
     if novo_status == StatusVaga.OCUPADA and status_anterior == StatusVaga.RESERVADA:
         from models.db_models import Reserva, StatusReserva
 
@@ -91,6 +108,9 @@ def _registrar_transicao(
         )
         if reserva_ativa:
             reserva_ativa.status = StatusReserva.CONCLUIDA
+            usuario_estadia = (
+                db.query(Usuario).filter(Usuario.id == reserva_ativa.usuario_id).first()
+            )
 
     # Registra entrada quando a vaga passa a ser ocupada (livre OU reservada)
     if novo_status == StatusVaga.OCUPADA and status_anterior in (
@@ -100,6 +120,10 @@ def _registrar_transicao(
         registro = Historico(
             estacionamento_id=estacionamento_id,
             vaga_id=vaga.id,
+            usuario_id=usuario_estadia.id if usuario_estadia else None,
+            placa_veiculo=(
+                usuario_estadia.placa_veiculo if usuario_estadia else None
+            ),
             entrada_em=utc_agora(),
             origem=origem or "sensor",
         )
