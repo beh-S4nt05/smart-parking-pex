@@ -31,6 +31,19 @@ jobs:
       - run: npm ci --no-audit --no-fund
       - run: npm run check-deps
       - run: npm run check-sdk
-      - run: npm run doctor
+      - run: |
+          set +e
+          npm run doctor -- --verbose >/tmp/expo-doctor.log 2>&1
+          status=$?
+          cat /tmp/expo-doctor.log
+          if [ "$status" -ne 0 ]; then
+            python - <<'PY'
+          from pathlib import Path
+          message = Path("/tmp/expo-doctor.log").read_text()[-12000:]
+          message = message.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+          print(f"::error::{message}")
+          PY
+            exit "$status"
+          fi
       - run: npm run typecheck
       - run: npm run check-native
