@@ -31,7 +31,8 @@ jobs:
       - run: npm ci --no-audit --no-fund
       - run: npm run check-deps
       - run: npm run check-sdk
-      - run: |
+      - name: Expo Doctor
+        run: |
           set +e
           npm run doctor -- --verbose >/tmp/expo-doctor.log 2>&1
           status=$?
