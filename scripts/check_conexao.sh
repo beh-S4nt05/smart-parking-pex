@@ -161,7 +161,7 @@ for c in "${CANDIDATOS[@]}"; do
     if [ "$code" = "200" ]; then
         pass "$c/health → 200"
         [ -z "$BASE" ] && BASE="$c"
-        case "$c" in *"://$LAN_IP:"*) LAN_OK=1 ;; http://localhost:8000) LOCAL_OK=1 ;; esac
+        case "$c" in *"://$LAN_IP:"*) LAN_OK=1 ;; http://localhost:$BACKEND_PORT) LOCAL_OK=1 ;; esac
     else
         [ "$c" = "http://$LAN_IP:$BACKEND_PORT" ] && LANFAIL="$c"
         warn "$c/health → ${code:-sem resposta}"
@@ -173,11 +173,12 @@ if [ -z "$BASE" ]; then
 else
     info "usando $BASE para o aperto de mão"
     # firewall/LAN: celular FALA com o IP LAN — se só localhost responde, é rede local/firewall, não código
-    if [ "$LOCAL_OK" = 1 ] && [ "${LAN_OK:-0}" != 1 ] && [ -n "$LAN_IP" ]; then
-        warn "API OK em localhost, mas INACESSÍVEL em http://$LAN_IP:$BACKEND_PORT — o celular usa esse caminho"
-        printf '    %s→ no PC:  sudo ufw status   /   sudo ufw allow %s/tcp   (no WSL, também expose o porta via Settings ou use --tunnel); teste do celular: abra http://%s:%s/health no navegador dele%s\n' "$AZUL" "$BACKEND_PORT" "$LAN_IP" "$BACKEND_PORT" "$FIM"
+    if [ -z "${BACKEND_URL:-}" ] && [ "$LOCAL_OK" = 1 ] && [ "${LAN_OK:-0}" != 1 ] && [ -n "$LAN_IP" ]; then
+        fail "API OK em localhost, mas INACESSÍVEL em http://$LAN_IP:$BACKEND_PORT — o celular usa esse caminho" \
+             "verifique Wi-Fi/AP isolation e permita TCP $BACKEND_PORT somente na sub-rede privada do Wi-Fi (perfil Privado no Windows); não faça port forwarding nem libere para qualquer origem"
+        printf '    %s→ teste no navegador do celular: http://%s:%s/health — se não abrir, ainda é rede/firewall, não CORS%s\n' "$AZUL" "$LAN_IP" "$BACKEND_PORT" "$FIM"
     elif [ "${LAN_OK:-0}" = 1 ]; then
-        pass "API alcançável pelo IP da LAN (http://$LAN_IP:$BACKEND_PORT) — caminho do celular OK"
+        pass "API responde pelo IP da LAN (http://$LAN_IP:$BACKEND_PORT) a partir deste PC — falta confirmar do aparelho"
     fi
 fi
 
@@ -222,7 +223,15 @@ if [ -n "$BASE" ]; then
     if grep -qi 'access-control-allow-origin' <<<"$r"; then
         pass "preflight OPTIONS → acesso liberado ($(grep -i 'access-control-allow-origin' <<<"$r" | head -1 | tr -d '\r'))"
     else
-        fail "preflight CORS sem access-control-allow-origin" "se você acessa a web por http e a API por outro host/porta, o navegador BLOQUEIA — confirme CORS_ORIGINS no backend (default: [\"*\"])"
+        fail "preflight CORS sem access-control-allow-origin" "a Web local usa localhost:8081 ou IP privado:8081; outra origem precisa ser explícita em CORS_ORIGINS. Não use '*' nem confunda CORS com rede nativa"
+    fi
+    r=$(curl -sSI -m 8 -X OPTIONS -H "Origin: https://cors-nao-autorizado.invalid" \
+        -H 'Access-Control-Request-Method: POST' -H 'Access-Control-Request-Headers: content-type,authorization' \
+        "$BASE/auth/login" 2>/dev/null || true)
+    if grep -qi 'access-control-allow-origin' <<<"$r"; then
+        fail "CORS respondeu a uma origem pública não autorizada" "remova curingas e deixe somente as origens reais do frontend em CORS_ORIGINS/CORS_ORIGIN_REGEX"
+    else
+        pass "origem pública não autorizada não recebe acesso CORS"
     fi
 fi
 
@@ -233,8 +242,8 @@ if [ "$METRO" = "200" ]; then
     pass "Metro (npx expo start) responde em http://localhost:$METRO_PORT"
     BUNDLE=""
     for path in "/index.bundle?platform=web&dev=true&minify=false" "/node_modules/expo-router/entry.bundle?platform=web&dev=true&minify=false"; do
-        resp=$(curl -sS -m 12 "http://localhost:$METRO_PORT$path" 2>/dev/null | head -c 3000000 || true)
-        if grep -q 'API_URL\|resolverApiURL' <<<"$resp"; then BUNDLE="$resp"; break; fi
+        resp=$(curl -sS -m 60 "http://localhost:$METRO_PORT$path" 2>/dev/null | head -c 12000000 || true)
+        if grep -q '__BUNDLE_START_TIME__' <<<"$resp"; then BUNDLE="$resp"; break; fi
     done
     if [ -n "$BUNDLE" ]; then
         if grep -q 'resolverApiURL' <<<"$BUNDLE" || grep -q 'hostUri' <<<"$BUNDLE"; then
@@ -242,7 +251,7 @@ if [ "$METRO" = "200" ]; then
         elif grep -q '"http://localhost:8000"' <<<"$BUNDLE" && ! grep -q 'hostUri' <<<"$BUNDLE"; then
             fail "bundle servido está CONGELADO em localhost (mesmo com .env limpo? então é cache):" "npx expo start -c"
         else
-            info "não localizei o marcador no bundle (formato pode ter mudado) — confira o console do Metro: linha '[smart-parking] API_URL = ...'"
+            info "bundle principal válido; o resolvedor pode estar em chunk lazy — confira no console do Metro: '[smart-parking] API_URL = ...'"
         fi
     else
         info "bundle de dev não inspecionado (endpoints padrão não respondem) — vale o log do Metro: '[smart-parking] API_URL = ...'"
@@ -277,8 +286,8 @@ done
 echo
 printf '%s═══ VEREDITO: %d ok · %d atenção · %d crítico ═══%s\n' "$NEGR" "$OKS" "$WARNS" "$CRITS" "$FIM"
 if [ "$CRITS" -eq 0 ]; then
-    printf '%s✅ CONEXÃO VALIDADA — frontend ↔ backend de ponta a ponta.%s\n' "$VERDE" "$FIM"
-    printf '   Celular: abrir o QR do Metro; API_URL correta aparece no log [smart-parking].\n'
+    printf '%s✅ API E CONFIGURAÇÃO LOCAL VALIDADAS — sem bloqueio detectado pelo verificador.%s\n' "$VERDE" "$FIM"
+    printf '   Teste físico ainda necessário: abrir o QR do Metro e conferir [smart-parking] API_URL no aparelho.\n'
     exit 0
 else
     printf '%s❌ HÁ BLOQUEIO — resolva o primeiro ✘ acima e rode de novo (é sempre 1 coisa: .env, porta, firewall ou backend parado).%s\n' "$VERM" "$FIM"

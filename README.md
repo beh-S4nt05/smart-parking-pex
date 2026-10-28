@@ -191,6 +191,12 @@ cp .env.example .env    # opcional: o app resolve a URL sozinho por plataforma
 npx expo start          # pressione: w (web) · a (Android) · i (iOS) · ou escaneie o QR
 ```
 
+Para celular físico, prefira `./scripts/dev-front.sh`: ele atualiza o IP da LAN
+e limpa o cache do Expo. O guia [`CONECTIVIDADE_MOBILE.md`](src/docs/CONECTIVIDADE_MOBILE.md)
+separa Expo Go, emulador, development build e produção, inclui a permissão de
+Rede Local do iPhone e mostra como liberar somente o IP privado da API — sem
+CORS `*`, ATS arbitrário ou cleartext Android global.
+
 > O SDK 58 está **fixado** no `package.json` e no `package-lock.json`. Para
 > instalar ou recuperar o frontend, use `npm ci` — não `npm install`, que pode
 > recalcular a árvore. `npm install` só é apropriado quando você pretende
@@ -214,7 +220,8 @@ precisam passar antes da criação do PR. Teste em aparelho físico continua sen
 obrigatório antes de publicar uma build.
 
 > **Achas de configuração (importante pro time todo):**
-> - O **único** env do app é `EXPO_PUBLIC_API_URL`. Env chamada `DEFAULT_API_URL`
+> - Os overrides do app são `EXPO_PUBLIC_API_URL_WEB`, `EXPO_PUBLIC_API_URL_MOBILE`
+>   e o global `EXPO_PUBLIC_API_URL`. Env chamada `DEFAULT_API_URL`
 >   **não existe** — se alguém colocar no `.env`, é ignorada. Sem env, o app resolve
 >   sozinho (ACH-21): **web** usa o próprio host (`:80`/`:443` = same-origin; dev
 >   `:8081` → mesma máquina na `:8000`); **Expo Go** usa o IP LAN que o próprio
@@ -268,7 +275,7 @@ cd src/frontend/smart-parking
 rm -rf node_modules .expo
 npm ci --no-audit --no-fund
 
-# tem que imprimir 58.0.19; se imprimir outra major, pare e confira a cópia/branch
+# tem que imprimir 58.0.20; se imprimir outra major, pare e confira a cópia/branch
 node -p "require('./node_modules/expo/package.json').version"
 npx expo start -c
 ```

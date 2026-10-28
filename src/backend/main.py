@@ -14,6 +14,7 @@ from api.api import router as api_router
 from api.auth import router as auth_router
 from api.sensores import router as sensores_router
 from core.config import settings
+from core.cors import opcoes_cors
 from core.rate_limiter import limiter, rate_limit_exceeded_handler
 from core.request_validator import RequestValidationMiddleware
 from core.security import criar_hash_senha
@@ -200,14 +201,8 @@ if settings.ENVIRONMENT == "production":
         allowed_hosts=settings.TRUSTED_HOSTS,
     )
 
-# 3. CORS
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS,
-    allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allow_headers=["*"],
-)
+# 3. CORS: Web local/LAN em desenvolvimento; origens explícitas em produção.
+app.add_middleware(CORSMiddleware, **opcoes_cors(settings))
 
 # Inclui todos os roteadores
 app.include_router(api_router)
@@ -256,8 +251,8 @@ if __name__ == "__main__":
     print("─" * 60)
     print(f"🌐 SmartParking API — porta {settings.PORT}")
     print(f"   neste computador   : http://localhost:{settings.PORT}/docs")
-    print(f"   celular / outra rede: http://{ip_lan}:{settings.PORT}")
-    print(f'   no app, use no .env : EXPO_PUBLIC_API_URL="http://{ip_lan}:{settings.PORT}"')
+    print(f"   celular na mesma LAN: http://{ip_lan}:{settings.PORT}")
+    print(f'   override mobile opcional: EXPO_PUBLIC_API_URL_MOBILE="http://{ip_lan}:{settings.PORT}"')
     print("   porta ocupada?       → PORT=8010 no src/backend/.env (e ajuste o .env do front)")
     print("─" * 60)
 

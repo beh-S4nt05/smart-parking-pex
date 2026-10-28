@@ -33,6 +33,52 @@ export type DepsResolucao = {
 
 const SEM_WARN = () => {};
 
+function hostPermiteHttp(hostBruto: string): boolean {
+  const host = hostBruto.replace(/^\[|\]$/g, "").replace(/\.$/, "").toLowerCase();
+  if (host === "localhost" || host === "::1") return true;
+  if (
+    /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)*\.(local|lan)$/.test(
+      host,
+    )
+  ) {
+    return true;
+  }
+  const partes = host.split(".");
+  if (partes.length !== 4 || partes.some((p) => !/^(0|[1-9]\d{0,2})$/.test(p))) {
+    return false;
+  }
+  const numeros = partes.map(Number);
+  if (numeros.some((n) => n > 255)) return false;
+  const [a, b] = numeros;
+  return (
+    a === 10 ||
+    a === 127 ||
+    (a === 172 && b >= 16 && b <= 31) ||
+    (a === 192 && b === 168) ||
+    (a === 169 && b === 254)
+  );
+}
+
+/** HTTPS público é válido; HTTP só para loopback/LAN/mDNS explicitamente local. */
+export function validarUrlApi(bruto: string, origem = "API"): string {
+  const url = bruto.trim().replace(/\/+$/, "");
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    throw new Error(`${origem}: URL da API inválida (${url}).`);
+  }
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+    throw new Error(`${origem}: protocolo ${parsed.protocol} não permitido; use HTTP local ou HTTPS.`);
+  }
+  if (parsed.protocol === "http:" && !hostPermiteHttp(parsed.hostname)) {
+    throw new Error(
+      `${origem}: HTTP público (${parsed.hostname}) não é permitido; use HTTPS ou um endereço da rede local.`,
+    );
+  }
+  return url;
+}
+
 /**
  * Sanitiza um valor manual de .env. `exp://` era a URL do QR do Expo Go,
  * nunca da API — convertemos para http:// (axios morreria no scheme) e
@@ -49,7 +95,7 @@ export function limparUrlManual(bruto: string, chave: string, warn: (m: string) 
   if (/:8081(?::|$|\/)/.test(url) || url.endsWith(":8081")) {
     warn(`${chave} aponta para :8081, a porta do Metro (bundle). A API FastAPI roda na 8000 — se não foi engano, rode ./scripts/dev-front.sh que ele escreve a URL certa.`);
   }
-  return url;
+  return validarUrlApi(url, chave);
 }
 
 export function resolverApiURLBase(d: DepsResolucao): string {
@@ -65,9 +111,9 @@ export function resolverApiURLBase(d: DepsResolucao): string {
   if (d.ehWeb && d.location) {
     const { hostname, port, protocol } = d.location;
     if (port === "" || port === "80" || port === "443") {
-      return `${protocol}//${hostname}`;
+      return validarUrlApi(`${protocol}//${hostname}`, "origem Web");
     }
-    return `http://${hostname}:8000`;
+    return validarUrlApi(`http://${hostname}:8000`, "host Web");
   }
 
   // hostUri vem como "192.168.0.42:8081" ou "exp://192.168.0.42:8081"
@@ -75,7 +121,7 @@ export function resolverApiURLBase(d: DepsResolucao): string {
     const host = d.hostUri.split("://").pop()!.split(":")[0].split("/")[0];
     if (host && host !== "localhost" && host !== "127.0.0.1" && host !== "[::1]") {
       if (/^\d+\.\d+\.\d+\.\d+$/.test(host) || /\.(local|lan)$/i.test(host)) {
-        return `http://${host}:8000`;
+        return validarUrlApi(`http://${host}:8000`, "hostUri do Metro");
       }
       warn(`hostUri do Metro="${host}" não é um IP LAN direto — parece túnel/hostname, e a porta 8000 da API NÃO é tunelada pelo Metro. Rode ./scripts/dev-front.sh (mesma rede Wi-Fi) ou defina EXPO_PUBLIC_API_URL_MOBILE com uma URL que o aparelho alcance.`);
     }

@@ -35,6 +35,93 @@ def test_desenvolvimento_livre_das_garras():
     assert s.SECRET_KEY  # qualquer uma vale fora de produção
 
 
+def test_producao_recusa_cors_curinga():
+    with pytest.raises(ValidationError, match="CORS curinga"):
+        Settings(
+            ENVIRONMENT="production",
+            SECRET_KEY="k" * 40,
+            APP_SIGNING_SECRET="s" * 40,
+            CORS_ORIGINS=["*"],
+        )
+
+
+def test_cors_web_permite_somente_frontend_local_ou_lan():
+    from fastapi import FastAPI
+    from fastapi.middleware.cors import CORSMiddleware
+    from fastapi.testclient import TestClient
+
+    from core.cors import opcoes_cors
+
+    app = FastAPI()
+    app.add_middleware(CORSMiddleware, **opcoes_cors(Settings(ENVIRONMENT="development")))
+
+    @app.post("/auth/login")
+    def login():
+        return {"ok": True}
+
+    with TestClient(app) as cliente:
+        for origem in (
+            "http://localhost:8081",
+            "http://127.0.0.1:8081",
+            "http://192.168.1.14:8081",
+            "http://10.0.2.2:8081",
+            "http://169.254.0.21:8081",
+            "http://servidor.local:8081",
+            "http://172.18.0.2:8081",
+        ):
+            resposta = cliente.options(
+                "/auth/login",
+                headers={
+                    "Origin": origem,
+                    "Access-Control-Request-Method": "POST",
+                    "Access-Control-Request-Headers": "authorization,content-type",
+                },
+            )
+            assert resposta.status_code == 200
+            assert resposta.headers["access-control-allow-origin"] == origem
+            assert resposta.headers["access-control-allow-credentials"] == "true"
+
+        for origem in (
+            "https://evil.example",
+            "http://192.168.1.14.evil.example:8081",
+            "http://servidor.local.evil.example:8081",
+            "http://192.168.1.14:9000",
+        ):
+            resposta = cliente.options(
+                "/auth/login",
+                headers={
+                    "Origin": origem,
+                    "Access-Control-Request-Method": "POST",
+                },
+            )
+            assert resposta.status_code == 400
+            assert "access-control-allow-origin" not in resposta.headers
+
+
+def test_cors_production_nao_ganha_excecao_lan_implicita():
+    from core.cors import opcoes_cors
+
+    producao = Settings(
+        ENVIRONMENT="production",
+        SECRET_KEY="k" * 40,
+        APP_SIGNING_SECRET="s" * 40,
+        CORS_ORIGINS=["https://parking.example.com"],
+    )
+    opcoes = opcoes_cors(producao)
+    assert opcoes["allow_origins"] == ["https://parking.example.com"]
+    assert opcoes["allow_origin_regex"] is None
+
+    fechado = opcoes_cors(
+        Settings(
+            ENVIRONMENT="production",
+            SECRET_KEY="k" * 40,
+            APP_SIGNING_SECRET="s" * 40,
+        )
+    )
+    assert fechado["allow_origins"] == []
+    assert fechado["allow_origin_regex"] is None
+
+
 def _req(auth=None):
     return types.SimpleNamespace(
         headers={"Authorization": auth} if auth else {},

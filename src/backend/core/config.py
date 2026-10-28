@@ -37,8 +37,10 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
-    # CORS
-    CORS_ORIGINS: list[str] = ["*"]
+    # None = origens locais apenas em desenvolvimento; lista vazia em produção.
+    # Uma lista explícita sempre prevalece. Nunca usamos curinga com credenciais.
+    CORS_ORIGINS: list[str] | None = None
+    CORS_ORIGIN_REGEX: str | None = None
 
     # Hosts aceitos pelo TrustedHostMiddleware (só vale com ENVIRONMENT=production).
     # Wildcards fnmatch funcionam; os padrões abaixo cobrem localhost, IP da LAN
@@ -89,6 +91,11 @@ class Settings(BaseSettings):
     @model_validator(mode="after")
     def _travar_producao(self):
         if str(self.ENVIRONMENT).lower() == "production":
+            if (self.CORS_ORIGINS and "*" in self.CORS_ORIGINS) or self.CORS_ORIGIN_REGEX in {".*", "^.*$"}:
+                raise ValueError(
+                    "ENVIRONMENT=production não permite CORS curinga; "
+                    "declare as origens HTTPS do frontend em CORS_ORIGINS."
+                )
             if self.SECRET_KEY == "sua_chave_secreta_de_producao_aqui":
                 raise ValueError(
                     "ENVIRONMENT=production exige SECRET_KEY própria no .env "
