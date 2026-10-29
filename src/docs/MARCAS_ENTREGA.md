@@ -80,7 +80,7 @@ BASE_URL=http://localhost ./scripts/smoke_acesso.sh  # ...agora através do ngin
 **Checklist do dia 22 (rodar na véspera na máquina da apresentação):**
 banco limpo (`docker compose down -v && up -d --build`) → login `admin@smartparking.com/admin123`
 → painel: novo estacionamento + andares + vagas em lote → criar usuário gestor →
-celular no mesmo Wi-Fi: `npx expo start` (`.env` com `EXPO_PUBLIC_API_URL=http://<IP-da-máquina>:8000`)
+celular no mesmo Wi-Fi: `./scripts/dev-front.sh` (grava `EXPO_PUBLIC_API_URL_MOBILE=http://<IP-da-máquina>:8000`)
 → cadastro motorista → explorar → reservar → entrar com QR → saída.
 Se travar em algo "sem dados", seguir as Achas de configuração do README.
 
