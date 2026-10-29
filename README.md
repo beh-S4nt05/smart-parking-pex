@@ -275,7 +275,7 @@ cd src/frontend/smart-parking
 rm -rf node_modules .expo
 npm ci --no-audit --no-fund
 
-# tem que imprimir 58.0.20; se imprimir outra major, pare e confira a cópia/branch
+# tem que imprimir 58.0.21; se imprimir outra major, pare e confira a cópia/branch
 node -p "require('./node_modules/expo/package.json').version"
 npx expo start -c
 ```
