@@ -44,20 +44,16 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: |
-            /usr/local/lib/android/sdk/platforms/android-37
-            /usr/local/lib/android/sdk/build-tools/37.0.0
             /usr/local/lib/android/sdk/ndk/27.1.12297006
             /usr/local/lib/android/sdk/cmake/3.22.1
           key: android-sdk37-ndk27.1.12297006-cmake3.22.1-v1
 
-      - name: Instalar SDK/NDK/CMake exigidos pelo Expo
+      - name: Instalar NDK/CMake exigidos pelo Expo
         run: |
           SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
           test -x "$SDKMANAGER"
           yes | "$SDKMANAGER" --licenses >/dev/null
           "$SDKMANAGER" \
-            "platforms;android-37" \
-            "build-tools;37.0.0" \
             "ndk;27.1.12297006" \
             "cmake;3.22.1"
 
@@ -66,8 +62,6 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: |
-            /usr/local/lib/android/sdk/platforms/android-37
-            /usr/local/lib/android/sdk/build-tools/37.0.0
             /usr/local/lib/android/sdk/ndk/27.1.12297006
             /usr/local/lib/android/sdk/cmake/3.22.1
           key: android-sdk37-ndk27.1.12297006-cmake3.22.1-v1
