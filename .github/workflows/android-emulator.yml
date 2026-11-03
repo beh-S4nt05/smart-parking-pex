@@ -1,18 +1,17 @@
 name: Android Emulator
 
 on:
-  # Execução de provisionamento desta validação; removida após o primeiro run.
+  # Execução de provisionamento desta validação; removida após o primeiro run verde.
   push:
     branches: [arena/6d77fb4a-smart-parking-pex]
   workflow_dispatch:
 
 jobs:
-  android-api:
+  build-apk:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 30
     env:
       EXPO_PUBLIC_API_URL_MOBILE: http://10.0.2.2:8000
-      API_LOG: /tmp/smartparking-api.log
     steps:
       - uses: actions/checkout@v4
 
@@ -27,17 +26,59 @@ jobs:
           cache: npm
           cache-dependency-path: src/frontend/smart-parking/package-lock.json
 
+      - name: Instalar toolchain do app
+        run: |
+          npm install --global npm@11.17.0
+          npm ci --no-audit --no-fund --prefix src/frontend/smart-parking
+
+      - name: Gerar projeto Android com exceção somente para o host da API
+        working-directory: src/frontend/smart-parking
+        run: npx expo prebuild --platform android --no-install
+
+      - name: Compilar APK release sem manter um AVD ligado
+        working-directory: src/frontend/smart-parking/android
+        run: |
+          ./gradlew assembleRelease \
+            -PreactNativeArchitectures=x86_64 \
+            --no-daemon \
+            --stacktrace
+
+      - name: Verificar política de rede do APK
+        run: bash scripts/android_native_config_ci.sh
+
+      - name: Publicar APK e configuração nativa para o job do emulador
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-release-apk
+          retention-days: 1
+          path: |
+            src/frontend/smart-parking/android/app/build/outputs/apk/release/app-release.apk
+            src/frontend/smart-parking/android/app/src/main/AndroidManifest.xml
+            src/frontend/smart-parking/android/app/src/main/res/xml/smartparking_network_security.xml
+          if-no-files-found: error
+
+  android-api:
+    needs: build-apk
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      API_LOG: /tmp/smartparking-api.log
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
           cache: pip
           cache-dependency-path: src/backend/requirements.txt
 
-      - name: Instalar toolchain do app
-        run: |
-          npm install --global npm@11.17.0
-          npm ci --no-audit --no-fund --prefix src/frontend/smart-parking
-          pip install -r src/backend/requirements.txt
+      - name: Instalar backend
+        run: pip install -r src/backend/requirements.txt
 
       - name: Subir FastAPI com banco e seed isolados
         run: |
@@ -67,17 +108,11 @@ jobs:
           echo "$(dirname "$MAESTRO_BIN")" >>"$GITHUB_PATH"
           "$MAESTRO_BIN" --version
 
-      - name: Gerar projeto Android com exceção somente para o host da API
-        working-directory: src/frontend/smart-parking
-        run: npx expo prebuild --platform android --no-install
-
-      - name: Compilar APK release antes de consumir recursos do AVD
-        working-directory: src/frontend/smart-parking/android
-        run: |
-          ./gradlew assembleRelease \
-            -PreactNativeArchitectures=x86_64 \
-            --no-daemon \
-            --stacktrace
+      - name: Recuperar o APK compilado no job anterior
+        uses: actions/download-artifact@v4
+        with:
+          name: android-release-apk
+          path: src/frontend/smart-parking/android/app
 
       - name: Boot Android 14 (API 34) e validar APK + API + UI
         uses: ReactiveCircus/android-emulator-runner@4c44018e59b437e86cdfc41da381398f93ed8808
@@ -87,8 +122,8 @@ jobs:
           arch: x86_64
           profile: pixel_6
           cores: 2
-          ram-size: 4096M
-          heap-size: 768M
+          ram-size: 2048M
+          heap-size: 512M
           disk-size: 4096M
           disable-animations: true
           disable-spellchecker: true
