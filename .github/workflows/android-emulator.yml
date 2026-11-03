@@ -12,7 +12,7 @@ jobs:
     timeout-minutes: 45
     env:
       EXPO_PUBLIC_API_URL_MOBILE: http://10.0.2.2:8000
-      API_LOG: ${{ runner.temp }}/smartparking-api.log
+      API_LOG: /tmp/smartparking-api.log
     steps:
       - uses: actions/checkout@v4
 
@@ -94,7 +94,7 @@ jobs:
         with:
           name: android-emulator-evidence
           path: |
-            ${{ runner.temp }}/smartparking-api.log
+            /tmp/smartparking-api.log
             ${{ runner.temp }}/android-logcat.txt
             ~/.maestro/tests/
           if-no-files-found: ignore
