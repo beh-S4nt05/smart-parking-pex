@@ -149,11 +149,11 @@ jobs:
         uses: ReactiveCircus/android-emulator-runner@4c44018e59b437e86cdfc41da381398f93ed8808
         with:
           api-level: 34
-          target: google_apis
+          target: default
           arch: x86_64
           profile: pixel_6
           cores: 2
-          ram-size: 2048M
+          ram-size: 3072M
           heap-size: 512M
           disk-size: 4096M
           disable-animations: true

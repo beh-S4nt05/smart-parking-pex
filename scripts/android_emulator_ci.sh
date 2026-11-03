@@ -16,8 +16,8 @@ finalizar() {
   adb shell logcat -d -t 1200 >"$LOGCAT" 2>/dev/null || true
   if (( status != 0 )); then
     printf '\n== Diagnóstico do dispositivo ==\n'
-    grep -Ei 'maestro|AndroidRuntime|FATAL EXCEPTION|BindException|ReactNativeJS|Expo' \
-      "$LOGCAT" | tail -n 120 || true
+    grep -Ei 'maestro|AndroidRuntime|FATAL EXCEPTION|BindException|ReactNativeJS|Expo|lowmemory|out of memory|watchdog|NetworkStack|SystemServer|Zygote' \
+      "$LOGCAT" | tail -n 200 || true
   fi
   exit "$status"
 }
@@ -33,7 +33,7 @@ bash "$RAIZ/scripts/android_native_config_ci.sh"
 printf '\n== Instalação do APK release já compilado ==\n'
 APK="$APP/android/app/build/outputs/apk/release/app-release.apk"
 test -f "$APK"
-adb install -r --no-streaming "$APK"
+adb install -r "$APK"
 adb shell pm list packages | grep -q 'package:com.anonymous.smartparking'
 printf '✔ com.anonymous.smartparking instalado.\n'
 
