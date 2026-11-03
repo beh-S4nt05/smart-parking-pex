@@ -28,17 +28,7 @@ adb shell getprop ro.build.version.release
 adb shell getprop ro.product.cpu.abi
 adb shell getprop ro.build.version.sdk
 
-printf '\n== Política cleartext materializada no projeto usado no build ==\n'
-MANIFEST="$APP/android/app/src/main/AndroidManifest.xml"
-REDE="$APP/android/app/src/main/res/xml/smartparking_network_security.xml"
-test -f "$MANIFEST"
-test -f "$REDE"
-grep -q 'android:usesCleartextTraffic="false"' "$MANIFEST"
-grep -q 'android:networkSecurityConfig="@xml/smartparking_network_security"' "$MANIFEST"
-grep -q '<base-config cleartextTrafficPermitted="false"' "$REDE"
-grep -q '<domain includeSubdomains="false">10.0.2.2</domain>' "$REDE"
-test "$(grep -c '<domain ' "$REDE")" -eq 1
-printf '✔ somente 10.0.2.2 tem exceção; base e demais hosts ficam bloqueados.\n'
+bash "$RAIZ/scripts/android_native_config_ci.sh"
 
 printf '\n== Instalação do APK release já compilado ==\n'
 APK="$APP/android/app/build/outputs/apk/release/app-release.apk"
