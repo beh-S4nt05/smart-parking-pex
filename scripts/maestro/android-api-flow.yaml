@@ -7,7 +7,7 @@ appId: com.anonymous.smartparking
     visible:
       text: "Amazonas Shopping"
     timeout: 120000
-- assertVisible: "Monitoramento em tempo real"
+- takeScreenshot: "/tmp/smartparking-home-android"
 
 # Login admin: também exercita expo-crypto no interceptor de escrita.
 - tapOn: "Entrar"
@@ -26,6 +26,7 @@ appId: com.anonymous.smartparking
       text: "Visão geral em tempo real"
     timeout: 120000
 - assertVisible: "Vagas livres"
+- takeScreenshot: "/tmp/smartparking-dashboard-android"
 
 # Reabertura pelo deep link: restaura SecureStore e revalida /auth/me.
 - stopApp
@@ -35,3 +36,4 @@ appId: com.anonymous.smartparking
       text: "Visão geral em tempo real"
     timeout: 120000
 - assertVisible: "Dashboard"
+- takeScreenshot: "/tmp/smartparking-dashboard-restored-android"
