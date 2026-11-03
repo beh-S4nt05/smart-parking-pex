@@ -6,10 +6,14 @@ on:
     branches: [arena/6d77fb4a-smart-parking-pex]
   workflow_dispatch:
 
+concurrency:
+  group: android-emulator-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build-apk:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 60
     env:
       EXPO_PUBLIC_API_URL_MOBILE: http://10.0.2.2:8000
     steps:
@@ -34,6 +38,39 @@ jobs:
       - name: Gerar projeto Android com exceção somente para o host da API
         working-directory: src/frontend/smart-parking
         run: npx expo prebuild --platform android --no-install
+
+      - name: Restaurar componentes nativos do Android SDK
+        id: native-sdk-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            /usr/local/lib/android/sdk/platforms/android-37
+            /usr/local/lib/android/sdk/build-tools/37.0.0
+            /usr/local/lib/android/sdk/ndk/27.1.12297006
+            /usr/local/lib/android/sdk/cmake/3.22.1
+          key: android-sdk37-ndk27.1.12297006-cmake3.22.1-v1
+
+      - name: Instalar SDK/NDK/CMake exigidos pelo Expo
+        run: |
+          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          test -x "$SDKMANAGER"
+          yes | "$SDKMANAGER" --licenses >/dev/null
+          "$SDKMANAGER" \
+            "platforms;android-37" \
+            "build-tools;37.0.0" \
+            "ndk;27.1.12297006" \
+            "cmake;3.22.1"
+
+      - name: Preservar SDK/NDK antes da compilação demorada
+        if: steps.native-sdk-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            /usr/local/lib/android/sdk/platforms/android-37
+            /usr/local/lib/android/sdk/build-tools/37.0.0
+            /usr/local/lib/android/sdk/ndk/27.1.12297006
+            /usr/local/lib/android/sdk/cmake/3.22.1
+          key: android-sdk37-ndk27.1.12297006-cmake3.22.1-v1
 
       - name: Compilar APK release sem manter um AVD ligado
         working-directory: src/frontend/smart-parking/android
