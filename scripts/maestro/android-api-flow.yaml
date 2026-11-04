@@ -1,0 +1,41 @@
+appId: com.anonymous.smartparking
+---
+# Home pública: prova que o APK release carrega dados reais via 10.0.2.2.
+- launchApp:
+    clearState: true
+# O seletor visível do Hero inclui a localização no mesmo Text:
+# "Amazonas Shopping — Manaus, AM". Maestro sem curinga exige match exato.
+- extendedWaitUntil:
+    visible:
+      text: ".*Amazonas Shopping.*"
+    timeout: 120000
+- takeScreenshot: "smartparking-home-android"
+
+# Login admin: também exercita expo-crypto no interceptor de escrita.
+- tapOn: "Entrar"
+- extendedWaitUntil:
+    visible:
+      text: "E-mail ou telefone"
+    timeout: 30000
+- tapOn: "voce@email.com"
+- inputText: "admin@smartparking.com"
+- tapOn: "••••••••"
+- inputText: "admin123"
+- hideKeyboard
+- tapOn: "Entrar"
+- extendedWaitUntil:
+    visible:
+      text: "Visão geral em tempo real"
+    timeout: 120000
+- assertVisible: "Vagas livres"
+- takeScreenshot: "smartparking-dashboard-android"
+
+# Reabertura pelo deep link: restaura SecureStore e revalida /auth/me.
+- stopApp
+- openLink: "smartparking://dashboard"
+- extendedWaitUntil:
+    visible:
+      text: "Visão geral em tempo real"
+    timeout: 120000
+- assertVisible: "Dashboard"
+- takeScreenshot: "smartparking-dashboard-restored-android"
