@@ -39,7 +39,7 @@ jobs:
           while IFS= read -r -d '' arquivo; do
             printf '\n--- %s ---\n' "$arquivo"
             cat "$arquivo"
-          done < <(find /tmp/android-evidence -type f \( -name 'maestro.log' -o -name 'commands.json' -o -name 'manifest.json' \) -print0)
+          done < <(find /tmp/android-evidence -type f \( -name 'maestro.log' -o -name 'commands.json' -o -name 'manifest.json' -o -path '*/screen-hierarchy/*.json' \) -print0)
 
           printf '\n== Hierarquias ==\n'
           while IFS= read -r -d '' arquivo; do
@@ -50,4 +50,12 @@ jobs:
           printf '\n== App e erros no logcat ==\n'
           while IFS= read -r -d '' arquivo; do
             grep -Ei 'anonymous.smartparking|ReactNativeJS|Expo|AndroidRuntime|FATAL EXCEPTION|cleartext|axios|network error|Failed to connect|ECONN|ERR_' "$arquivo" | tail -n 500 || true
-          done < <(find /tmp/android-evidence -type f -name 'android-logcat.txt' -print0)
+          done < <(find /tmp/android-evidence -type f \( -name 'android-logcat.txt' -o -name 'device-logcat.txt' \) -print0)
+
+          if command -v tesseract >/dev/null 2>&1; then
+            printf '\n== OCR das telas ==\n'
+            while IFS= read -r -d '' arquivo; do
+              printf '\n--- %s ---\n' "$arquivo"
+              tesseract "$arquivo" stdout 2>/dev/null || true
+            done < <(find /tmp/android-evidence -type f -name '*.png' -print0)
+          fi
