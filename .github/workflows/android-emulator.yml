@@ -145,6 +145,15 @@ jobs:
           name: android-release-apk
           path: src/frontend/smart-parking/android/app
 
+      - name: Conceder KVM somente ao usuário do runner efêmero
+        run: |
+          # Sem isto o action injeta -accel off: o run 41750082208 levou
+          # 474 s para bootar e apresentou ANRs por emulação TCG em software.
+          test -c /dev/kvm
+          sudo chown "$USER" /dev/kvm
+          test -r /dev/kvm && test -w /dev/kvm
+          ls -l /dev/kvm
+
       - name: Boot Android 14 (API 34) e validar APK + API + UI
         uses: ReactiveCircus/android-emulator-runner@4c44018e59b437e86cdfc41da381398f93ed8808
         with:
@@ -161,6 +170,7 @@ jobs:
           disable-animations: true
           disable-spellchecker: true
           enable-hw-keyboard: true
+          disable-linux-hw-accel: false
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -no-metrics
           script: bash scripts/android_emulator_ci.sh
 
