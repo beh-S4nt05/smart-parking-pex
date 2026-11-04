@@ -1,7 +1,9 @@
 name: Android Emulator
 
 on:
-  # Acionamento controlado: o Android só roda após as validações locais.
+  # Provisionamento controlado somente nesta branch; removido após a validação.
+  push:
+    branches: [arena/b8e63bb8-smart-parking-pex]
   workflow_dispatch:
 
 concurrency:
