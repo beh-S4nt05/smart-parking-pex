@@ -39,18 +39,37 @@ jobs:
           while IFS= read -r -d '' arquivo; do
             printf '\n--- %s ---\n' "$arquivo"
             cat "$arquivo"
-          done < <(find /tmp/android-evidence -type f \( -name 'maestro.log' -o -name 'commands.json' -o -name 'manifest.json' -o -path '*/screen-hierarchy/*.json' \) -print0)
+          done < <(find /tmp/android-evidence -type f \( -name 'maestro.log' -o -name 'commands.json' -o -name 'manifest.json' \) -print0)
 
-          printf '\n== Hierarquias ==\n'
-          while IFS= read -r -d '' arquivo; do
-            printf '\n--- %s ---\n' "$arquivo"
-            grep -Eo '(text|content-desc|resource-id|bounds|visible|enabled)="[^"]*"' "$arquivo" | tail -n 500 || true
-          done < <(find /tmp/android-evidence -type f \( -name '*.xml' -o -name '*.html' \) -print0)
+          printf '\n== Tela e ANR ==\n'
+          python3 - <<'PY'
+          import json
+          import re
+          from pathlib import Path
 
-          printf '\n== App e erros no logcat ==\n'
-          while IFS= read -r -d '' arquivo; do
-            grep -Ei 'anonymous.smartparking|ReactNativeJS|Expo|AndroidRuntime|FATAL EXCEPTION|cleartext|axios|network error|Failed to connect|ECONN|ERR_' "$arquivo" | tail -n 500 || true
-          done < <(find /tmp/android-evidence -type f \( -name 'android-logcat.txt' -o -name 'device-logcat.txt' \) -print0)
+          root = Path('/tmp/android-evidence')
+          for arquivo in root.rglob('screen-hierarchy/*.json'):
+              print(f'--- {arquivo} ---')
+              data = json.loads(arquivo.read_text())
+              def visitar(node):
+                  attrs = node.get('attributes', {})
+                  if any(key in attrs for key in ('text', 'content-desc', 'resource-id')):
+                      resumo = {key: attrs[key] for key in ('text', 'content-desc', 'resource-id', 'bounds', 'clickable') if key in attrs}
+                      print(json.dumps(resumo, ensure_ascii=False))
+                  for child in node.get('children', []):
+                      visitar(child)
+              visitar(data)
+
+          for arquivo in root.rglob('*logcat.txt'):
+              print(f'--- {arquivo} ---')
+              linhas = arquivo.read_text(errors='replace').splitlines()
+              for i, linha in enumerate(linhas):
+                  if re.search(r'ANR in|not responding|Reason:|ReactNativeJS|FATAL EXCEPTION|Cleartext|10\.0\.2\.2|Hermes', linha, re.I):
+                      inicio = max(0, i - 4)
+                      fim = min(len(linhas), i + 18)
+                      print('\n'.join(linhas[inicio:fim]))
+                      print('---')
+          PY
 
           if command -v tesseract >/dev/null 2>&1; then
             printf '\n== OCR das telas ==\n'
