@@ -1,7 +1,9 @@
 name: Android Emulator
 
 on:
-  # Acionamento controlado: o Android só roda após as validações locais.
+  # Provisionamento controlado somente nesta branch; removido após a validação.
+  push:
+    branches: [arena/b8e63bb8-smart-parking-pex]
   workflow_dispatch:
 
 concurrency:
@@ -150,7 +152,9 @@ jobs:
           target: default
           arch: x86_64
           profile: pixel_6
-          cores: 2
+          # O run 41745702132 registrou 84–91% de pressão de CPU e ANRs do
+          # sistema com 2 núcleos; a pressão de memória permaneceu baixa.
+          cores: 4
           ram-size: 3072M
           heap-size: 512M
           disk-size: 4096M
@@ -168,7 +172,7 @@ jobs:
           path: |
             /tmp/smartparking-api.log
             /tmp/smartparking-*.png
-            ${{ runner.temp }}/android-logcat.txt
-            ${{ runner.temp }}/android-emulator-script.log
+            ${{ runner.temp }}/android-*.txt
+            ${{ runner.temp }}/smartparking-window.xml
             ~/.maestro/tests/
           if-no-files-found: ignore
