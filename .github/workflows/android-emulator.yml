@@ -1,9 +1,7 @@
 name: Android Emulator
 
 on:
-  # Execução de provisionamento desta validação; removida após o primeiro run verde.
-  push:
-    branches: [arena/6d77fb4a-smart-parking-pex]
+  # Acionamento controlado: o Android só roda após as validações locais.
   workflow_dispatch:
 
 concurrency:

@@ -13,11 +13,22 @@ exec > >(tee "$SCRIPT_LOG") 2>&1
 finalizar() {
   local status=$?
   trap - EXIT
-  adb shell logcat -d -t 1200 >"$LOGCAT" 2>/dev/null || true
+  adb shell logcat -d -t 4000 >"$LOGCAT" 2>/dev/null || true
   if (( status != 0 )); then
     printf '\n== Diagnóstico do dispositivo ==\n'
     grep -Ei 'maestro|AndroidRuntime|FATAL EXCEPTION|BindException|ReactNativeJS|Expo|lowmemory|out of memory|watchdog|NetworkStack|SystemServer|Zygote' \
       "$LOGCAT" | tail -n 200 || true
+
+    # Sem isto, uma falha de UI escondia se a API foi chamada e o que estava
+    # realmente visível no aparelho. Não contém headers nem tokens.
+    printf '\n== Últimas linhas da API ==\n'
+    tail -n 160 "$API_LOG" || true
+    printf '\n== Evidências do Maestro ==\n'
+    find "$HOME/.maestro/tests" -maxdepth 3 -type f -printf '%p (%s bytes)\n' 2>/dev/null | tail -n 80 || true
+    while IFS= read -r -d '' hierarquia; do
+      printf '\n== Textos e IDs de %s ==\n' "$hierarquia"
+      grep -Eo '(text|content-desc|resource-id)="[^"]*"' "$hierarquia" | tail -n 160 || true
+    done < <(find "$HOME/.maestro/tests" -type f -name '*.xml' -print0 2>/dev/null)
   fi
   exit "$status"
 }

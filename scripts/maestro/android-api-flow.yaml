@@ -3,9 +3,11 @@ appId: com.anonymous.smartparking
 # Home pública: prova que o APK release carrega dados reais via 10.0.2.2.
 - launchApp:
     clearState: true
+# O seletor visível do Hero inclui a localização no mesmo Text:
+# "Amazonas Shopping — Manaus, AM". Maestro sem curinga exige match exato.
 - extendedWaitUntil:
     visible:
-      text: "Amazonas Shopping"
+      text: ".*Amazonas Shopping.*"
     timeout: 120000
 - takeScreenshot: "/tmp/smartparking-home-android"
 
