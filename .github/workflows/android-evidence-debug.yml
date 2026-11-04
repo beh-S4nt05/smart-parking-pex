@@ -1,0 +1,53 @@
+name: Android Evidence Debug
+
+# Diagnóstico temporário: lê as evidências já produzidas sem recompilar o APK
+# nem iniciar outro AVD. Removido junto com a correção definitiva.
+on:
+  push:
+    branches: [arena/b8e63bb8-smart-parking-pex]
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Recuperar evidências do run 41745702132
+        uses: actions/download-artifact@v4
+        with:
+          name: android-emulator-evidence
+          run-id: 41745702132
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: /tmp/android-evidence
+
+      - name: Expor tela e erros sem iniciar outro emulador
+        run: |
+          set -euo pipefail
+          printf '== Arquivos ==\n'
+          find /tmp/android-evidence -type f -printf '%p (%s bytes)\n' | sort
+
+          printf '\n== API ==\n'
+          while IFS= read -r -d '' arquivo; do
+            printf '\n--- %s ---\n' "$arquivo"
+            tail -n 180 "$arquivo"
+          done < <(find /tmp/android-evidence -type f -name 'smartparking-api.log' -print0)
+
+          printf '\n== Maestro ==\n'
+          while IFS= read -r -d '' arquivo; do
+            printf '\n--- %s ---\n' "$arquivo"
+            cat "$arquivo"
+          done < <(find /tmp/android-evidence -type f \( -name 'maestro.log' -o -name 'commands.json' -o -name 'manifest.json' \) -print0)
+
+          printf '\n== Hierarquias ==\n'
+          while IFS= read -r -d '' arquivo; do
+            printf '\n--- %s ---\n' "$arquivo"
+            grep -Eo '(text|content-desc|resource-id|bounds|visible|enabled)="[^"]*"' "$arquivo" | tail -n 500 || true
+          done < <(find /tmp/android-evidence -type f \( -name '*.xml' -o -name '*.html' \) -print0)
+
+          printf '\n== App e erros no logcat ==\n'
+          while IFS= read -r -d '' arquivo; do
+            grep -Ei 'anonymous.smartparking|ReactNativeJS|Expo|AndroidRuntime|FATAL EXCEPTION|cleartext|axios|network error|Failed to connect|ECONN|ERR_' "$arquivo" | tail -n 500 || true
+          done < <(find /tmp/android-evidence -type f -name 'android-logcat.txt' -print0)
