@@ -50,7 +50,10 @@ def test_ocupacao_historica_bucket_atual_e_cheio_e_madrugada_zerada(db, fab):
     est = fab.est()
     andar = fab.andar(est)
     vaga = fab.vaga(andar, status=StatusVaga.OCUPADA)
-    agora = utc_agora()
+    # Fixa a posição dentro da hora sem congelar o dia corrente do relatório.
+    # No minuto inicial, a sobreposição é < 60 s e o arredondamento inteiro
+    # legitimo do service resultava em 0, tornando o teste dependente do relógio.
+    agora = utc_agora().replace(minute=30, second=0, microsecond=0)
     db.add(
         Historico(
             estacionamento_id=est.id, vaga_id=vaga.id,
