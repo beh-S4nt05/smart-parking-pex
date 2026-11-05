@@ -26,8 +26,8 @@ os.environ.update({
     "DATABASE_URL": f"sqlite:///{_DB}",
     "DB_AUTO_SQLITE": "False",
     "SEED_DEMO_ON_STARTUP": "False",
-    "SECRET_KEY": "chave-deterministica-de-teste",
-    "APP_SIGNING_SECRET": "assinatura-de-teste",
+    "SECRET_KEY": "chave-deterministica-de-teste-32bytes",
+    "APP_SIGNING_SECRET": "assinatura-deterministica-de-teste-32bytes",
 })
 
 import pytest
@@ -47,6 +47,16 @@ from models.db_models import (
 )
 
 Base.metadata.create_all(bind=engine)
+
+
+@pytest.fixture(autouse=True)
+def isolar_rate_limit():
+    """Impede que tentativas de um teste consumam o limite do seguinte."""
+    from core.rate_limiter import limiter
+
+    limiter._storage.reset()
+    yield
+    limiter._storage.reset()
 
 
 @pytest.fixture(scope="session")

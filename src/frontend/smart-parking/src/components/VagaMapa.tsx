@@ -3,8 +3,9 @@
  * No simulador, a célula mostra o STATUS sob o código e aceita seleção.
  */
 import { memo } from "react";
-import { Pressable, Text, View, useWindowDimensions } from "react-native";
+import { Pressable, Text, View } from "react-native";
 import { VAGA_TIPO_LABEL, vagaTone } from "../theme";
+import { useLarguraResponsiva } from "../hooks/useLarguraResponsiva";
 import type { Vaga } from "../types/api";
 
 interface Props {
@@ -27,7 +28,7 @@ function VagaMapa({
   rotuloInferior = "tipo",
   colunas,
 }: Props) {
-  const { width } = useWindowDimensions();
+  const width = useLarguraResponsiva();
   const numColunas = colunas ?? (width >= 1024 ? 8 : width >= 640 ? 6 : 4);
   const larguraCelula = Math.floor(
     Math.min((Math.min(width, 1200) - 96) / numColunas, 128),

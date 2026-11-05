@@ -12,12 +12,12 @@ import {
   ScrollView,
   Text,
   View,
-  useWindowDimensions,
 } from "react-native";
 import { useRouter } from "expo-router";
 import AdminShell, { type AbaPainel } from "../components/AdminShell";
 import VagaMapa from "../components/VagaMapa";
 import { useAuth } from "../hooks/useAuth";
+import { useLarguraResponsiva } from "../hooks/useLarguraResponsiva";
 import { useEstacionamentos } from "../hooks/useEstacionamentos";
 import { useMapaVagas } from "../hooks/useMapaVagas";
 import { apiErrorMessage, parkingApi } from "../services/api";
@@ -203,7 +203,7 @@ function AbaDashboard({
   isAdmin: boolean;
 }) {
   const router = useRouter();
-  const { width } = useWindowDimensions();
+  const width = useLarguraResponsiva();
   const compacto = width < 768;
   const [admin, setAdmin] = useState<DashboardAdmin | null>(null);
   const [gestor, setGestor] = useState<{

@@ -4,9 +4,10 @@
  * variante "lista" = cards empilhados de cima para baixo (Home, como pedido);
  * "auto" = grade responsiva no web e lista no mobile (Explorar).
  */
-import { Pressable, Text, View, useWindowDimensions } from "react-native";
+import { Pressable, Text, View } from "react-native";
 import { AnimarEntrada, Card, Chip, Logo } from "./ui";
 import type { Estacionamento } from "../types/api";
+import { useLarguraResponsiva } from "../hooks/useLarguraResponsiva";
 
 interface Props {
   shoppings: Estacionamento[];
@@ -38,7 +39,7 @@ export default function ShoppingList({
   onPress,
   variante = "auto",
 }: Props) {
-  const { width } = useWindowDimensions();
+  const width = useLarguraResponsiva();
   const colunas =
     variante === "lista"
       ? 1

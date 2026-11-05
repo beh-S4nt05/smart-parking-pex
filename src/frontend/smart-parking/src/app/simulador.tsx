@@ -17,10 +17,10 @@ import {
   ScrollView,
   Text,
   View,
-  useWindowDimensions,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useAuth } from "../hooks/useAuth";
+import { useLarguraResponsiva } from "../hooks/useLarguraResponsiva";
 import { useMapaVagas } from "../hooks/useMapaVagas";
 import { useAgora, desdeAte } from "../hooks/useAgora";
 import { apiErrorMessage, parkingApi } from "../services/api";
@@ -170,7 +170,7 @@ function SimuladorInterno({
   andarNum: number | null;
 }) {
   const { user } = useAuth();
-  const { width } = useWindowDimensions();
+  const width = useLarguraResponsiva();
   const isWeb = width >= 1024;
   const { mapa, setMapa, loading, erro, atualizadoEm, refresh } = useMapaVagas(
     estId ?? undefined,

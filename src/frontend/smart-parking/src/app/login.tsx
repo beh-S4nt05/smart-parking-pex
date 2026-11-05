@@ -15,10 +15,10 @@ import {
   ScrollView,
   Text,
   View,
-  useWindowDimensions,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useAuth } from "../hooks/useAuth";
+import { useLarguraResponsiva } from "../hooks/useLarguraResponsiva";
 import { apiErrorMessage } from "../services/api";
 import { destinoAposLogin } from "../services/authFlow";
 import { Botao, Campo, Logo } from "../components/ui";
@@ -26,7 +26,7 @@ import { Botao, Campo, Logo } from "../components/ui";
 export default function Login() {
   const router = useRouter();
   const { next } = useLocalSearchParams<{ next?: string | string[] }>();
-  const { width } = useWindowDimensions();
+  const width = useLarguraResponsiva();
   const isWide = width >= 900;
   const { signIn } = useAuth();
 

@@ -18,12 +18,12 @@ import {
   Text,
   View,
   Linking,
-  useWindowDimensions,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import Header, { BarraEscura } from "../../components/Header";
 import VagaMapa from "../../components/VagaMapa";
 import { useMapaVagas } from "../../hooks/useMapaVagas";
+import { useLarguraResponsiva } from "../../hooks/useLarguraResponsiva";
 import { useAgora, desdeAte } from "../../hooks/useAgora";
 import { useAuth } from "../../hooks/useAuth";
 import { apiErrorMessage, parkingApi } from "../../services/api";
@@ -55,7 +55,7 @@ const FILTROS_TIPO: { id: VagaTipo | "todos"; label: string }[] = [
 export default function MapaVagas() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const { width } = useWindowDimensions();
+  const width = useLarguraResponsiva();
   const isWeb = width >= 1024;
 
   const { mapa, setMapa, loading, erro, atualizadoEm, refresh, resumo } =

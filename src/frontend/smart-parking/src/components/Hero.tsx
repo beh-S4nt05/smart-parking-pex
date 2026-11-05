@@ -4,8 +4,9 @@
  * CTA "Ver Vagas Disponíveis →" e legenda de cores.
  */
 import { useState } from "react";
-import { Pressable, ScrollView, Text, View, useWindowDimensions } from "react-native";
+import { Pressable, ScrollView, Text, View } from "react-native";
 import { colors } from "../theme";
+import { useLarguraResponsiva } from "../hooks/useLarguraResponsiva";
 import { Botao } from "./ui";
 import ShoppingList from "./ShoppingList";
 import type { Estacionamento } from "../types/api";
@@ -18,7 +19,7 @@ interface Props {
 }
 
 export default function Hero({ shoppings, selecionadoId, onSelect, onBuscar }: Props) {
-  const { width } = useWindowDimensions();
+  const width = useLarguraResponsiva();
   const isWide = width >= 768;
   const [listaAberta, setListaAberta] = useState(false);
   const selecionado =

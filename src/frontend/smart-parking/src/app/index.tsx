@@ -9,7 +9,6 @@ import {
   ScrollView,
   Text,
   View,
-  useWindowDimensions,
 } from "react-native";
 import { useRouter } from "expo-router";
 import Header from "../components/Header";
@@ -18,11 +17,12 @@ import StatusPanel from "../components/StatusPanel";
 import ShoppingList from "../components/ShoppingList";
 import Footer from "../components/Footer";
 import { useEstacionamentos } from "../hooks/useEstacionamentos";
+import { useLarguraResponsiva } from "../hooks/useLarguraResponsiva";
 import { parkingApi } from "../services/api";
 
 export default function Index() {
   const router = useRouter();
-  const { width } = useWindowDimensions();
+  const width = useLarguraResponsiva();
   const isWeb = width >= 1024;
 
   // "ao vivo": revalida a cada 20s enquanto a Home estiver aberta

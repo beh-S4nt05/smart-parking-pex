@@ -14,7 +14,9 @@
     "check-sdk": "node ../../../scripts/check_expo_sdk.cjs",
     "update-sdk": "bash ../../../scripts/update_expo_sdk.sh",
     "check-native": "bash ../../../scripts/validate_expo_native.sh",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test:ui:build": "CI=1 EXPO_OFFLINE=1 EXPO_PUBLIC_API_URL= EXPO_PUBLIC_API_URL_WEB= expo export --platform web --output-dir dist --clear",
+    "test:ui": "npm run test:ui:build && playwright test"
   },
   "dependencies": {
     "@expo/vector-icons": "15.1.1",
@@ -45,6 +47,7 @@
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
+    "@playwright/test": "1.64.1",
     "@types/crypto-js": "^4.2.2",
     "@types/react": "19.3.0",
     "@types/react-test-renderer": "19.3.0",

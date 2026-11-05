@@ -32,6 +32,7 @@ jobs:
         with: { node-version: "24.19.0", cache: "npm", cache-dependency-path: "src/frontend/smart-parking/package-lock.json" }
       - run: npm install --global npm@11.17.0
       - run: npm ci --no-audit --no-fund
+      - run: npm audit --audit-level=moderate
       - run: npm run check-deps
       - run: npm run check-sdk
       - name: Expo Doctor
@@ -51,3 +52,30 @@ jobs:
           fi
       - run: npm run typecheck
       - run: npm run check-native
+
+  ui:
+    name: UI (Chromium, API real)
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: src/frontend/smart-parking } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12", cache: "pip", cache-dependency-path: "src/backend/requirements*.txt" }
+      - uses: actions/setup-node@v4
+        with: { node-version: "24.19.0", cache: "npm", cache-dependency-path: "src/frontend/smart-parking/package-lock.json" }
+      - run: pip install -r src/backend/requirements.txt -r src/backend/requirements-dev.txt
+        working-directory: .
+      - run: npm install --global npm@11.17.0
+      - run: npm ci --no-audit --no-fund
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:ui
+      - name: Evidências de falha da UI
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-ui-evidencias
+          path: |
+            src/frontend/smart-parking/test-results/
+            src/frontend/smart-parking/playwright-report/
+          if-no-files-found: ignore
+          retention-days: 5
