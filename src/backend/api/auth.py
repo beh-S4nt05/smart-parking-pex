@@ -125,7 +125,7 @@ def logout(
         exp = pl.get("exp")
         db.add(RevogacaoToken(
             jti=jti, motivo=motivo, criado_em=agora,
-            expira_em=_dt.datetime.fromtimestamp(exp, _dt.UTC) if exp else None,
+            expira_em=_dt.datetime.fromtimestamp(exp, _dt.timezone.utc) if exp else None,
         ))
 
     _revogar(token, "logout")

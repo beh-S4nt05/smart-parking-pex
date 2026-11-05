@@ -1,5 +1,5 @@
 import uuid
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import bcrypt
@@ -31,7 +31,7 @@ def criar_token(
     Cria um JWT token (access ou refresh)
     Implementação igual ao seu auth.py original, porém desacoplada
     """
-    now = datetime.now(UTC)
+    now = datetime.now(timezone.utc)
 
     if expiracao_delta:
         expira = now + expiracao_delta

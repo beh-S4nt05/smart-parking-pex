@@ -1,5 +1,5 @@
 """RF-13/14/15 (sessões) + RF-45 (sensores) + RF-32/33 (edições de painel)."""
-from datetime import UTC
+from datetime import timezone
 
 
 def _login_admin(db):
@@ -47,7 +47,7 @@ def test_tokens_legados_sem_jti_continuam_validos(client, db, fab):
 
     usuario = fab.usuario()
     db.commit()
-    agora = datetime.now(UTC)
+    agora = datetime.now(timezone.utc)
     leg = pyjwt.encode(
         {"sub": usuario.id, "type": "access", "iat": agora, "exp": agora + timedelta(minutes=5)},
         settings.SECRET_KEY, algorithm=settings.ALGORITHM,

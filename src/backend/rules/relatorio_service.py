@@ -1,4 +1,4 @@
-from datetime import UTC, datetime, time, timedelta
+from datetime import datetime, time, timedelta, timezone
 
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
@@ -8,7 +8,7 @@ from models.db_models import Estacionamento, Historico, StatusVaga, Vaga
 
 # Dia local de referência (Manaus) para a UI exibir em qual dia o "hoje" bate
 FUSO_REPORT = "America/Manaus"
-_UTC = UTC
+_UTC = timezone.utc
 
 
 def _calcular_periodo(periodo: str) -> tuple[datetime, datetime]:
