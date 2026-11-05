@@ -1,26 +1,26 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-
-const CHAVE_CACHE = "sp:cache:estacionamentos";
 import { API_URL, parkingApi } from "../services/api";
 import type { Estacionamento } from "../types/api";
 
+const CHAVE_CACHE = "sp:cache:estacionamentos";
+const AVISO_STALE = "Sem conexão com a API — mostrando a última leitura.";
+
 interface Options {
-  /** revalida a cada N ms (painéis "ao vivo"); 0 desliga */
+  /** Revalida a cada N ms; 0 desliga o polling. */
   pollingMs?: number;
 }
 
-/**
- * Lista os estacionamentos com contagens reais do backend e, quando o
- * servidor não está acessível, mantém os últimos dados em cache local para
- * a Home nunca ficar vazia durante a demonstração.
- */
+/** Lista real com cache offline, recuperação automática e polling sem sobreposição. */
 export function useEstacionamentos({ pollingMs = 0 }: Options = {}) {
   const [estacionamentos, setEstacionamentos] = useState<Estacionamento[]>([]);
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
   const [atualizadoEm, setAtualizadoEm] = useState<number>(Date.now());
   const mounted = useRef(true);
+  const emCurso = useRef(false);
+  const revalidou = useRef(false);
+  const dadosRef = useRef<Estacionamento[]>([]);
   const atualizadoRef = useRef(0);
 
   useEffect(() => {
@@ -31,55 +31,63 @@ export function useEstacionamentos({ pollingMs = 0 }: Options = {}) {
   }, []);
 
   const refresh = useCallback(async () => {
+    // Uma API lenta não pode acumular chamadas idênticas a cada intervalo.
+    if (emCurso.current) return;
+    emCurso.current = true;
     try {
       const dados = await parkingApi.listarEstacionamentos();
       if (!mounted.current) return;
+      dadosRef.current = dados;
+      revalidou.current = true;
       setEstacionamentos(dados);
       setErro(null);
-      setAtualizadoEm(Date.now());
-      atualizadoRef.current = Date.now();
-      // RF-06: grava a última boa leitura PERSISTIDA — sobrevive a restart
-      AsyncStorage.setItem(CHAVE_CACHE, JSON.stringify({ ts: Date.now(), dados })).catch(() => {});
-    } catch (e) {
+      const agora = Date.now();
+      setAtualizadoEm(agora);
+      atualizadoRef.current = agora;
+      AsyncStorage.setItem(CHAVE_CACHE, JSON.stringify({ ts: agora, dados })).catch(() => {});
+    } catch {
       if (!mounted.current) return;
+      // Usa o estado atual, não a closure vazia da primeira renderização.
       setErro(
-        estacionamentos.length > 0
-          ? "Sem conexão com a API — mostrando a última leitura."
+        dadosRef.current.length > 0
+          ? AVISO_STALE
           : `API indisponível em ${API_URL} — verifique se o backend está nessa porta.`,
       );
     } finally {
+      emCurso.current = false;
       if (mounted.current) setLoading(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // RF-06: boot lê o cache persistido imediatamente — a Home nunca abre vazia
-  // se já houve uma leitura anterior, mesmo sem rede.
+  // O cache não sobrescreve uma resposta real que já chegou — nem mesmo uma
+  // lista vazia válida. Se a rede falhou, os dados cacheados viram stale.
   useEffect(() => {
     (async () => {
       try {
         const bruto = await AsyncStorage.getItem(CHAVE_CACHE);
-        if (!bruto || !mounted.current) return;
+        if (!bruto || !mounted.current || revalidou.current) return;
         const { ts, dados } = JSON.parse(bruto) as { ts: number; dados: Estacionamento[] };
-        setEstacionamentos((atual) => (atual.length > 0 ? atual : dados));
+        if (!Array.isArray(dados) || !Number.isFinite(ts)) return;
+        dadosRef.current = dados;
+        setEstacionamentos(dados);
+        setLoading(false);
         if (atualizadoRef.current === 0) {
           atualizadoRef.current = ts;
           setAtualizadoEm(ts);
         }
+        setErro((atual) => (atual ? AVISO_STALE : atual));
       } catch {
-        /* cache corrompido — a próxima leitura da API sobrescreve */
+        // Cache corrompido é ignorado; a próxima leitura válida o substitui.
       }
     })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
-    refresh();
+    void refresh();
     if (pollingMs > 0) {
-      const t = setInterval(refresh, pollingMs);
-      return () => clearInterval(t);
+      const timer = setInterval(() => void refresh(), pollingMs);
+      return () => clearInterval(timer);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [refresh, pollingMs]);
 
   return { estacionamentos, loading, erro, atualizadoEm, refresh };

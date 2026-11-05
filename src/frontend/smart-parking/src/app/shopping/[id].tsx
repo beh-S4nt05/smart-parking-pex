@@ -4,7 +4,7 @@
  *   3 chips de resumo; cartão azul "PRÓXIMA VAGA SUGERIDA"; grade de vagas.
  * - web: conteúdo em 2 colunas com rail lateral (sugestão, resumo do andar,
  *   filtro por tipo).
- * Integração: GET /api/estacionamentos/{id}/vagas (polling), proxima-vaga via
+ * Integração: GET /api/estacionamentos/{id}/vagas (polling 5s), proxima-vaga via
  * motor de atribuição do backend e POST /api/reservas autenticado.
  */
 import { useEffect, useMemo, useState } from "react";
@@ -59,7 +59,7 @@ export default function MapaVagas() {
   const isWeb = width >= 1024;
 
   const { mapa, setMapa, loading, erro, atualizadoEm, refresh, resumo } =
-    useMapaVagas(id, { pollingMs: 20000 });
+    useMapaVagas(id, { pollingMs: 5000 });
   const agora = useAgora(5000);
   const { isAuthenticated } = useAuth();
 
@@ -280,8 +280,9 @@ export default function MapaVagas() {
       {sugestao?.vaga ? (
         <Botao
           label={isWeb ? "Destacar no mapa" : "Ver no mapa"}
+          variant="contorno"
           onPress={destacarSugestao}
-          className="mt-4 bg-white active:bg-blue-50"
+          className="mt-4 border-white bg-white hover:bg-blue-50 active:bg-blue-100"
         />
       ) : null}
     </View>

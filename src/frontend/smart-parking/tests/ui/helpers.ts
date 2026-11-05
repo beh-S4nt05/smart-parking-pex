@@ -20,6 +20,20 @@ export const test = base.extend({
 
 export { expect };
 
+// Cada jornada é independente, mas continua exercitando o limiter real. O
+// controle só existe no wrapper scripts/ui_backend_server.py, nunca em main:app.
+test.beforeEach(async ({ request }) => {
+  const response = await request.post(
+    process.env.UI_TEST_RESET_URL || "http://127.0.0.1:8010/__ui_test/reset-rate-limit",
+    {
+      headers: {
+        "X-UI-Test-Token": process.env.UI_TEST_RESET_TOKEN || "smart-parking-ui-local-tests",
+      },
+    },
+  );
+  expect(response.status(), "Isolamento do rate limiter entre jornadas").toBe(200);
+});
+
 export async function gotoLogin(page: Page, url = "/login") {
   await page.goto(url);
   // O primeiro frame vem do pré-render. Espera o ramo responsivo já

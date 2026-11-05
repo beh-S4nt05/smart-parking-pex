@@ -1,6 +1,6 @@
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.orm import Session
 
 from core.config import settings
@@ -15,6 +15,7 @@ from models.schemas import (
     UsuarioCreate,
     UsuarioMeResponse,
     UsuarioResponse,
+    validar_tamanho_senha,
 )
 from rules import auth_service, social_auth_service
 
@@ -90,6 +91,11 @@ class UsuarioAtualizar(BaseModel):
 class TrocarSenha(BaseModel):
     senha_atual: str
     nova_senha: str = Field(min_length=6, max_length=72)
+
+    @field_validator("nova_senha")
+    @classmethod
+    def nova_senha_compativel_com_bcrypt(cls, senha: str) -> str:
+        return validar_tamanho_senha(senha)
 
 
 @router.post("/logout", status_code=204)

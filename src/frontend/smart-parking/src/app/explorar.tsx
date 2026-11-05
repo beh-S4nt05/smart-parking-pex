@@ -1,11 +1,10 @@
 /**
  * "Lista de Shoppings" / "Reservar Vaga" — navegação do app: lista completa
  * dos shoppings credenciados com busca, ocupação real da API e atualização
- * automática a cada 15s. Clique abre o mapa de vagas do shopping.
+ * automática. Clique abre o mapa de vagas do shopping.
  */
 import { useMemo, useState } from "react";
 import {
-  Pressable,
   RefreshControl,
   ScrollView,
   Text,
@@ -16,6 +15,7 @@ import { useRouter } from "expo-router";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 import ShoppingList from "../components/ShoppingList";
+import { Botao } from "../components/ui";
 import { useEstacionamentos } from "../hooks/useEstacionamentos";
 import { useAgora, desdeAte } from "../hooks/useAgora";
 
@@ -104,12 +104,11 @@ export default function Explorar() {
                 Crie sua conta e reserve pelo app — é grátis.
               </Text>
             </View>
-            <Pressable
+            <Botao
+              label="Criar conta grátis"
               onPress={() => router.push("/cadastro")}
-              className="rounded-xl bg-blue-600 px-6 py-3 active:bg-blue-700"
-            >
-              <Text className="text-sm font-bold text-white">Criar conta grátis</Text>
-            </Pressable>
+              className="px-6 py-3"
+            />
           </View>
         </View>
 

@@ -25,7 +25,7 @@ import { useMapaVagas } from "../hooks/useMapaVagas";
 import { useAgora, desdeAte } from "../hooks/useAgora";
 import { apiErrorMessage, parkingApi } from "../services/api";
 import VagaMapa from "../components/VagaMapa";
-import { Chip, Logo } from "../components/ui";
+import { Botao, Chip, Logo } from "../components/ui";
 import type { SimSession } from "../types/api";
 
 export default function Simulador() {
@@ -110,12 +110,11 @@ export default function Simulador() {
           <Text className="mt-1 text-center text-sm text-slate-500">
             {motivo ?? "Gere um novo QR no painel do administrador."}
           </Text>
-          <Pressable
+          <Botao
+            label="Voltar ao início"
             onPress={() => router.replace("/")}
-            className="mt-6 w-full items-center rounded-xl bg-blue-600 px-4 py-3 active:bg-blue-700"
-          >
-            <Text className="text-sm font-bold text-white">Voltar ao início</Text>
-          </Pressable>
+            className="mt-6 w-full px-4 py-3"
+          />
         </View>
       </View>
     );
@@ -135,22 +134,21 @@ export default function Simulador() {
               ? "Sua conta não tem esse nível de acesso."
               : "Entre com a conta de administrador."}
           </Text>
-          <Pressable
+          <Botao
+            label={
+              isAuthenticated
+                ? canAccessPanel
+                  ? "Voltar ao painel"
+                  : "Voltar ao início"
+                : "Entrar como administrador"
+            }
             onPress={() =>
               router.replace(
                 isAuthenticated ? (canAccessPanel ? "/dashboard" : "/") : "/login",
               )
             }
-            className="mt-6 w-full items-center rounded-xl bg-blue-600 px-4 py-3 active:bg-blue-700"
-          >
-            <Text className="text-sm font-bold text-white">
-              {isAuthenticated
-                ? canAccessPanel
-                  ? "Voltar ao painel"
-                  : "Voltar ao início"
-                : "Entrar como administrador"}
-            </Text>
-          </Pressable>
+            className="mt-6 w-full px-4 py-3"
+          />
         </View>
       </View>
     );

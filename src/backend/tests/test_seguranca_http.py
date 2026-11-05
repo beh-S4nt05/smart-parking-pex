@@ -9,6 +9,7 @@ import uuid
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+from core.body_limit import RequestBodyLimitMiddleware
 from core.config import settings
 from core.request_validator import RequestValidationMiddleware
 from core.security_middleware import SecurityHeadersMiddleware
@@ -18,6 +19,8 @@ def _app_assinado(monkeypatch):
     monkeypatch.setattr(settings, "ENVIRONMENT", "production")
     app = FastAPI()
     app.add_middleware(RequestValidationMiddleware)
+    app.add_middleware(SecurityHeadersMiddleware, environment="production")
+    app.add_middleware(RequestBodyLimitMiddleware)
 
     @app.post("/api/echo")
     def echo(dados: dict):

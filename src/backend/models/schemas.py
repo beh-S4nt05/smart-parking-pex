@@ -1,8 +1,15 @@
 from datetime import datetime
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, field_validator
 
+from core.security import senha_cabe_no_bcrypt
 from models.db_models import StatusReserva, StatusVaga, TipoVaga
+
+
+def validar_tamanho_senha(senha: str) -> str:
+    if not senha_cabe_no_bcrypt(senha):
+        raise ValueError("A senha deve ocupar no máximo 72 bytes em UTF-8")
+    return senha
 
 
 # --- Schemas de Usuário ---
@@ -17,6 +24,11 @@ class UsuarioBase(BaseModel):
 
 class UsuarioCreate(UsuarioBase):
     senha: str = Field(..., min_length=6)
+
+    @field_validator("senha")
+    @classmethod
+    def senha_compativel_com_bcrypt(cls, senha: str) -> str:
+        return validar_tamanho_senha(senha)
 
 
 class UsuarioResponse(UsuarioBase):

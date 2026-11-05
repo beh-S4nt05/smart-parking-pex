@@ -13,6 +13,8 @@ const backendEnv = {
   SECRET_KEY: "ui-tests-secret-key-com-mais-de-32-caracteres",
   APP_SIGNING_SECRET: "ui-tests-signing-key-com-mais-de-32-caracteres",
   UI_DATABASE_PATH: databasePath,
+  UI_API_PORT: "8010",
+  UI_TEST_RESET_TOKEN: "smart-parking-ui-local-tests",
 };
 
 export default defineConfig({
@@ -42,7 +44,7 @@ export default defineConfig({
   },
   webServer: [
     {
-      command: `${python} ../../../scripts/prepare_ui_backend.py && ${python} -m uvicorn main:app --app-dir ../../../src/backend --host 0.0.0.0 --port 8010`,
+      command: `${python} ../../../scripts/prepare_ui_backend.py && ${python} ../../../scripts/ui_backend_server.py`,
       url: "http://127.0.0.1:8010/health",
       cwd: process.cwd(),
       env: backendEnv,

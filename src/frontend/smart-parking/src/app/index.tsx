@@ -25,9 +25,9 @@ export default function Index() {
   const width = useLarguraResponsiva();
   const isWeb = width >= 1024;
 
-  // "ao vivo": revalida a cada 20s enquanto a Home estiver aberta
+  // Revalida a cada 10s e recupera a conexão sem exigir reload.
   const { estacionamentos, loading, erro, refresh } = useEstacionamentos({
-    pollingMs: 20000,
+    pollingMs: 10000,
   });
   const [selecionadoId, setSelecionadoId] = useState<string | null>(null);
   const [tempoMedio, setTempoMedio] = useState<number | null>(null);

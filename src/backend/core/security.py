@@ -8,18 +8,30 @@ import jwt
 from core.config import settings
 
 
+MAX_SENHA_BYTES = 72  # limite criptográfico do bcrypt, não apenas contagem de caracteres
+
+
+def senha_cabe_no_bcrypt(senha: str) -> bool:
+    return len(senha.encode("utf-8")) <= MAX_SENHA_BYTES
+
+
 def criar_hash_senha(senha: str) -> str:
-    """Gera hash seguro para senhas de usuário usando bcrypt diretamente"""
+    """Gera hash bcrypt sem truncamento silencioso ou exceção em entrada longa."""
+    if not senha_cabe_no_bcrypt(senha):
+        raise ValueError("A senha excede o limite de 72 bytes do bcrypt")
     senha_bytes = senha.encode("utf-8")
     salt = bcrypt.gensalt()
     return bcrypt.hashpw(senha_bytes, salt).decode("utf-8")
 
 
 def verificar_senha(senha_limpa: str, senha_hash: str) -> bool:
-    """Verifica se uma senha limpa corresponde ao hash armazenado"""
-    senha_bytes = senha_limpa.encode("utf-8")
-    hash_bytes = senha_hash.encode("utf-8")
-    return bcrypt.checkpw(senha_bytes, hash_bytes)
+    """Entrada longa ou hash corrompido falha fechado, sem derrubar o login."""
+    if not senha_cabe_no_bcrypt(senha_limpa):
+        return False
+    try:
+        return bcrypt.checkpw(senha_limpa.encode("utf-8"), senha_hash.encode("utf-8"))
+    except (TypeError, ValueError):
+        return False
 
 
 def criar_token(

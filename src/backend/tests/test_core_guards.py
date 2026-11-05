@@ -157,6 +157,7 @@ def test_rotas_sociais_404_com_flag_desligada(client):
         ("192.168.1.14:8000", 200),
         ("10.0.2.2", 200),
         ("172.18.0.2:8000", 200),
+        ("172.32.0.1:8000", 400),
         ("192.168.1.14.evil.example", 400),
         ("evil.example", 400),
         ("192.168.1.14:porta-invalida", 400),
