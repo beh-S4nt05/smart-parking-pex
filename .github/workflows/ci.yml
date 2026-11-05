@@ -67,8 +67,14 @@ jobs:
         working-directory: .
       - run: npm install --global npm@11.17.0
       - run: npm ci --no-audit --no-fund
+      # Ferramenta exclusiva do runner: não altera package.json nem o lockfile.
+      - run: npm install --no-save --no-audit --no-fund @playwright/test@1.64.1
       - run: npx playwright install --with-deps chromium
-      - run: npm run test:ui
+      - name: Executar jornadas UI
+        run: |
+          export CI=1 EXPO_OFFLINE=1 EXPO_PUBLIC_API_URL= EXPO_PUBLIC_API_URL_WEB=
+          npx expo export --platform web --output-dir dist --clear
+          npx playwright test
       - name: Evidências de falha da UI
         if: failure()
         uses: actions/upload-artifact@v4
