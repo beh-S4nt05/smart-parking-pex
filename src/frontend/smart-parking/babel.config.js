@@ -13,17 +13,7 @@ module.exports = function (api) {
       ["babel-preset-expo", { jsxImportSource: "nativewind" }],
       "nativewind/babel",
     ],
-    plugins: [
-      // faz o alias "@/*" -> "./src/*" do tsconfig funcionar em runtime (Metro).
-      // Sem isto o TypeScript aceita o import, mas o bundler quebra.
-      [
-        "module-resolver",
-        {
-          root: ["./"],
-          alias: { "@": "./src" },
-          extensions: [".ts", ".tsx", ".js", ".jsx", ".json"],
-        },
-      ],
-    ],
+    // O alias "@/*" -> "./src/*" é resolvido pelo Metro pelo tsconfigPaths,
+    // habilitado por padrão no SDK 58. Não é necessário um plugin Babel extra.
   };
 };
