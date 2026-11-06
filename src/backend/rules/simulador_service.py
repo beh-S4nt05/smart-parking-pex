@@ -13,7 +13,7 @@ para a apresentação. Com múltiplos workers em produção, mover para Redis/Po
 import base64
 import io
 import secrets
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from fastapi import HTTPException, status
 
@@ -26,7 +26,7 @@ _SESSOES: dict[str, dict] = {}
 
 
 def _agora() -> datetime:
-    return datetime.now(UTC)
+    return datetime.now(timezone.utc)
 
 
 def _expirados(salvar: dict) -> bool:

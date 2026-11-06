@@ -32,7 +32,7 @@ def sessao_revogada(db: Session, payload: dict, usuario_id: str) -> bool:
         if criado and criado.tzinfo is not None:
             criado_ts = criado.timestamp()
         else:
-            criado_ts = _dt.datetime.replace(criado, tzinfo=_dt.UTC).timestamp() if criado else 0
+            criado_ts = _dt.datetime.replace(criado, tzinfo=_dt.timezone.utc).timestamp() if criado else 0
         if criado_ts > iat:
             return True
     return False

@@ -34,8 +34,10 @@ class TrustedHostLANMiddleware(TrustedHostMiddleware):
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if self.ip_wildcards and scope["type"] in ("http", "websocket"):
             host = _literal_ip_host(Headers(scope=scope).get("host"))
-            if host and any(
-                fnmatch.fnmatchcase(host, pattern) for pattern in self.ip_wildcards
+            if (
+                host
+                and ipaddress.ip_address(host).is_private
+                and any(fnmatch.fnmatchcase(host, pattern) for pattern in self.ip_wildcards)
             ):
                 await self.app(scope, receive, send)
                 return

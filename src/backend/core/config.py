@@ -24,6 +24,8 @@ class Settings(BaseSettings):
     # idênticos da MESMA origem em <1s recebem 429. Desligado por padrão para
     # não estrangular integrações legítimas em rajada; ligue no .env.
     BLOQUEIO_DUPLICIDADE: bool = False
+    # Teto de memória por escrita; GETs públicos não são bufferizados.
+    MAX_REQUEST_BODY_BYTES: int = 1024 * 1024
 
     # Banco de dados (PostgreSQL padrão como no seu database.py).
     # Driver EXPLÍCITO psycopg2: sem o sufixo, SQLAlchemy>=2.1 procura o
@@ -91,7 +93,12 @@ class Settings(BaseSettings):
     @model_validator(mode="after")
     def _travar_producao(self):
         if str(self.ENVIRONMENT).lower() == "production":
-            if (self.CORS_ORIGINS and "*" in self.CORS_ORIGINS) or self.CORS_ORIGIN_REGEX in {".*", "^.*$"}:
+            # Produção nunca herda DEBUG=True do padrão de desenvolvimento.
+            self.DEBUG = False
+            regex_cors_abrangente = self.CORS_ORIGIN_REGEX and any(
+                token in self.CORS_ORIGIN_REGEX for token in (".*", ".+")
+            )
+            if (self.CORS_ORIGINS and "*" in self.CORS_ORIGINS) or regex_cors_abrangente:
                 raise ValueError(
                     "ENVIRONMENT=production não permite CORS curinga; "
                     "declare as origens HTTPS do frontend em CORS_ORIGINS."
@@ -101,10 +108,14 @@ class Settings(BaseSettings):
                     "ENVIRONMENT=production exige SECRET_KEY própria no .env "
                     "(a chave de exemplo está bloqueada)."
                 )
+            if len(self.SECRET_KEY.strip().encode("utf-8")) < 32:
+                raise ValueError("SECRET_KEY de produção exige ao menos 32 bytes")
             if self.APP_SIGNING_SECRET == "smartparking_default_signing_key_change_in_production":
                 raise ValueError(
                     "ENVIRONMENT=production exige APP_SIGNING_SECRET própria no .env."
                 )
+            if len(self.APP_SIGNING_SECRET.strip().encode("utf-8")) < 32:
+                raise ValueError("APP_SIGNING_SECRET de produção exige ao menos 32 bytes")
         return self
 
 

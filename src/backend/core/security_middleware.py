@@ -47,6 +47,35 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         # Rastreamento de requisições para anti-duplicação/abuso (simples em memória)
         # Para produção com múltiplos workers use Redis
         self.request_tracker: dict[str, list] = defaultdict(list)
+        self._requests_desde_limpeza = 0
+
+    def _com_headers(self, response: Response) -> Response:
+        """Aplica a mesma política a sucessos e bloqueios antecipados."""
+        security_headers = {
+            "X-Content-Type-Options": "nosniff",
+            "X-Frame-Options": "DENY",
+            "X-XSS-Protection": "0",
+            "Referrer-Policy": "strict-origin-when-cross-origin",
+            "Content-Security-Policy": "default-src 'self'; script-src 'self'; object-src 'none'; frame-ancestors 'none'",
+            "Permissions-Policy": "geolocation=(self), microphone=()",
+            "Strict-Transport-Security": (
+                "max-age=31536000; includeSubDomains"
+                if self.environment == "production"
+                else ""
+            ),
+            "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+        }
+        for header, valor in security_headers.items():
+            if valor:
+                response.headers[header] = valor
+        if "X-Powered-By" in response.headers:
+            del response.headers["X-Powered-By"]
+        if "server" in response.headers:
+            del response.headers["server"]
+        return response
+
+    def _bloqueio(self, status_code: int, detail: str) -> JSONResponse:
+        return self._com_headers(JSONResponse(status_code=status_code, content={"detail": detail}))
 
     async def dispatch(self, request: Request, call_next):
         # Em desenvolvimento desativa anti-duplicação para facilitar testes
@@ -57,17 +86,12 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         user_agent = request.headers.get("user-agent", "").lower()
         for blocked_agent in self.BLOCKED_AGENTS:
             if blocked_agent in user_agent:
-                return JSONResponse(
-                    status_code=403,
-                    content={"detail": "Acesso não autorizado: Scanner detectado"},
-                )
+                return self._bloqueio(403, "Acesso não autorizado: Scanner detectado")
 
         # 2. Verifica se não está tentando acessar endpoints que não existem com método HEAD/OPTIONS bloqueado
         # (evita scaneamento automatizado de rotas)
         if request.method not in {"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"}:
-            return JSONResponse(
-                status_code=405, content={"detail": "Método não permitido"}
-            )
+            return self._bloqueio(405, "Método não permitido")
 
         # 3. (era "proteção regex anti-SQLi" — REMOVIDA por ACH-05/ADR-06:
         #    o SQLAlchemy já parametriza 100% das queries, e o regex bloqueava
@@ -85,9 +109,8 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             agora = time.monotonic()
             anterior = self._idem_cache.get(chave)
             if anterior is not None and agora - anterior < 1.0:
-                return JSONResponse(
-                    status_code=429,
-                    content={"detail": "Requisição duplicada detectada (<1s). Espere e tente novamente."},
+                return self._bloqueio(
+                    429, "Requisição duplicada detectada (<1s). Espere e tente novamente."
                 )
             if len(self._idem_cache) > 10000:  # teto de memória: descarta os mais antigos
                 self._idem_cache = {k: v for k, v in self._idem_cache.items() if agora - v < 60}
@@ -100,56 +123,26 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         request._receive = _cached_receive
 
         agora = time.time()
-        # Limpa registros antigos (mais de 1 segundo)
         self.request_tracker[client_ip] = [
             t for t in self.request_tracker[client_ip] if agora - t < 1
         ]
+        self._requests_desde_limpeza += 1
+        if self._requests_desde_limpeza >= 100 or len(self.request_tracker) > 10000:
+            # Não deixa um mapa permanente de IPs inativos crescer sem limite.
+            inativos = [
+                ip for ip, registros in self.request_tracker.items()
+                if not registros or agora - registros[-1] >= 2
+            ]
+            for ip in inativos:
+                self.request_tracker.pop(ip, None)
+            self._requests_desde_limpeza = 0
 
-        # Verifica se essa requisição foi feita muito recentemente
-        if (
-            len(self.request_tracker[client_ip]) >= 5
-        ):  # Mais de 5 requisições por segundo
-            return JSONResponse(
-                status_code=429,
-                content={
-                    "detail": "Muitas requisições. Aguarde um momento e tente novamente."
-                },
-            )
+        if len(self.request_tracker[client_ip]) >= 5:
+            return self._bloqueio(429, "Muitas requisições. Aguarde um momento e tente novamente.")
 
         self.request_tracker[client_ip].append(agora)
-
-        # 5. Processa a requisição normalmente
         response: Response = await call_next(request)
-
-        # 6. Adiciona headers de segurança em TODAS as respostas
-        security_headers = {
-            "X-Content-Type-Options": "nosniff",
-            "X-Frame-Options": "DENY",
-            "X-XSS-Protection": "1; mode=block",
-            "Referrer-Policy": "strict-origin-when-cross-origin",
-            "Content-Security-Policy": "default-src 'self'; script-src 'self'; object-src 'none'; frame-ancestors 'none'",
-            "Permissions-Policy": "geolocation=(self), microphone=()",
-            "Strict-Transport-Security": (
-                "max-age=31536000; includeSubDomains"
-                if self.environment == "production"
-                else ""
-            ),
-            "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
-            "Server": "SmartParking API",  # Esconde o cabeçalho Server padrão do Uvicorn
-            "X-Powered-By": "",  # Remove cabeçalho que expõe tecnologia
-        }
-
-        for header, valor in security_headers.items():
-            if valor:
-                response.headers[header] = valor
-
-        # Remove headers que expõem informações do servidor
-        if "X-Powered-By" in response.headers:
-            del response.headers["X-Powered-By"]
-        if "server" in response.headers:
-            del response.headers["server"]
-
-        return response
+        return self._com_headers(response)
 
     async def _verificar_sql_injection(self, request: Request) -> JSONResponse | None:
         """

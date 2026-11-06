@@ -4,7 +4,7 @@
  *   3 chips de resumo; cartão azul "PRÓXIMA VAGA SUGERIDA"; grade de vagas.
  * - web: conteúdo em 2 colunas com rail lateral (sugestão, resumo do andar,
  *   filtro por tipo).
- * Integração: GET /api/estacionamentos/{id}/vagas (polling), proxima-vaga via
+ * Integração: GET /api/estacionamentos/{id}/vagas (polling 5s), proxima-vaga via
  * motor de atribuição do backend e POST /api/reservas autenticado.
  */
 import { useEffect, useMemo, useState } from "react";
@@ -18,12 +18,12 @@ import {
   Text,
   View,
   Linking,
-  useWindowDimensions,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import Header, { BarraEscura } from "../../components/Header";
 import VagaMapa from "../../components/VagaMapa";
 import { useMapaVagas } from "../../hooks/useMapaVagas";
+import { useLarguraResponsiva } from "../../hooks/useLarguraResponsiva";
 import { useAgora, desdeAte } from "../../hooks/useAgora";
 import { useAuth } from "../../hooks/useAuth";
 import { apiErrorMessage, parkingApi } from "../../services/api";
@@ -55,11 +55,11 @@ const FILTROS_TIPO: { id: VagaTipo | "todos"; label: string }[] = [
 export default function MapaVagas() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const { width } = useWindowDimensions();
+  const width = useLarguraResponsiva();
   const isWeb = width >= 1024;
 
   const { mapa, setMapa, loading, erro, atualizadoEm, refresh, resumo } =
-    useMapaVagas(id, { pollingMs: 20000 });
+    useMapaVagas(id, { pollingMs: 5000 });
   const agora = useAgora(5000);
   const { isAuthenticated } = useAuth();
 
@@ -280,8 +280,9 @@ export default function MapaVagas() {
       {sugestao?.vaga ? (
         <Botao
           label={isWeb ? "Destacar no mapa" : "Ver no mapa"}
+          variant="contorno"
           onPress={destacarSugestao}
-          className="mt-4 bg-white active:bg-blue-50"
+          className="mt-4 border-white bg-white hover:bg-blue-50 active:bg-blue-100"
         />
       ) : null}
     </View>

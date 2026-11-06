@@ -3,8 +3,9 @@
  * No simulador, a célula mostra o STATUS sob o código e aceita seleção.
  */
 import { memo } from "react";
-import { Pressable, Text, View, useWindowDimensions } from "react-native";
+import { Platform, Pressable, Text, View } from "react-native";
 import { VAGA_TIPO_LABEL, vagaTone } from "../theme";
+import { useLarguraResponsiva } from "../hooks/useLarguraResponsiva";
 import type { Vaga } from "../types/api";
 
 interface Props {
@@ -27,7 +28,7 @@ function VagaMapa({
   rotuloInferior = "tipo",
   colunas,
 }: Props) {
-  const { width } = useWindowDimensions();
+  const width = useLarguraResponsiva();
   const numColunas = colunas ?? (width >= 1024 ? 8 : width >= 640 ? 6 : 4);
   const larguraCelula = Math.floor(
     Math.min((Math.min(width, 1200) - 96) / numColunas, 128),
@@ -49,7 +50,11 @@ function VagaMapa({
             onPress={onPressVaga ? () => onPressVaga(vaga) : undefined}
             accessibilityRole={onPressVaga ? "button" : undefined}
             accessibilityLabel={`Vaga ${vaga.codigo} — ${vaga.status}`}
-            className="items-center justify-center rounded-xl border py-2.5"
+            className={`items-center justify-center rounded-xl border py-2.5 ${
+              Platform.OS === "web"
+                ? "transition-all duration-200 ease-out hover:scale-[1.02] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 motion-reduce:transform-none motion-reduce:transition-none motion-reduce:hover:transform-none motion-reduce:active:transform-none"
+                : ""
+            }`}
             style={{
               width: larguraCelula,
               minHeight: larguraCelula * 0.62,

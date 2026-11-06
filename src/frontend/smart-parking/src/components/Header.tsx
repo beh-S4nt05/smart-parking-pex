@@ -2,7 +2,7 @@ import { Alert, Linking, Platform, Pressable, Text, View } from "react-native";
 import { Link, useRouter } from "expo-router";
 import { useAuth } from "../hooks/useAuth";
 import { API_URL } from "../services/api";
-import { LogoBlox, Logo } from "./ui";
+import { Botao, LogoBlox, Logo } from "./ui";
 
 /**
  * Cabeçalho público unificado:
@@ -111,12 +111,11 @@ export default function Header({ rotaAtual = "/" }: { rotaAtual?: string }) {
             </View>
           ) : (
             <>
-              <Pressable
+              <Botao
+                label="Entrar"
                 onPress={() => router.push("/login")}
-                className="rounded-full bg-blue-600 px-5 py-2 active:bg-blue-700"
-              >
-                <Text className="text-sm font-semibold text-white">Entrar</Text>
-              </Pressable>
+                className="rounded-full px-5 py-2"
+              />
             </>
           )}
         </View>

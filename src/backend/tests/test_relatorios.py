@@ -1,6 +1,6 @@
 """Tarefas M3-01/M3-02 (ACH-01/18) e RN-10/RN-12 — fuso, denominador, heat."""
 
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from core.timeutils import FUSO_MANAUS, inicio_dia_manaus, janela_manaus, utc_agora
 from models.db_models import Historico, StatusVaga
@@ -9,12 +9,12 @@ from rules import relatorio_service
 
 def test_dia_local_de_manaus_vira_0400_utc():
     # 22/10 01:00 UTC = 21/10 21:00 em Manaus (UTC-4) → "hoje" local é dia 21.
-    ref = datetime(2026, 10, 22, 1, 0, tzinfo=UTC)
+    ref = datetime(2026, 10, 22, 1, 0, tzinfo=timezone.utc)
     inicio = inicio_dia_manaus(ref)
     assert inicio == datetime(2026, 10, 21, 4, 0)  # 21/10 00:00-04:00 → 04:00 UTC
 
     # Depois das 04:00 UTC já começou um novo dia no calendário local.
-    assert inicio_dia_manaus(datetime(2026, 10, 22, 5, 0, tzinfo=UTC)) == datetime(
+    assert inicio_dia_manaus(datetime(2026, 10, 22, 5, 0, tzinfo=timezone.utc)) == datetime(
         2026, 10, 22, 4, 0
     )
 
@@ -50,7 +50,10 @@ def test_ocupacao_historica_bucket_atual_e_cheio_e_madrugada_zerada(db, fab):
     est = fab.est()
     andar = fab.andar(est)
     vaga = fab.vaga(andar, status=StatusVaga.OCUPADA)
-    agora = utc_agora()
+    # Fixa a posição dentro da hora sem congelar o dia corrente do relatório.
+    # No minuto inicial, a sobreposição é < 60 s e o arredondamento inteiro
+    # legitimo do service resultava em 0, tornando o teste dependente do relógio.
+    agora = utc_agora().replace(minute=30, second=0, microsecond=0)
     db.add(
         Historico(
             estacionamento_id=est.id, vaga_id=vaga.id,
@@ -64,7 +67,7 @@ def test_ocupacao_historica_bucket_atual_e_cheio_e_madrugada_zerada(db, fab):
     linha = dados["dados_por_andar"][0]
     lista = linha["ocupacao_por_hora"]
     assert len(lista) == 24
-    hora_local = agora.replace(tzinfo=UTC).astimezone(FUSO_MANAUS).hour
+    hora_local = agora.replace(tzinfo=timezone.utc).astimezone(FUSO_MANAUS).hour
     assert lista[hora_local] > 0
     # uma estadia de 45 min pode tocar NO MÁXIMO 2 buckets (o seu e o vizinho
     # do começo da hora); todo o resto tem que estar zerado

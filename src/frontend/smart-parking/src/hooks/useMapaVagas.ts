@@ -7,16 +7,22 @@ interface Options {
   pollingMs?: number;
 }
 
-/**
- * Mapa de vagas de um estacionamento (andares + vagas), com "ao vivo" opcional.
- * Retorna também helpers de resumo por andar usados pelo Mapa e pelo Simulador.
- */
+function horaCache(ts: number): string {
+  return new Date(ts).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+}
+
+/** Mapa com atualização automática, cache offline e proteção contra respostas antigas. */
 export function useMapaVagas(estacionamentoId?: string, { pollingMs = 0 }: Options = {}) {
   const [mapa, setMapa] = useState<MapaVagas | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(Boolean(estacionamentoId));
   const [erro, setErro] = useState<string | null>(null);
   const [atualizadoEm, setAtualizadoEm] = useState<number>(Date.now());
   const mounted = useRef(true);
+  const idAtual = useRef(estacionamentoId);
+  const mapaRef = useRef<MapaVagas | null>(null);
+  const atualizadoRef = useRef(0);
+  const emCurso = useRef(new Set<string>());
+  idAtual.current = estacionamentoId;
 
   useEffect(() => {
     mounted.current = true;
@@ -25,50 +31,76 @@ export function useMapaVagas(estacionamentoId?: string, { pollingMs = 0 }: Optio
     };
   }, []);
 
+  useEffect(() => {
+    mapaRef.current = mapa;
+  }, [mapa]);
+
   const refresh = useCallback(async () => {
-    if (!estacionamentoId) return;
+    const idSolicitado = estacionamentoId;
+    if (!idSolicitado) {
+      if (mounted.current) setLoading(false);
+      return;
+    }
+    if (emCurso.current.has(idSolicitado)) return;
+    emCurso.current.add(idSolicitado);
     try {
-      const dados = await parkingApi.mapaVagas(estacionamentoId);
-      if (!mounted.current) return;
+      const dados = await parkingApi.mapaVagas(idSolicitado);
+      if (!mounted.current || idAtual.current !== idSolicitado) return;
+      mapaRef.current = dados;
       setMapa(dados);
       setErro(null);
-      setAtualizadoEm(Date.now());
+      const agora = Date.now();
+      atualizadoRef.current = agora;
+      setAtualizadoEm(agora);
       AsyncStorage.setItem(
-        `sp:cache:mapa:${estacionamentoId}`,
-        JSON.stringify({ ts: Date.now(), dados }),
+        `sp:cache:mapa:${idSolicitado}`,
+        JSON.stringify({ ts: agora, dados }),
       ).catch(() => {});
     } catch {
-      if (!mounted.current) return;
-      // RF-06: sem rede, reabre a última leitura persistida do andar inteiro
+      if (!mounted.current || idAtual.current !== idSolicitado) return;
+      if (mapaRef.current) {
+        setErro(`Sem conexão — última leitura ${horaCache(atualizadoRef.current)}.`);
+        return;
+      }
       try {
-        const bruto = await AsyncStorage.getItem(`sp:cache:mapa:${estacionamentoId}`);
-        if (bruto) {
-          const { ts, dados } = JSON.parse(bruto) as {
-            ts: number;
-            dados: typeof mapa;
-          };
-          setMapa((atual) => atual ?? dados);
-          setAtualizadoEm(ts);
-          setErro(`Sem conexão — última leitura ${new Date(ts).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}.`);
-          return;
+        const bruto = await AsyncStorage.getItem(`sp:cache:mapa:${idSolicitado}`);
+        if (bruto && mounted.current && idAtual.current === idSolicitado) {
+          const { ts, dados } = JSON.parse(bruto) as { ts: number; dados: MapaVagas };
+          if (dados && Array.isArray(dados.vagas) && Number.isFinite(ts)) {
+            mapaRef.current = dados;
+            atualizadoRef.current = ts;
+            setMapa(dados);
+            setAtualizadoEm(ts);
+            setErro(`Sem conexão — última leitura ${horaCache(ts)}.`);
+            return;
+          }
         }
       } catch {
-        /* segue com o erro cru */
+        // Cache inválido: apresenta o erro de rede abaixo.
       }
-      setErro("Não foi possível carregar o mapa de vagas.");
+      if (mounted.current && idAtual.current === idSolicitado) {
+        setErro("Não foi possível carregar o mapa de vagas.");
+      }
     } finally {
-      if (mounted.current) setLoading(false);
+      emCurso.current.delete(idSolicitado);
+      if (mounted.current && idAtual.current === idSolicitado) setLoading(false);
     }
   }, [estacionamentoId]);
 
   useEffect(() => {
-    setLoading(true);
-    refresh();
+    mapaRef.current = null;
+    atualizadoRef.current = 0;
+    setMapa(null);
+    setErro(null);
+    setLoading(Boolean(estacionamentoId));
+    if (!estacionamentoId) return;
+
+    void refresh();
     if (pollingMs > 0) {
-      const t = setInterval(refresh, pollingMs);
-      return () => clearInterval(t);
+      const timer = setInterval(() => void refresh(), pollingMs);
+      return () => clearInterval(timer);
     }
-  }, [refresh, pollingMs]);
+  }, [estacionamentoId, refresh, pollingMs]);
 
   const resumo = useMemo(() => {
     const contar = (lista: Vaga[]) => ({
@@ -81,11 +113,7 @@ export function useMapaVagas(estacionamentoId?: string, { pollingMs = 0 }: Optio
     return {
       geral: mapa ? contar(mapa.vagas) : null,
       porAndar: (andarId?: string) =>
-        contar(
-          mapa
-            ? mapa.vagas.filter((v) => !andarId || v.andar_id === andarId)
-            : [],
-        ),
+        contar(mapa ? mapa.vagas.filter((v) => !andarId || v.andar_id === andarId) : []),
     };
   }, [mapa]);
 

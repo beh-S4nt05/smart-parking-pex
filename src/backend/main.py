@@ -13,6 +13,7 @@ from api.admin import router as admin_router
 from api.api import router as api_router
 from api.auth import router as auth_router
 from api.sensores import router as sensores_router
+from core.body_limit import RequestBodyLimitMiddleware
 from core.config import settings
 from core.cors import opcoes_cors
 from core.rate_limiter import limiter, rate_limit_exceeded_handler
@@ -188,10 +189,16 @@ app.add_exception_handler(429, rate_limit_exceeded_handler)
 # 1. Validador de requisições (bloqueia Postman/navegador e valida assinatura HMAC)
 app.add_middleware(RequestValidationMiddleware)
 
-# 2. Middleware de Segurança (SQL Injection, headers, anti duplicação, bloqueio de scanners)
+# 2. Headers, anti-duplicação e bloqueio de scanners
 app.add_middleware(SecurityHeadersMiddleware, environment=settings.ENVIRONMENT)
 
-# 2. Middleware de hosts confiáveis (bloqueia acessos com Host header falso em produção)
+# 3. Limite de corpo antes de qualquer parser/HMAC; protege memória e disponibilidade.
+app.add_middleware(
+    RequestBodyLimitMiddleware,
+    max_bytes=settings.MAX_REQUEST_BODY_BYTES,
+)
+
+# 4. Middleware de hosts confiáveis (bloqueia acessos com Host header falso em produção)
 # A lista vem de TRUSTED_HOSTS (config/.env) — mantida hardcoded só para localhost,
 # o acesso via Nginx ou IP da LAN levava "400 Invalid host header" e o app
 # parecia caído para quem não estivesse na máquina do servidor.
@@ -201,7 +208,7 @@ if settings.ENVIRONMENT == "production":
         allowed_hosts=settings.TRUSTED_HOSTS,
     )
 
-# 3. CORS: Web local/LAN em desenvolvimento; origens explícitas em produção.
+# 5. CORS: Web local/LAN em desenvolvimento; origens explícitas em produção.
 app.add_middleware(CORSMiddleware, **opcoes_cors(settings))
 
 # Inclui todos os roteadores

@@ -9,10 +9,10 @@ import {
   ScrollView,
   Text,
   View,
-  useWindowDimensions,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { useAuth } from "../hooks/useAuth";
+import { useLarguraResponsiva } from "../hooks/useLarguraResponsiva";
 import { Logo, SeloAoVivo } from "./ui";
 
 export type AbaPainel =
@@ -47,7 +47,7 @@ export default function AdminShell({
   direita?: ReactNode;
   children: ReactNode;
 }) {
-  const { width } = useWindowDimensions();
+  const width = useLarguraResponsiva();
   const isWeb = width >= 1024;
   const router = useRouter();
   const { user, signOut } = useAuth();

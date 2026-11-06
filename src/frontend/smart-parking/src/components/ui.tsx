@@ -2,7 +2,7 @@
  * Kit de primitivas visuais do SmartParking (NativeWind + RN puro, sem HTML).
  * Todas as telas (mobile e web) montam os templates do Figma com estas peças.
  */
-import { ReactNode, useEffect, useRef } from "react";
+import { ReactNode, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Animated,
@@ -170,6 +170,8 @@ export function Botao({
   // feedback tátil visual: mola de escala ao pressionar (web e nativo)
   const escala = useRef(new Animated.Value(1)).current;
   const ehWeb = Platform.OS === "web";
+  const [hovered, setHovered] = useState(false);
+  const [focused, setFocused] = useState(false);
   const apertar = (paraDentro: boolean) =>
     Animated.spring(escala, {
       toValue: paraDentro ? 0.96 : 1,
@@ -180,24 +182,39 @@ export function Botao({
       useNativeDriver: !ehWeb,
     }).start();
 
-  const base = "flex-row items-center justify-center gap-2 rounded-xl px-5 py-3.5";
+  const base =
+    "relative min-h-11 flex-row select-none items-center justify-center gap-2 rounded-xl px-5 py-3.5";
   const variants: Record<string, string> = {
     primario: "bg-blue-600 hover:bg-blue-700 active:bg-blue-800",
     contorno: "border border-blue-600 bg-white hover:bg-blue-50 active:bg-blue-100",
     fantasma: "bg-transparent hover:bg-blue-100/70 active:bg-blue-200/70",
-    perigo: "bg-red-500 hover:bg-red-600 active:bg-red-700",
-    sucesso: "bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700",
+    perigo: "bg-red-600 hover:bg-red-700 active:bg-red-800",
+    // emerald-600 não atinge 4,5:1 com texto branco; 700 atinge 5,48:1.
+    sucesso: "bg-emerald-700 hover:bg-emerald-800 active:bg-emerald-900",
   };
   const labelColor: Record<string, string> = {
     primario: "text-white",
-    contorno: "text-blue-700",
-    fantasma: "text-blue-700",
+    contorno: "text-blue-600",
+    fantasma: "text-blue-600",
     perigo: "text-white",
     sucesso: "text-white",
   };
+  const labelEmDestaque =
+    ehWeb && (hovered || focused) && (variant === "contorno" || variant === "fantasma");
   return (
     <PressavelAnimada
       accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ disabled: Boolean(disabled || loading), busy: Boolean(loading) }}
+      {...(ehWeb
+        ? {
+            "aria-busy": Boolean(loading),
+            onHoverIn: () => setHovered(true),
+            onHoverOut: () => setHovered(false),
+            onFocus: () => setFocused(true),
+            onBlur: () => setFocused(false),
+          }
+        : {})}
       onPress={onPress}
       {...(ehWeb
         ? {}
@@ -206,22 +223,32 @@ export function Botao({
       disabled={disabled || loading}
       className={`${base} ${variants[variant]} ${
         disabled ? "opacity-40" : ""
-      } ${ehWeb ? "active:scale-[0.97] transition-transform duration-100" : ""} ${className}`}
+      } ${ehWeb
+        ? "transition-all duration-150 ease-out active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 motion-reduce:transform-none motion-reduce:transition-none motion-reduce:hover:transform-none motion-reduce:active:transform-none"
+        : ""} ${className}`}
       style={ehWeb ? style : [style, { transform: [{ scale: escala }] }]}
     >
+      <View
+        className={`flex-row items-center justify-center gap-2 ${loading ? "opacity-0" : ""}`}
+      >
+        {icon}
+        <Text
+          className={`text-[15px] font-semibold ${labelColor[variant]} ${
+            ehWeb ? "transition-colors duration-150 ease-out motion-reduce:transition-none" : ""
+          }`}
+          style={labelEmDestaque ? { color: colors.primaryDark } : undefined}
+        >
+          {label}
+        </Text>
+      </View>
       {loading ? (
-        <ActivityIndicator
-          size="small"
-          color={variant === "contorno" || variant === "fantasma" ? colors.primary : "#fff"}
-        />
-      ) : (
-        <>
-          {icon}
-          <Text className={`text-[15px] font-semibold ${labelColor[variant]}`}>
-            {label}
-          </Text>
-        </>
-      )}
+        <View pointerEvents="none" className="absolute inset-0 items-center justify-center">
+          <ActivityIndicator
+            size="small"
+            color={variant === "contorno" || variant === "fantasma" ? colors.primary : "#fff"}
+          />
+        </View>
+      ) : null}
     </PressavelAnimada>
   );
 }
