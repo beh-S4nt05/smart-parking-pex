@@ -273,7 +273,7 @@ export default function Login() {
             <Pressable
               onPress={voltarInicio}
               accessibilityRole="button"
-              accessibilityLabel="Voltar ao início"
+              accessibilityLabel="Voltar ao Início"
               hitSlop={8}
               className="mb-5 flex-row items-center gap-1.5 self-start rounded-full border border-slate-200 bg-white px-3.5 py-1.5 active:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
             >
@@ -303,7 +303,7 @@ export default function Login() {
         <Pressable
           onPress={voltarInicio}
           accessibilityRole="button"
-          accessibilityLabel="Voltar ao início"
+          accessibilityLabel="Voltar ao Início"
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           className="ml-6 mt-4 flex-row items-center gap-1.5 self-start rounded-full border border-slate-200 bg-white px-3 py-1.5 active:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
         >

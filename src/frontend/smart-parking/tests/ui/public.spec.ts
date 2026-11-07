@@ -104,7 +104,7 @@ test("viewport móvel mantém login e home sem overflow e com ações alcançáv
   expect(caixa?.height).toBeGreaterThanOrEqual(44);
   await expectSemOverflowHorizontal(page);
 
-  await page.getByRole("button", { name: /Início/ }).click();
+  await page.getByRole("button", { name: /Voltar ao Início/ }).click();
   await expect(page).toHaveURL(/\/$/);
   await expect(page.getByText("Shopping QA Centro").first()).toBeVisible();
   await expect(page.getByRole("button", { name: /Ver Vagas Disponíveis/ })).toBeVisible();
