@@ -3,8 +3,8 @@
  * badge "Monitoramento em tempo real", título, seletor de shopping,
  * CTA "Ver Vagas Disponíveis →" e legenda de cores.
  */
-import { useState } from "react";
-import { Pressable, ScrollView, Text, View } from "react-native";
+import { useEffect, useState } from "react";
+import { Platform, Pressable, ScrollView, Text, View } from "react-native";
 import { colors } from "../theme";
 import { useLarguraResponsiva } from "../hooks/useLarguraResponsiva";
 import { Botao } from "./ui";
@@ -24,9 +24,39 @@ export default function Hero({ shoppings, selecionadoId, onSelect, onBuscar }: P
   const [listaAberta, setListaAberta] = useState(false);
   const selecionado =
     shoppings.find((s) => s.id === selecionadoId) ?? shoppings[0];
+  const vazio = shoppings.length === 0;
+
+  // Lista não pode ficar órfã se os dados sumirem durante uma atualização.
+  useEffect(() => {
+    if (vazio) setListaAberta(false);
+  }, [vazio]);
+
+  // Escape fecha o seletor na Web; no nativo o backdrop e onRequestClose
+  // já cobrem o gesto de voltar.
+  useEffect(() => {
+    if (!listaAberta || Platform.OS !== "web") return;
+    const aoTeclar = (evento: KeyboardEvent) => {
+      if (evento.key === "Escape") setListaAberta(false);
+    };
+    document.addEventListener("keydown", aoTeclar);
+    return () => document.removeEventListener("keydown", aoTeclar);
+  }, [listaAberta]);
+
+  const nomeSelecionado = selecionado?.nome ?? "Carregando shoppings…";
 
   return (
-    <View className="bg-blue-50/70 px-4 pb-10 pt-8 sm:px-6 sm:pt-12">
+    <View className="relative bg-blue-50/70 px-4 pb-10 pt-8 sm:px-6 sm:pt-12">
+      {/* backdrop: clique fora do seletor fecha a lista sem mover o conteúdo */}
+      {listaAberta ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Fechar lista de shoppings"
+          accessibilityHint="Fecha o seletor sem alterar o shopping escolhido"
+          onPress={() => setListaAberta(false)}
+          className="absolute inset-0 z-10"
+        />
+      ) : null}
+
       <View className="mx-auto w-full items-center" style={{ maxWidth: 900 }}>
         <View className="mb-4 flex-row items-center gap-1.5 self-center rounded-full border border-blue-100 bg-white px-3.5 py-1.5">
           <View className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
@@ -50,38 +80,48 @@ export default function Hero({ shoppings, selecionadoId, onSelect, onBuscar }: P
 
         {/* seletor + CTA */}
         <View
-          className={`mt-7 w-full max-w-2xl ${
+          className={`relative z-20 mt-7 w-full max-w-2xl ${
             isWide ? "flex-row items-start gap-2.5" : "gap-3"
           }`}
         >
-          {/* barra fechada = shopping atual; toque abre mini-lista de cards
-              (mesmo ShoppingList da seção "Rede credenciada", variante lista) */}
-          <View className="flex-1 relative">
+          {/* barra fechada = shopping atual; a mini-lista flutua SOBRE o
+              conteúdo (absolute) em vez de empurrar cards para baixo. */}
+          <View className="relative z-20 flex-1">
             <Pressable
               accessibilityRole="button"
-              onPress={() => shoppings.length > 0 && setListaAberta((v) => !v)}
-              className={`flex-row items-center justify-between rounded-full bg-white px-4 ${
+              accessibilityLabel={`Selecionar shopping: ${nomeSelecionado} — Manaus, AM`}
+              accessibilityHint="Abre a lista de shoppings parceiros"
+              accessibilityState={{ expanded: listaAberta, disabled: vazio }}
+              aria-expanded={listaAberta}
+              disabled={vazio}
+              hitSlop={4}
+              onPress={() => setListaAberta((v) => !v)}
+              className={`flex-row items-center justify-between rounded-full bg-white px-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 motion-reduce:transition-none ${
                 isWide ? "py-3.5" : "rounded-2xl py-3"
-              } border border-slate-200`}
+              } border border-slate-200 hover:border-blue-300 active:bg-blue-50 ${
+                vazio ? "opacity-60" : ""
+              }`}
             >
               <View className="h-2 w-2 rounded-full bg-blue-600" />
               <Text
                 numberOfLines={1}
                 className="mx-2 flex-1 text-sm font-semibold text-slate-700"
               >
-                {shoppings.length === 0
-                  ? "Carregando shoppings…"
-                  : `${selecionado?.nome ?? ""} — Manaus, AM`}
+                {vazio ? "Carregando shoppings…" : `${nomeSelecionado} — Manaus, AM`}
               </Text>
               <Text className="text-base leading-5 text-blue-600">
                 {listaAberta ? "˄" : "⌄"}
               </Text>
             </Pressable>
 
-            {listaAberta && shoppings.length > 0 ? (
+            {listaAberta && !vazio ? (
               <View
-                className="relative left-0 right-0 top-full z-20 mt-2 rounded-2xl border border-slate-200 bg-white p-2"
+                nativeID="hero-lista-shoppings"
+                accessibilityRole="list"
+                accessibilityLabel="Lista de shoppings"
+                className="absolute left-0 right-0 top-full z-30 mt-2 rounded-2xl border border-slate-200 bg-white p-2"
                 style={{
+                  position: "absolute",
                   elevation: 12,
                   shadowColor: "#0F172A",
                   shadowOpacity: 0.16,
@@ -89,7 +129,7 @@ export default function Hero({ shoppings, selecionadoId, onSelect, onBuscar }: P
                   shadowOffset: { width: 0, height: 10 },
                 }}
               >
-                <ScrollView style={{ maxHeight: 360 }}>
+                <ScrollView style={{ maxHeight: 360 }} keyboardShouldPersistTaps="handled">
                   <ShoppingList
                     shoppings={shoppings}
                     variante="lista"
@@ -107,12 +147,12 @@ export default function Hero({ shoppings, selecionadoId, onSelect, onBuscar }: P
           <Botao
             label="Ver Vagas Disponíveis  →"
             onPress={onBuscar}
-            className={isWide ? "" : "w-full relative"}
+            className={isWide ? "relative z-0" : "relative z-0 w-full"}
           />
         </View>
 
         {/* legenda */}
-        <View className="mt-6 flex-row flex-wrap items-center justify-center gap-x-5 gap-y-1">
+        <View className="relative z-0 mt-6 flex-row flex-wrap items-center justify-center gap-x-5 gap-y-1">
           {[
             { c: "#10B981", t: "Vaga livre" },
             { c: "#EF4444", t: "Vaga ocupada" },

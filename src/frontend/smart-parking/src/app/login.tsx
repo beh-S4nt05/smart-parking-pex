@@ -1,7 +1,7 @@
 /**
  * Login — template "Login (MOBILE/WEB)" do Figma:
  * - mobile: tela branca com logo P azul + formulário central
- * - web: split com painel de marca azul à esquerda
+ * - web: split com painel de marca azul à esquerda (a partir de 1024px)
  * Integração real: POST /auth/login aceita e-mail OU telefone e devolve o
  * usuário no mesmo response; AuthContext guarda os tokens. Redirecionamento
  * por papel: staff → painel, motorista → Home/Mapa.
@@ -27,7 +27,9 @@ export default function Login() {
   const router = useRouter();
   const { next } = useLocalSearchParams<{ next?: string | string[] }>();
   const width = useLarguraResponsiva();
-  const isWide = width >= 900;
+  // 900px ainda é um tablet estreito: manter o split ali sobrepunha o painel
+  // azul ao formulário. O layout de duas colunas só entra em desktop real.
+  const isWide = width >= 1024;
   const { signIn } = useAuth();
 
   // "← Início" com destino garantido: router.back() sozinho é mudo quando se
@@ -72,7 +74,7 @@ export default function Login() {
       {!isWide && (
         <View className="mb-7 items-center">
           <Logo size={56} />
-          <Text className="mt-4 text-[22px] font-extrabold text-slate-900">
+          <Text accessibilityRole="header" className="mt-4 text-[22px] font-extrabold text-slate-900">
             Bem-vindo ao Smart Parking
           </Text>
           <Text className="mt-1 text-sm text-slate-500">
@@ -86,6 +88,8 @@ export default function Login() {
         placeholder="voce@email.com"
         autoCapitalize="none"
         autoCorrect={false}
+        autoComplete="username"
+        textContentType="username"
         keyboardType="email-address"
         value={email}
         onChangeText={(v) => {
@@ -101,6 +105,8 @@ export default function Login() {
         senha
         visivel={senhaVisivel}
         onAlternarVisivel={() => setSenhaVisivel((v) => !v)}
+        autoComplete="current-password"
+        textContentType="password"
         value={senha}
         onChangeText={(v) => {
           setSenha(v);
@@ -112,7 +118,16 @@ export default function Login() {
       />
 
       <View className="-mt-1 mb-4 flex-row justify-end">
-        <Pressable onPress={() => setRecuperar((v) => !v)}>
+        <Pressable
+          onPress={() => setRecuperar((v) => !v)}
+          accessibilityRole="button"
+          accessibilityLabel="Esqueci minha senha"
+          accessibilityHint="Mostra orientações para recuperar o acesso"
+          accessibilityState={{ expanded: recuperar }}
+          aria-expanded={recuperar}
+          hitSlop={8}
+          className="rounded-md px-1 py-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+        >
           <Text className="text-xs font-semibold text-blue-700">
             Esqueci minha senha
           </Text>
@@ -120,7 +135,11 @@ export default function Login() {
       </View>
 
       {recuperar ? (
-        <View className="mb-4 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3">
+        <View
+          nativeID="recuperar-acesso"
+          accessibilityLabel="Como recuperar o acesso"
+          className="mb-4 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3"
+        >
           <Text className="text-[13px] font-semibold text-slate-800">
             Como recuperar o acesso
           </Text>
@@ -136,7 +155,10 @@ export default function Login() {
                 "mailto:behsolutionsandautomations@gmail.com?subject=Recuperar%20acesso%20Smart%20Parking",
               )
             }
-            className="mt-2 self-start rounded-full bg-white px-3 py-1.5"
+            accessibilityRole="button"
+            accessibilityLabel="Falar com o suporte por e-mail"
+            hitSlop={4}
+            className="mt-2 self-start rounded-full bg-white px-3 py-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
           >
             <Text className="text-xs font-bold text-blue-700">
               Ou fale com o suporte por e-mail
@@ -146,7 +168,12 @@ export default function Login() {
       ) : null}
 
       {erro ? (
-        <View className="mb-4 rounded-xl border border-red-200 bg-red-50 px-3.5 py-2.5">
+        <View
+          nativeID="login-erro"
+          accessibilityRole="alert"
+          accessibilityLiveRegion="polite"
+          className="mb-4 rounded-xl border border-red-200 bg-red-50 px-3.5 py-2.5"
+        >
           <Text className="text-[13px] font-medium text-red-600">{erro}</Text>
         </View>
       ) : null}
@@ -158,12 +185,18 @@ export default function Login() {
         className="w-full"
       />
 
-      <Text className="mt-6 text-center text-sm text-slate-500">
-        Não tem conta?{" "}
-        <Text className="font-bold text-blue-700" onPress={() => router.push("/cadastro")}>
-          Cadastre-se
-        </Text>
-      </Text>
+      <View className="mt-6 flex-row flex-wrap items-center justify-center gap-1">
+        <Text className="text-sm text-slate-500">Não tem conta?</Text>
+        <Pressable
+          onPress={() => router.push("/cadastro")}
+          accessibilityRole="button"
+          accessibilityLabel="Cadastre-se"
+          hitSlop={8}
+          className="rounded-md px-1 py-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+        >
+          <Text className="text-sm font-bold text-blue-700">Cadastre-se</Text>
+        </Pressable>
+      </View>
 
       {/* Atalhos de demonstração (credenciais do seed) — ACH-02: aparecem só
           em build de desenvolvimento; num app de produção eles somem sozinhos. */}
@@ -179,7 +212,10 @@ export default function Login() {
               setSenha("motor123");
               setErro(null);
             }}
-            className="flex-row items-center justify-between rounded-lg border border-slate-200 bg-white px-3 py-2 active:bg-blue-50"
+            accessibilityRole="button"
+            accessibilityLabel="Preencher credenciais do motorista"
+            hitSlop={4}
+            className="flex-row items-center justify-between rounded-lg border border-slate-200 bg-white px-3 py-2 active:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
           >
             <Text className="text-[13px] font-semibold text-slate-700">
               🚗 Motorista
@@ -194,7 +230,10 @@ export default function Login() {
               setSenha("admin123");
               setErro(null);
             }}
-            className="flex-row items-center justify-between rounded-lg border border-slate-200 bg-white px-3 py-2 active:bg-blue-50"
+            accessibilityRole="button"
+            accessibilityLabel="Preencher credenciais do administrador"
+            hitSlop={4}
+            className="flex-row items-center justify-between rounded-lg border border-slate-200 bg-white px-3 py-2 active:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
           >
             <Text className="text-[13px] font-semibold text-slate-700">
               🛠️ Administrador
@@ -212,10 +251,10 @@ export default function Login() {
   if (isWide) {
     return (
       <View className="flex-1 flex-row bg-white">
-        <View className="w-[45%] items-center justify-center bg-blue-600 px-12">
+        <View className="min-w-0 w-[45%] items-center justify-center bg-blue-600 px-12">
           <View className="w-full max-w-sm gap-5">
             <Logo size={52} tone="white" />
-            <Text className="text-4xl font-extrabold text-white">Smart Parking</Text>
+            <Text accessibilityRole="header" className="text-4xl font-extrabold text-white">Smart Parking</Text>
             <Text className="text-base leading-6 text-blue-100">
               Monitoramento inteligente de vagas em shoppings de Manaus, em tempo
               real.
@@ -223,7 +262,7 @@ export default function Login() {
           </View>
         </View>
         <ScrollView
-          className="flex-1"
+          className="min-w-0 flex-1"
           contentContainerStyle={{
             flexGrow: 1,
             justifyContent: "center",
@@ -234,12 +273,14 @@ export default function Login() {
             <Pressable
               onPress={voltarInicio}
               accessibilityRole="button"
-              className="mb-5 flex-row items-center gap-1.5 self-start rounded-full border border-slate-200 bg-white px-3.5 py-1.5 active:bg-slate-50"
+              accessibilityLabel="Voltar ao início"
+              hitSlop={8}
+              className="mb-5 flex-row items-center gap-1.5 self-start rounded-full border border-slate-200 bg-white px-3.5 py-1.5 active:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
             >
               <Text className="text-[15px] leading-5 text-blue-600">←</Text>
               <Text className="text-[13px] font-semibold text-slate-600">Início</Text>
             </Pressable>
-            <Text className="text-3xl font-extrabold text-slate-900">Entrar</Text>
+            <Text accessibilityRole="header" className="text-3xl font-extrabold text-slate-900">Entrar</Text>
             <Text className="mb-5 mt-1.5 text-sm text-slate-500">
               Acesse sua conta para continuar
             </Text>
@@ -262,8 +303,9 @@ export default function Login() {
         <Pressable
           onPress={voltarInicio}
           accessibilityRole="button"
+          accessibilityLabel="Voltar ao início"
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          className="ml-6 mt-4 flex-row items-center gap-1.5 self-start rounded-full border border-slate-200 bg-white px-3 py-1.5 active:bg-slate-50"
+          className="ml-6 mt-4 flex-row items-center gap-1.5 self-start rounded-full border border-slate-200 bg-white px-3 py-1.5 active:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
         >
           <Text className="text-[15px] leading-5 text-blue-600">←</Text>
           <Text className="text-[13px] font-semibold text-slate-600">Início</Text>

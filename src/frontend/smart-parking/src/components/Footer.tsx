@@ -25,7 +25,12 @@ export default function Footer() {
             </Text>
             <View className="mt-3 gap-2">
               <Link href="/dashboard" asChild>
-                <Pressable>
+                <Pressable
+                  accessibilityRole="link"
+                  accessibilityLabel="Abrir painel administrativo"
+                  hitSlop={4}
+                  className="rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
+                >
                   <Text className="text-sm text-slate-400 active:text-white">
                     Painel Administrativo
                   </Text>

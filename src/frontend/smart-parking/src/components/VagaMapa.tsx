@@ -3,9 +3,10 @@
  * No simulador, a célula mostra o STATUS sob o código e aceita seleção.
  */
 import { memo } from "react";
-import { Platform, Pressable, Text, View } from "react-native";
+import { Platform, Pressable, Text, View, ViewStyle } from "react-native";
 import { VAGA_TIPO_LABEL, vagaTone } from "../theme";
 import { useLarguraResponsiva } from "../hooks/useLarguraResponsiva";
+import { useMovimentoReduzido } from "../hooks/useMovimentoReduzido";
 import type { Vaga } from "../types/api";
 
 interface Props {
@@ -29,10 +30,15 @@ function VagaMapa({
   colunas,
 }: Props) {
   const width = useLarguraResponsiva();
-  const numColunas = colunas ?? (width >= 1024 ? 8 : width >= 640 ? 6 : 4);
-  const larguraCelula = Math.floor(
-    Math.min((Math.min(width, 1200) - 96) / numColunas, 128),
+  const reduzido = useMovimentoReduzido();
+  const numColunas = Math.max(1, colunas ?? (width >= 1024 ? 8 : width >= 640 ? 6 : 4));
+  // Piso de 56px: a célula continua sendo um alvo de toque confortável mesmo
+  // em viewports estreitos; o teto de 128px evita cards gigantes no desktop.
+  const larguraBase = Math.floor(
+    (Math.min(Math.max(width, 320), 1200) - 96) / numColunas,
   );
+  const larguraCelula = Math.max(56, Math.min(128, larguraBase));
+  const interativo = Boolean(onPressVaga);
 
   return (
     <View className="flex-row flex-wrap justify-start gap-2">
@@ -48,20 +54,38 @@ function VagaMapa({
           <Pressable
             key={vaga.id}
             onPress={onPressVaga ? () => onPressVaga(vaga) : undefined}
-            accessibilityRole={onPressVaga ? "button" : undefined}
-            accessibilityLabel={`Vaga ${vaga.codigo} — ${vaga.status}`}
+            disabled={!interativo}
+            hitSlop={6}
+            accessibilityRole={interativo ? "button" : undefined}
+            accessibilityLabel={`Vaga ${vaga.codigo} — ${vaga.status}${
+              rotuloInferior === "tipo" ? ` — ${rotulo}` : ""
+            }`}
+            accessibilityHint={
+              interativo
+                ? "Toque para selecionar esta vaga"
+                : "Status da vaga, somente leitura"
+            }
+            accessibilityState={{ selected: marcada, disabled: !interativo }}
+            {...(Platform.OS === "web" ? { "aria-pressed": marcada } : {})}
             className={`items-center justify-center rounded-xl border py-2.5 ${
               Platform.OS === "web"
                 ? "transition-all duration-200 ease-out hover:scale-[1.02] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 motion-reduce:transform-none motion-reduce:transition-none motion-reduce:hover:transform-none motion-reduce:active:transform-none"
                 : ""
             }`}
-            style={{
-              width: larguraCelula,
-              minHeight: larguraCelula * 0.62,
-              backgroundColor: tom.bg,
-              borderColor: marcada || destacada ? "#2563EB" : tom.border,
-              borderWidth: marcada ? 2.5 : destacada ? 2 : 1,
-              opacity: vaga.status === "inativa" ? 0.6 : 1,
+            style={({ pressed }) => {
+              const feedback =
+                pressed && Platform.OS !== "web" && !reduzido
+                  ? { opacity: 0.82, transform: [{ scale: 0.97 }] }
+                  : {};
+              const base: ViewStyle = {
+                width: larguraCelula,
+                minHeight: Math.max(44, larguraCelula * 0.62),
+                backgroundColor: tom.bg,
+                borderColor: marcada || destacada ? "#2563EB" : tom.border,
+                borderWidth: marcada ? 2.5 : destacada ? 2 : 1,
+                opacity: vaga.status === "inativa" ? 0.6 : 1,
+              };
+              return [base, feedback];
             }}
           >
             <Text className="text-[13px] font-extrabold" style={{ color: tom.text }}>

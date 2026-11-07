@@ -119,6 +119,22 @@ test("loading mantém nome acessível e informa estado ocupado", async ({ page }
   await expect(page).toHaveURL(/\/dashboard$/);
 });
 
+test("campos inválidos e alternância de senha são compreensíveis para leitor de tela", async ({ page }) => {
+  await gotoLogin(page);
+  await page.getByRole("button", { name: "Entrar", exact: true }).click();
+
+  const email = page.getByLabel("E-mail ou telefone", { exact: true });
+  await expect(email).toHaveAccessibleName("E-mail ou telefone");
+  await expect(email).toHaveAttribute("aria-invalid", "true");
+  await expect(email).toHaveAttribute("aria-required", "true");
+  await expect(page.getByText("Informe seu e-mail ou telefone")).toBeVisible();
+
+  const mostrar = page.getByRole("button", { name: "Mostrar senha" });
+  await expect(mostrar).toBeVisible();
+  await mostrar.click();
+  await expect(page.getByRole("button", { name: "Ocultar senha" })).toBeVisible();
+});
+
 test("mapa reflete mudança externa em até 8 segundos sem reload", async ({ page }) => {
   const lista = await page.request.get("/api/estacionamentos");
   const estacionamentos = (await lista.json()) as Array<{ id: string; nome: string }>;

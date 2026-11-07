@@ -22,6 +22,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { colors, ocupacaoColor } from "../theme";
+import { useMovimentoReduzido } from "../hooks/useMovimentoReduzido";
 
 // ---------------------------------------------------------- animações (RN core)
 /**
@@ -42,8 +43,10 @@ export function AnimarEntrada({
   distancia?: number;
 }) {
   const anim = useRef(new Animated.Value(0)).current;
+  const reduzido = useMovimentoReduzido();
   useEffect(() => {
-    if (Platform.OS === "web") return; // web entra limpo (evita SSR com opacity:0)
+    // Web entra limpo (evita SSR com opacity:0); movimento reduzido também.
+    if (Platform.OS === "web" || reduzido) return;
     Animated.timing(anim, {
       toValue: 1,
       duration: 320,
@@ -51,8 +54,8 @@ export function AnimarEntrada({
       easing: Easing.out(Easing.cubic),
       useNativeDriver: true,
     }).start();
-  }, [anim, delay]);
-  if (Platform.OS === "web") return <>{children}</>;
+  }, [anim, delay, reduzido]);
+  if (Platform.OS === "web" || reduzido) return <>{children}</>;
   return (
     <Animated.View
       style={{
@@ -80,8 +83,10 @@ export function FadeTroca({
   chave: string;
 }) {
   const anim = useRef(new Animated.Value(0)).current;
+  const reduzido = useMovimentoReduzido();
   useEffect(() => {
-    if (Platform.OS === "web") return; // troca de aba sem fade na web (SSR-safe)
+    // Troca de aba sem fade na web (SSR-safe) e com movimento reduzido.
+    if (Platform.OS === "web" || reduzido) return;
     anim.setValue(0);
     Animated.timing(anim, {
       toValue: 1,
@@ -89,8 +94,8 @@ export function FadeTroca({
       easing: Easing.out(Easing.quad),
       useNativeDriver: true,
     }).start();
-  }, [anim, chave]);
-  if (Platform.OS === "web") return <>{children}</>;
+  }, [anim, chave, reduzido]);
+  if (Platform.OS === "web" || reduzido) return <>{children}</>;
   return <Animated.View style={{ opacity: anim }}>{children}</Animated.View>;
 }
 
@@ -170,17 +175,23 @@ export function Botao({
   // feedback tátil visual: mola de escala ao pressionar (web e nativo)
   const escala = useRef(new Animated.Value(1)).current;
   const ehWeb = Platform.OS === "web";
+  const reduzido = useMovimentoReduzido();
   const [hovered, setHovered] = useState(false);
   const [focused, setFocused] = useState(false);
-  const apertar = (paraDentro: boolean) =>
+  useEffect(() => {
+    if (reduzido) escala.setValue(1);
+  }, [escala, reduzido]);
+  const apertar = (paraDentro: boolean) => {
+    if (ehWeb || reduzido) return; // sem mola quando o sistema pede menos movimento
     Animated.spring(escala, {
       toValue: paraDentro ? 0.96 : 1,
       // calibrado p/ ~140ms de feedback (auditoria de animacao 22/10):
       // wobble longo atrasa a percepcao de resposta ao toque
       friction: 7,
       tension: 180,
-      useNativeDriver: !ehWeb,
+      useNativeDriver: true,
     }).start();
+  };
 
   const base =
     "relative min-h-11 flex-row select-none items-center justify-center gap-2 rounded-xl px-5 py-3.5";
@@ -209,6 +220,7 @@ export function Botao({
       {...(ehWeb
         ? {
             "aria-busy": Boolean(loading),
+            "aria-disabled": Boolean(disabled || loading),
             onHoverIn: () => setHovered(true),
             onHoverOut: () => setHovered(false),
             onFocus: () => setFocused(true),
@@ -216,7 +228,7 @@ export function Botao({
           }
         : {})}
       onPress={onPress}
-      {...(ehWeb
+      {...(ehWeb || reduzido
         ? {}
         : { onPressIn: () => apertar(true), onPressOut: () => apertar(false) })}
       hitSlop={{ top: 4, bottom: 4, left: 8, right: 8 }}
@@ -226,7 +238,7 @@ export function Botao({
       } ${ehWeb
         ? "transition-all duration-150 ease-out active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 motion-reduce:transform-none motion-reduce:transition-none motion-reduce:hover:transform-none motion-reduce:active:transform-none"
         : ""} ${className}`}
-      style={ehWeb ? style : [style, { transform: [{ scale: escala }] }]}
+      style={ehWeb || reduzido ? style : [style, { transform: [{ scale: escala }] }]}
     >
       <View
         className={`flex-row items-center justify-center gap-2 ${loading ? "opacity-0" : ""}`}
@@ -301,9 +313,15 @@ export function TituloSecao({
 }
 
 export function SeloAoVivo() {
-  // ponto pulsando — reforça visualmente que os dados são ao vivo
+  // ponto pulsando — reforça visualmente que os dados são ao vivo, mas fica
+  // estático quando o usuário pede menos movimento.
   const pulso = useRef(new Animated.Value(1)).current;
+  const reduzido = useMovimentoReduzido();
   useEffect(() => {
+    if (reduzido) {
+      pulso.setValue(1);
+      return;
+    }
     const loop = Animated.loop(
       Animated.sequence([
         Animated.timing(pulso, {
@@ -322,7 +340,7 @@ export function SeloAoVivo() {
     );
     loop.start();
     return () => loop.stop();
-  }, [pulso]);
+  }, [pulso, reduzido]);
   return (
     <View className="flex-row items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1">
       <Animated.View
@@ -440,6 +458,9 @@ export function Campo({
   onAlternarVisivel,
   ...inputProps
 }: CampoProps) {
+  const descricao = erro ?? helper;
+  const invalido = Boolean(erro);
+  const desabilitado = inputProps.editable === false;
   return (
     <View className="mb-4">
       <Text className="mb-1.5 text-[13px] font-semibold text-slate-700">
@@ -455,15 +476,32 @@ export function Campo({
       >
         <TextInput
           accessibilityLabel={label}
+          accessibilityHint={descricao}
+          accessibilityState={{ disabled: desabilitado }}
           placeholderTextColor="#94A3B8"
           secureTextEntry={senha && !visivel}
-          className={`flex-1 py-3 text-base text-slate-900 ${
+          className={`flex-1 py-3 text-base ${
             erro ? "text-red-600" : "text-slate-900"
           }`}
+          {...(Platform.OS === "web"
+            ? {
+                "aria-invalid": invalido ? "true" : "false",
+                "aria-required": opcional ? "false" : "true",
+              }
+            : {})}
           {...inputProps}
         />
         {senha ? (
-          <Pressable onPress={onAlternarVisivel} hitSlop={8}>
+          <Pressable
+            onPress={onAlternarVisivel}
+            disabled={!onAlternarVisivel}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel={visivel ? "Ocultar senha" : "Mostrar senha"}
+            accessibilityHint="Alterna a visualização da senha digitada"
+            accessibilityState={{ disabled: !onAlternarVisivel }}
+            className="rounded-md px-1 py-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+          >
             <Text className="pl-2 text-xs font-semibold text-blue-600">
               {visivel ? "Ocultar" : "Mostrar"}
             </Text>
@@ -473,7 +511,13 @@ export function Campo({
       {helper && !erro ? (
         <Text className="mt-1 text-[11px] text-slate-400">{helper}</Text>
       ) : null}
-      <Text className="mt-1 min-h-[16px] text-xs text-red-600">{erro ?? ""}</Text>
+      <Text
+        accessibilityRole={erro ? "alert" : undefined}
+        accessibilityLiveRegion={erro ? "polite" : undefined}
+        className="mt-1 min-h-[16px] text-xs text-red-600"
+      >
+        {erro ?? ""}
+      </Text>
     </View>
   );
 }
@@ -503,8 +547,10 @@ export function Checkbox({
         accessibilityRole="checkbox"
         accessibilityState={{ checked, disabled: false }}
         accessibilityLabel={label}
+        accessibilityHint={hint}
         hitSlop={4}
-        className={`flex-row items-center rounded-xl border-2 px-3.5 py-3 transition-colors active:scale-[0.99] ${
+        {...(Platform.OS === "web" ? { "aria-checked": checked } : {})}
+        className={`flex-row items-center rounded-xl border-2 px-3.5 py-3 transition-colors active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 motion-reduce:transform-none motion-reduce:transition-none ${
           checked ? "border-blue-500 bg-blue-50" : "border-slate-200 bg-slate-50"
         }`}
       >
@@ -546,8 +592,16 @@ export function PillsAndares({
           <Pressable
             key={andar}
             onPress={() => onSelect(andar)}
-            className={`rounded-full border px-4 py-2 ${
-              ativo ? "border-blue-600 bg-blue-600" : "border-slate-200 bg-white"
+            accessibilityRole="button"
+            accessibilityLabel={`${andar}º andar`}
+            accessibilityHint="Filtra o mapa de vagas por andar"
+            accessibilityState={{ selected: ativo, disabled: false }}
+            hitSlop={6}
+            {...(Platform.OS === "web" ? { "aria-pressed": ativo } : {})}
+            className={`rounded-full border px-4 py-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 motion-reduce:transition-none ${
+              ativo
+                ? "border-blue-600 bg-blue-600"
+                : "border-slate-200 bg-white hover:bg-blue-50 active:bg-blue-100"
             }`}
           >
             <Text
@@ -689,8 +743,13 @@ export function ModalForma({
   children: ReactNode;
 }) {
   const surg = useRef(new Animated.Value(0)).current;
+  const reduzido = useMovimentoReduzido();
   useEffect(() => {
     if (visivel) {
+      if (reduzido) {
+        surg.setValue(1);
+        return;
+      }
       surg.setValue(0);
       Animated.timing(surg, {
         toValue: 1,
@@ -699,22 +758,31 @@ export function ModalForma({
         useNativeDriver: Platform.OS !== "web",
       }).start();
     }
-  }, [visivel, surg]);
+  }, [visivel, surg, reduzido]);
   return (
     <Modal
       visible={visivel}
       transparent
-      animationType="fade"
+      animationType={reduzido ? "none" : "fade"}
       onRequestClose={aoFechar}
       statusBarTranslucent
+      accessibilityViewIsModal
+      accessibilityLabel={titulo}
     >
       <KeyboardAvoidingView
         className="flex-1"
         style={{ flex: 1 }}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 24}
       >
       <View className="flex-1 items-center justify-center bg-black/50 p-4">
-        <Pressable accessibilityRole="button" onPress={aoFechar} className="absolute inset-0" />
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Fechar formulário"
+          accessibilityHint="Toque fora do cartão para cancelar"
+          onPress={aoFechar}
+          className="absolute inset-0"
+        />
         <Animated.View
           style={{
             width: "100%",
@@ -731,7 +799,12 @@ export function ModalForma({
             {descricao ? (
               <Text className="mt-0.5 text-[13px] text-slate-500">{descricao}</Text>
             ) : null}
-            <ScrollView style={{ maxHeight: 420 }} className="mt-4">
+            <ScrollView
+              style={{ maxHeight: 420 }}
+              className="mt-4"
+              keyboardShouldPersistTaps="handled"
+              contentContainerStyle={{ paddingBottom: 16 }}
+            >
               {children}
             </ScrollView>
             <View className="mt-5 flex-row gap-2">
