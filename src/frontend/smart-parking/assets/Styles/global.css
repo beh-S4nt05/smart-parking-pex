@@ -17,3 +17,20 @@ button:focus-visible {
   outline: 2px solid #2563eb;
   outline-offset: 2px;
 }
+button:disabled {
+  cursor: not-allowed;
+}
+
+/* Rede de segurança para a preferência do sistema na Web. As animações
+   JavaScript (Animated do RN) também são desligadas pelo hook
+   useMovimentoReduzido — aqui cobrimos CSS/transições declarativas. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}

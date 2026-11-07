@@ -74,7 +74,15 @@ export default function ShoppingList({
             }
             className={colunas > 1 ? "min-w-[240px] flex-1" : "w-full"}
           >
-            <Pressable onPress={() => onPress(est)}>
+            <Pressable
+              onPress={() => onPress(est)}
+              accessibilityRole="button"
+              accessibilityLabel={`${est.nome}, ${livres} vagas livres, ${bairroDe(est.endereco)}`}
+              accessibilityHint="Abre o mapa de vagas deste shopping"
+              accessibilityState={{ selected: selecionado }}
+              hitSlop={4}
+              className="rounded-2xl transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 motion-reduce:transition-none"
+            >
               <Card
                 className="p-4"
                 style={
@@ -93,10 +101,10 @@ export default function ShoppingList({
                       />
                     </View>
                     <View>
-                      <Text className="text-base font-bold text-slate-900">
+                      <Text numberOfLines={1} className="text-base font-bold text-slate-900">
                         {est.nome}
                       </Text>
-                      <Text className="mt-0.5 text-[13px] text-slate-500">
+                      <Text numberOfLines={1} className="mt-0.5 text-[13px] text-slate-500">
                         {bairroDe(est.endereco)}
                       </Text>
                       <Text className="mt-0.5 text-xs text-slate-400">
@@ -108,10 +116,10 @@ export default function ShoppingList({
                   <View className="flex-row items-center gap-3">
                     <Logo size={40} />
                     <View className="flex-1">
-                      <Text className="text-[15px] font-bold text-slate-900">
+                      <Text numberOfLines={1} className="text-[15px] font-bold text-slate-900">
                         {est.nome}
                       </Text>
-                      <Text className="mt-0.5 text-xs text-slate-500">
+                      <Text numberOfLines={1} className="mt-0.5 text-xs text-slate-500">
                         {bairroDe(est.endereco)}
                       </Text>
                       <Text className="mt-0.5 text-[11px] text-slate-400">

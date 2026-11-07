@@ -1,6 +1,7 @@
 import {
   expect,
   expectSemOverflowHorizontal,
+  gotoLogin,
   test,
 } from "./helpers";
 
@@ -31,14 +32,44 @@ test("home usa API same-origin, CTA visível e mapa público navegável", async 
   await cta.click();
   await expect(page).toHaveURL(/\/shopping\/[^/]+$/);
   await expect(page.getByText("Shopping QA Centro", { exact: true }).last()).toBeVisible();
-  await expect(page.getByRole("button", { name: "Vaga A-01 — livre" })).toBeVisible();
+  const vaga = page.getByRole("button", { name: "Vaga A-01 — livre" });
+  await expect(vaga).toBeVisible();
   await expect(page.getByRole("button", { name: "Vaga A-03 — ocupada" })).toBeVisible();
+  const caixaVaga = await vaga.boundingBox();
+  expect(caixaVaga?.width).toBeGreaterThanOrEqual(44);
+  expect(caixaVaga?.height).toBeGreaterThanOrEqual(44);
   await expectSemOverflowHorizontal(page);
 
   expect(chamadasApi.length).toBeGreaterThan(0);
   for (const url of chamadasApi) {
     expect(new URL(url).origin, url).toBe("http://127.0.0.1:8000");
   }
+});
+
+
+test("seletor de shopping flutua sobre o conteúdo, é acessível e fecha com Escape", async ({ page }) => {
+  await page.goto("/");
+  const seletor = page.getByRole("button", { name: /Selecionar shopping:/ });
+  await expect(seletor).toBeVisible();
+  await expect(seletor).toHaveAttribute("aria-expanded", "false");
+
+  await seletor.click();
+  await expect(seletor).toHaveAttribute("aria-expanded", "true");
+  const lista = page.getByRole("list", { name: "Lista de shoppings" });
+  await expect(lista).toBeVisible();
+  expect(await lista.evaluate((element) => getComputedStyle(element).position)).toBe("absolute");
+
+  const caixaSeletor = await seletor.boundingBox();
+  const caixaLista = await lista.boundingBox();
+  expect(caixaLista?.y).toBeGreaterThanOrEqual(
+    (caixaSeletor?.y ?? 0) + (caixaSeletor?.height ?? 0) - 2,
+  );
+  await expect(page.getByRole("button", { name: /Shopping QA Norte/ }).first()).toBeVisible();
+
+  await page.keyboard.press("Escape");
+  await expect(lista).toHaveCount(0);
+  await expect(seletor).toHaveAttribute("aria-expanded", "false");
+  await expectSemOverflowHorizontal(page);
 });
 
 
@@ -73,9 +104,25 @@ test("viewport móvel mantém login e home sem overflow e com ações alcançáv
   expect(caixa?.height).toBeGreaterThanOrEqual(44);
   await expectSemOverflowHorizontal(page);
 
-  await page.getByRole("button", { name: /Início/ }).click();
+  await page.getByRole("button", { name: /Voltar ao Início/ }).click();
   await expect(page).toHaveURL(/\/$/);
   await expect(page.getByText("Shopping QA Centro").first()).toBeVisible();
   await expect(page.getByRole("button", { name: /Ver Vagas Disponíveis/ })).toBeVisible();
+  await expectSemOverflowHorizontal(page);
+});
+
+
+test("login em 900px usa coluna única e em 1024px mantém o split sem overflow", async ({ page }) => {
+  await page.setViewportSize({ width: 900, height: 900 });
+  await gotoLogin(page);
+  await expect(page.getByText("Bem-vindo ao Smart Parking")).toBeVisible();
+  await expect(
+    page.getByText("Monitoramento inteligente de vagas em shoppings de Manaus, em tempo real."),
+  ).toHaveCount(0);
+  await expectSemOverflowHorizontal(page);
+
+  await page.setViewportSize({ width: 1024, height: 900 });
+  await gotoLogin(page);
+  await expect(page.getByText("Acesse sua conta para continuar")).toBeVisible();
   await expectSemOverflowHorizontal(page);
 });

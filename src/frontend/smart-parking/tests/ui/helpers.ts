@@ -38,7 +38,9 @@ export async function gotoLogin(page: Page, url = "/login") {
   await page.goto(url);
   // O primeiro frame vem do pré-render. Espera o ramo responsivo já
   // hidratado para não preencher um input que a reconciliação ainda trocará.
-  if ((page.viewportSize()?.width ?? 0) >= 900) {
+  // O split azul do login só existe em desktop real (>= 1024px); em 900px
+  // o layout é de coluna única para não sobrepor o formulário.
+  if ((page.viewportSize()?.width ?? 0) >= 1024) {
     await expect(page.getByText("Acesse sua conta para continuar")).toBeVisible();
   } else {
     await expect(page.getByText("Bem-vindo ao Smart Parking")).toBeVisible();

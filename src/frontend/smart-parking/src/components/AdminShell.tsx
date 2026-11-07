@@ -83,8 +83,13 @@ export default function AdminShell({
                   <Pressable
                     key={item.id}
                     onPress={() => trocar(item.id)}
-                    className={`flex-row items-center gap-2.5 rounded-lg px-3.5 py-2.5 ${
-                      ativo ? "bg-blue-600" : "active:bg-slate-800"
+                    accessibilityRole="tab"
+                    accessibilityLabel={item.label}
+                    accessibilityHint={`Abre a seção ${item.label} do painel`}
+                    accessibilityState={{ selected: ativo, disabled: false }}
+                    hitSlop={6}
+                    className={`flex-row items-center gap-2.5 rounded-lg px-3.5 py-2.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 motion-reduce:transition-none ${
+                      ativo ? "bg-blue-600" : "hover:bg-slate-800 active:bg-slate-800"
                     }`}
                   >
                     <View
@@ -122,13 +127,21 @@ export default function AdminShell({
             <Pressable
               onPress={() => router.push("/" as never)}
               accessibilityRole="button"
-              className="mt-3 rounded-lg border border-slate-700 py-2 active:bg-slate-700"
+              accessibilityLabel="Voltar ao site"
+              hitSlop={6}
+              className="mt-3 rounded-lg border border-slate-700 py-2 active:bg-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
             >
               <Text className="text-center text-xs font-semibold text-slate-200">
                 ← Voltar ao site
               </Text>
             </Pressable>
-            <Pressable onPress={() => signOut()} className="mt-2">
+            <Pressable
+              onPress={() => signOut()}
+              accessibilityRole="button"
+              accessibilityLabel="Encerrar sessão"
+              hitSlop={6}
+              className="mt-2 rounded-lg py-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-300"
+            >
               <Text className="text-center text-xs font-semibold text-red-300">
                 Encerrar sessão
               </Text>
@@ -177,14 +190,18 @@ export default function AdminShell({
             <Pressable
               onPress={() => router.push("/" as never)}
               accessibilityRole="button"
-              className="rounded-full bg-slate-800 px-3 py-1.5 active:bg-slate-700"
+              accessibilityLabel="Voltar ao site"
+              hitSlop={6}
+              className="rounded-full bg-slate-800 px-3 py-1.5 active:bg-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
             >
               <Text className="text-xs font-semibold text-slate-200">← Site</Text>
             </Pressable>
             <Pressable
               onPress={() => signOut()}
               accessibilityRole="button"
-              className="rounded-full bg-red-500/20 px-3 py-1.5 active:bg-red-500/40"
+              accessibilityLabel="Encerrar sessão"
+              hitSlop={6}
+              className="rounded-full bg-red-500/20 px-3 py-1.5 active:bg-red-500/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-300"
             >
               <Text className="text-xs font-semibold text-red-200">Sair</Text>
             </Pressable>
@@ -202,8 +219,13 @@ export default function AdminShell({
               <Pressable
                 key={item.id}
                 onPress={() => trocar(item.id)}
-                className={`rounded-full px-3.5 py-1.5 ${
-                  ativo ? "bg-blue-600" : "bg-slate-800"
+                accessibilityRole="tab"
+                accessibilityLabel={item.label}
+                accessibilityHint={`Abre a seção ${item.label} do painel`}
+                accessibilityState={{ selected: ativo, disabled: false }}
+                hitSlop={6}
+                className={`rounded-full px-3.5 py-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 motion-reduce:transition-none ${
+                  ativo ? "bg-blue-600" : "bg-slate-800 hover:bg-slate-700 active:bg-slate-700"
                 }`}
               >
                 <Text

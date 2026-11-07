@@ -25,7 +25,7 @@ export default function Header({ rotaAtual = "/" }: { rotaAtual?: string }) {
   return (
     <View className="border-b border-slate-200 bg-white">
       <View className="mx-auto w-full max-w-7xl flex-row items-center justify-between gap-4 px-4 py-3 sm:px-6">
-        <Link href="/">
+        <Link href="/" accessibilityRole="link" accessibilityLabel="Ir para a página inicial">
           <LogoBlox />
         </Link>
 
@@ -36,7 +36,13 @@ export default function Header({ rotaAtual = "/" }: { rotaAtual?: string }) {
             return (
               <Link key={l.label} href={l.href as any}>
                 <Pressable
-                  className={`rounded-lg px-3 py-2 ${ativo ? "bg-blue-50" : ""}`}
+                  accessibilityRole="link"
+                  accessibilityLabel={l.label}
+                  accessibilityState={{ selected: ativo }}
+                  hitSlop={4}
+                  className={`rounded-lg px-3 py-2 transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 motion-reduce:transition-none ${
+                    ativo ? "bg-blue-50" : ""
+                  }`}
                 >
                   <Text
                     className={`text-sm font-semibold ${
@@ -68,7 +74,10 @@ export default function Header({ rotaAtual = "/" }: { rotaAtual?: string }) {
                   : [{ text: "Fechar" }],
               )
             }
-            className="hidden px-3 py-2 sm:block"
+            accessibilityRole="button"
+            accessibilityLabel="Abrir ajuda do HelpDesk"
+            hitSlop={4}
+            className="hidden rounded-lg px-3 py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 sm:block"
           >
             <Text className="text-sm font-semibold text-blue-700">HelpDesk</Text>
           </Pressable>
@@ -87,13 +96,23 @@ export default function Header({ rotaAtual = "/" }: { rotaAtual?: string }) {
               </View>
               {canAccessPanel ? (
                 <Link href="/dashboard">
-                  <Pressable className="rounded-full bg-slate-900 px-4 py-2">
+                  <Pressable
+                    accessibilityRole="link"
+                    accessibilityLabel="Abrir painel administrativo"
+                    hitSlop={4}
+                    className="rounded-full bg-slate-900 px-4 py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                  >
                     <Text className="text-sm font-semibold text-white">Painel</Text>
                   </Pressable>
                 </Link>
               ) : (
                 <Link href="/reservas">
-                  <Pressable className="rounded-full bg-blue-50 px-4 py-2">
+                  <Pressable
+                    accessibilityRole="link"
+                    accessibilityLabel="Minhas reservas"
+                    hitSlop={4}
+                    className="rounded-full bg-blue-50 px-4 py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                  >
                     <Text className="text-sm font-semibold text-blue-700">
                       Minhas reservas
                     </Text>
@@ -101,11 +120,22 @@ export default function Header({ rotaAtual = "/" }: { rotaAtual?: string }) {
                 </Link>
               )}
               <Link href="/perfil">
-                <Pressable className="px-1">
+                <Pressable
+                  accessibilityRole="link"
+                  accessibilityLabel="Minha conta"
+                  hitSlop={6}
+                  className="rounded-md px-1 py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                >
                   <Text className="text-sm font-semibold text-blue-700">Minha conta</Text>
                 </Pressable>
               </Link>
-              <Pressable onPress={() => signOut()} className="px-1">
+              <Pressable
+                onPress={() => signOut()}
+                accessibilityRole="button"
+                accessibilityLabel="Encerrar sessão"
+                hitSlop={6}
+                className="rounded-md px-1 py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+              >
                 <Text className="text-sm font-medium text-slate-400">Sair</Text>
               </Pressable>
             </View>
