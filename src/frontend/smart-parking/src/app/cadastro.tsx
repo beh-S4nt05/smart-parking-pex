@@ -141,7 +141,7 @@ export default function Cadastro() {
             <Text className="mt-3 text-2xl font-extrabold text-slate-900">
               Criar conta
             </Text>
-            <Text className="mt-1 text-center text-sm text-slate-500">
+            <Text className="mt-1 text-center text-sm text-slate-600">
               {step === 1
                 ? "Vamos começar com seus dados pessoais"
                 : "Se quiser, cadastre seu veículo agora"}
@@ -158,12 +158,12 @@ export default function Cadastro() {
           </View>
           <View className="mb-5 flex-row justify-between px-1">
             <Text
-              className={`text-[11px] font-semibold ${step === 1 ? "text-blue-700" : "text-slate-400"}`}
+              className={`text-[11px] font-semibold ${step === 1 ? "text-blue-700" : "text-slate-600"}`}
             >
               Seus dados
             </Text>
             <Text
-              className={`text-[11px] font-semibold ${step === 2 ? "text-blue-700" : "text-slate-400"}`}
+              className={`text-[11px] font-semibold ${step === 2 ? "text-blue-700" : "text-slate-600"}`}
             >
               Seu veículo (opcional)
             </Text>
@@ -289,9 +289,12 @@ export default function Cadastro() {
                     setErrors({});
                     setStep(1);
                   }}
-                  className="mt-2 items-center py-1"
+                  accessibilityRole="button"
+                  accessibilityLabel="Voltar à etapa anterior"
+                  hitSlop={4}
+                  className="mt-2 min-h-11 w-full items-center justify-center py-1"
                 >
-                  <Text className="text-sm font-semibold text-slate-500">
+                  <Text className="text-sm font-semibold text-slate-600">
                     ← Voltar
                   </Text>
                 </Pressable>
@@ -299,7 +302,7 @@ export default function Cadastro() {
             )}
           </View>
 
-          <Text className="mt-5 text-center text-sm text-slate-500">
+          <Text className="mt-5 text-center text-sm text-slate-600">
             Já tem conta?{" "}
             <Text className="font-bold text-blue-700" onPress={() => router.replace("/login")}>
               Entrar

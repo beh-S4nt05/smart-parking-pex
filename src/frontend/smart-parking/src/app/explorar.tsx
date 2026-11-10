@@ -50,7 +50,7 @@ export default function Explorar() {
               <Text className="text-2xl font-extrabold text-slate-900 sm:text-3xl">
                 Vagas disponíveis agora
               </Text>
-              <Text className="mt-1 text-sm text-slate-500">
+              <Text className="mt-1 text-sm text-slate-600">
                 Visualização pública — atualizado {desdeAte(atualizadoEm, agora)} ·
                 entre para reservar.
               </Text>
@@ -83,7 +83,7 @@ export default function Explorar() {
               <Text className="mt-2 text-base font-bold text-slate-900">
                 Nenhum shopping encontrado
               </Text>
-              <Text className="mt-1 text-sm text-slate-500">
+              <Text className="mt-1 text-sm text-slate-600">
                 Ajuste a busca ou verifique se a API está no ar.
               </Text>
             </View>

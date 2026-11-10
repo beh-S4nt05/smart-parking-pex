@@ -81,12 +81,18 @@ class WebHandler(BaseHTTPRequestHandler):
     def _caminhos_estaticos(self, pathname: str) -> list[Path]:
         limpo = "/index" if pathname == "/" else pathname.rstrip("/")
         relativo = urllib.parse.unquote(limpo).lstrip("/")
-        return [
+        candidatos = [
             DIST / relativo,
             DIST / f"{relativo}.html",
             DIST / relativo / "index.html",
-            DIST / "index.html",
         ]
+        # Deep-link de rota dinâmica: o export gera shopping/[id].html.
+        if re.fullmatch(r"shopping/[^/]+", relativo):
+            candidatos.append(DIST / "shopping" / "[id].html")
+        # 404 real em vez de index.html (evita React #418 na tela de rota
+        # inexistente e mantém o conteúdo "Unmatched Route" visível).
+        candidatos.append(DIST / "+not-found.html")
+        return candidatos
 
     def _responder_arquivo(self, metodo: str, arquivo: Path) -> None:
         dados = arquivo.read_bytes()

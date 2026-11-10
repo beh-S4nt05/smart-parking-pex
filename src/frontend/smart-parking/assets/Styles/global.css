@@ -21,6 +21,45 @@ button:disabled {
   cursor: not-allowed;
 }
 
+/* ─── feedback visual uniforme para TODOS os botões (rod.14) ───
+   Nem todo Pressable usa o componente <Botao> (links do header, abas do
+   painel, "Mostrar senha", voltar etc.). Sem esta regra esses botões
+   mudavam de cor instantaneamente e não tinham resposta ao toque; a
+   auditoria de UI/UX mediu transition-duration: 0s em dezenas deles.
+   As classes Tailwind (transition-all/active:scale) continuam vencendo
+   pela especificidade, então o <Botao> mantém o comportamento calibrado. */
+button,
+a,
+[role="button"],
+[role="link"] {
+  transition: background-color 150ms ease-out, color 150ms ease-out,
+    border-color 150ms ease-out, transform 150ms ease-out,
+    box-shadow 150ms ease-out;
+}
+button:active:not(:disabled),
+a:active,
+[role="button"]:active:not([aria-disabled="true"]),
+[role="link"]:active {
+  transform: scale(0.98);
+}
+
+/* Texto longo (URL na tela 404, e-mails, placas) não pode empurrar a
+   página para fora da viewport em 360px. */
+a,
+p,
+li,
+div,
+span,
+code,
+pre {
+  overflow-wrap: anywhere;
+}
+img,
+svg,
+canvas {
+  max-width: 100%;
+}
+
 /* Rede de segurança para a preferência do sistema na Web. As animações
    JavaScript (Animated do RN) também são desligadas pelo hook
    useMovimentoReduzido — aqui cobrimos CSS/transições declarativas. */
@@ -32,5 +71,11 @@ button:disabled {
     animation-iteration-count: 1 !important;
     scroll-behavior: auto !important;
     transition-duration: 0.01ms !important;
+  }
+  button:active:not(:disabled),
+  a:active,
+  [role="button"]:active:not([aria-disabled="true"]),
+  [role="link"]:active {
+    transform: none !important;
   }
 }

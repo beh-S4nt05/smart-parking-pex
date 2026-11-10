@@ -141,7 +141,7 @@ export default function SimuladorQR() {
           <Pressable
             onPress={() => router.back()}
             accessibilityRole="button"
-            className="h-8 w-8 items-center justify-center rounded-full border border-slate-200"
+            className="h-11 w-11 items-center justify-center rounded-full border border-slate-200"
           >
             <Text className="text-base text-slate-600">←</Text>
           </Pressable>
@@ -150,7 +150,7 @@ export default function SimuladorQR() {
             <Text className="text-[15px] font-extrabold text-slate-900">
               Simulador de Sensores
             </Text>
-            <Text className="text-[11px] text-slate-500">Gerador de QR · Admin</Text>
+            <Text className="text-[11px] text-slate-600">Gerador de QR · Admin</Text>
           </View>
         </View>
         <Chip label="🛠️ ADMIN" tone="azul" />
@@ -272,7 +272,7 @@ export default function SimuladorQR() {
 
                   <View className="min-w-[240px] flex-1 gap-3">
                     <View>
-                      <Text className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                      <Text className="text-[11px] font-bold uppercase tracking-wider text-slate-600">
                         URL da sessão
                       </Text>
                       <View className="mt-1 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
@@ -314,7 +314,7 @@ export default function SimuladorQR() {
             ) : (
               <Card className="items-center border-dashed p-8">
                 <Text className="text-3xl">📲</Text>
-                <Text className="mt-2 text-sm text-slate-500">
+                <Text className="mt-2 text-sm text-slate-600">
                   Gere o QR no passo 1 para liberar o acesso do celular ao mapa
                   de vagas.
                 </Text>
@@ -346,7 +346,7 @@ export default function SimuladorQR() {
             <Card className="p-5">
               <Text className="text-base font-bold text-slate-900">Sessões ativas</Text>
               {sessoes.length === 0 ? (
-                <Text className="mt-2 text-[13px] text-slate-400">
+                <Text className="mt-2 text-[13px] text-slate-600">
                   Nenhuma sessão pendente.
                 </Text>
               ) : (
@@ -360,7 +360,7 @@ export default function SimuladorQR() {
                         <Text className="text-[13px] font-semibold text-slate-700" numberOfLines={1}>
                           {s.estacionamento_nome} · {s.andar_numero}º
                         </Text>
-                        <Text className="text-[11px] text-slate-400">
+                        <Text className="text-[11px] text-slate-600">
                           expira {new Date(s.expira_em).toLocaleString("pt-BR", {
                             day: "2-digit",
                             month: "2-digit",
@@ -409,7 +409,7 @@ function Passo({ numero, titulo }: { numero: string; titulo: string }) {
 function CampoRotulo({ rotulo, children }: { rotulo: string; children: React.ReactNode }) {
   return (
     <View>
-      <Text className="mb-1.5 text-xs font-semibold text-slate-500">{rotulo}</Text>
+      <Text className="mb-1.5 text-xs font-semibold text-slate-600">{rotulo}</Text>
       {children}
     </View>
   );

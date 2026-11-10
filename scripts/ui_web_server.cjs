@@ -47,12 +47,19 @@ function proxy(req, res) {
 
 function candidateFiles(pathname) {
   const clean = pathname === "/" ? "/index" : pathname.replace(/\/$/, "");
-  return [
+  const candidatos = [
     `.${clean}`,
     `.${clean}.html`,
     `.${clean}/index.html`,
-    "./index.html",
   ];
+  // Rotas dinâmicas do Expo Router são pré-renderizadas em `[id].html`.
+  // Sem este mapeamento, /shopping/<uuid> caía em index.html e o cliente
+  // hidratava uma árvore diferente (React #418 / tela em branco).
+  if (/^\/shopping\/[^/]+$/.test(clean)) candidatos.push("./shopping/[id].html");
+  // 404 real: servir +not-found.html em vez de index.html evita mismatch de
+  // hidratação e mantém a tela "Unmatched Route" utilizável.
+  candidatos.push("./+not-found.html");
+  return candidatos;
 }
 
 function serve(req, res) {

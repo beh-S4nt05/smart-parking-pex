@@ -72,7 +72,7 @@ export default function Hero({ shoppings, selecionadoId, onSelect, onBuscar }: P
         >
           Encontre Vagas de{"\n"}Estacionamento!
         </Text>
-        <Text className="mt-4 max-w-xl text-center text-base leading-6 text-slate-500">
+        <Text className="mt-4 max-w-xl text-center text-base leading-6 text-slate-600">
           {isWide
             ? "Saiba onde estacionar nos principais shoppings de Manaus em tempo real, com atualização automática por andar."
             : "Saiba onde estacionar nos principais shoppings de Manaus, em tempo real, com atualização por andar."}
@@ -160,7 +160,7 @@ export default function Hero({ shoppings, selecionadoId, onSelect, onBuscar }: P
           ].map((i) => (
             <View key={i.t} className="flex-row items-center gap-1.5">
               <View className="h-2 w-2 rounded-full" style={{ backgroundColor: i.c }} />
-              <Text className="text-[13px] text-slate-500">{i.t}</Text>
+              <Text className="text-[13px] text-slate-600">{i.t}</Text>
             </View>
           ))}
         </View>

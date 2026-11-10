@@ -77,7 +77,7 @@ export default function Login() {
           <Text accessibilityRole="header" className="mt-4 text-[22px] font-extrabold text-slate-900">
             Bem-vindo ao Smart Parking
           </Text>
-          <Text className="mt-1 text-sm text-slate-500">
+          <Text className="mt-1 text-sm text-slate-600">
             Entre para acessar sua conta
           </Text>
         </View>
@@ -126,7 +126,7 @@ export default function Login() {
           accessibilityState={{ expanded: recuperar }}
           aria-expanded={recuperar}
           hitSlop={8}
-          className="rounded-md px-1 py-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+          className="min-h-11 flex-row items-center justify-center rounded-md px-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
         >
           <Text className="text-xs font-semibold text-blue-700">
             Esqueci minha senha
@@ -158,7 +158,7 @@ export default function Login() {
             accessibilityRole="button"
             accessibilityLabel="Falar com o suporte por e-mail"
             hitSlop={4}
-            className="mt-2 self-start rounded-full bg-white px-3 py-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+            className="mt-2 min-h-11 flex-row items-center self-start rounded-full bg-white px-3 py-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
           >
             <Text className="text-xs font-bold text-blue-700">
               Ou fale com o suporte por e-mail
@@ -186,13 +186,13 @@ export default function Login() {
       />
 
       <View className="mt-6 flex-row flex-wrap items-center justify-center gap-1">
-        <Text className="text-sm text-slate-500">Não tem conta?</Text>
+        <Text className="text-sm text-slate-600">Não tem conta?</Text>
         <Pressable
           onPress={() => router.push("/cadastro")}
           accessibilityRole="button"
           accessibilityLabel="Cadastre-se"
           hitSlop={8}
-          className="rounded-md px-1 py-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+          className="min-h-11 flex-row items-center justify-center rounded-md px-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
         >
           <Text className="text-sm font-bold text-blue-700">Cadastre-se</Text>
         </Pressable>
@@ -202,7 +202,7 @@ export default function Login() {
           em build de desenvolvimento; num app de produção eles somem sozinhos. */}
       {__DEV__ ? (
       <View className="mt-8 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-        <Text className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+        <Text className="text-[11px] font-bold uppercase tracking-wider text-slate-600">
           Acesso rápido (demo)
         </Text>
         <View className="mt-2.5 gap-2">
@@ -220,7 +220,7 @@ export default function Login() {
             <Text className="text-[13px] font-semibold text-slate-700">
               🚗 Motorista
             </Text>
-            <Text className="text-[11px] text-slate-400">
+            <Text className="text-[11px] text-slate-600">
               motorista@smartparking.com
             </Text>
           </Pressable>
@@ -238,7 +238,7 @@ export default function Login() {
             <Text className="text-[13px] font-semibold text-slate-700">
               🛠️ Administrador
             </Text>
-            <Text className="text-[11px] text-slate-400">
+            <Text className="text-[11px] text-slate-600">
               admin@smartparking.com
             </Text>
           </Pressable>
@@ -255,7 +255,7 @@ export default function Login() {
           <View className="w-full max-w-sm gap-5">
             <Logo size={52} tone="white" />
             <Text accessibilityRole="header" className="text-4xl font-extrabold text-white">Smart Parking</Text>
-            <Text className="text-base leading-6 text-blue-100">
+            <Text className="text-base leading-6 text-blue-50">
               Monitoramento inteligente de vagas em shoppings de Manaus, em tempo
               real.
             </Text>
@@ -275,13 +275,13 @@ export default function Login() {
               accessibilityRole="button"
               accessibilityLabel="Voltar ao Início"
               hitSlop={8}
-              className="mb-5 flex-row items-center gap-1.5 self-start rounded-full border border-slate-200 bg-white px-3.5 py-1.5 active:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+              className="mb-5 min-h-11 flex-row items-center gap-1.5 self-start rounded-full border border-slate-200 bg-white px-3.5 py-1.5 active:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
             >
               <Text className="text-[15px] leading-5 text-blue-600">←</Text>
               <Text className="text-[13px] font-semibold text-slate-600">Início</Text>
             </Pressable>
             <Text accessibilityRole="header" className="text-3xl font-extrabold text-slate-900">Entrar</Text>
-            <Text className="mb-5 mt-1.5 text-sm text-slate-500">
+            <Text className="mb-5 mt-1.5 text-sm text-slate-600">
               Acesse sua conta para continuar
             </Text>
             {formulario}
@@ -305,7 +305,7 @@ export default function Login() {
           accessibilityRole="button"
           accessibilityLabel="Voltar ao Início"
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          className="ml-6 mt-4 flex-row items-center gap-1.5 self-start rounded-full border border-slate-200 bg-white px-3 py-1.5 active:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+          className="ml-6 mt-4 min-h-11 flex-row items-center gap-1.5 self-start rounded-full border border-slate-200 bg-white px-3 py-1.5 active:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
         >
           <Text className="text-[15px] leading-5 text-blue-600">←</Text>
           <Text className="text-[13px] font-semibold text-slate-600">Início</Text>

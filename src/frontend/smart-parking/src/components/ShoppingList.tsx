@@ -104,10 +104,10 @@ export default function ShoppingList({
                       <Text numberOfLines={1} className="text-base font-bold text-slate-900">
                         {est.nome}
                       </Text>
-                      <Text numberOfLines={1} className="mt-0.5 text-[13px] text-slate-500">
+                      <Text numberOfLines={1} className="mt-0.5 text-[13px] text-slate-600">
                         {bairroDe(est.endereco)}
                       </Text>
-                      <Text className="mt-0.5 text-xs text-slate-400">
+                      <Text className="mt-0.5 text-xs text-slate-600">
                         {est.total_andares} andares · {est.total_vagas} vagas
                       </Text>
                     </View>
@@ -119,10 +119,10 @@ export default function ShoppingList({
                       <Text numberOfLines={1} className="text-[15px] font-bold text-slate-900">
                         {est.nome}
                       </Text>
-                      <Text numberOfLines={1} className="mt-0.5 text-xs text-slate-500">
+                      <Text numberOfLines={1} className="mt-0.5 text-xs text-slate-600">
                         {bairroDe(est.endereco)}
                       </Text>
-                      <Text className="mt-0.5 text-[11px] text-slate-400">
+                      <Text className="mt-0.5 text-[11px] text-slate-600">
                         {est.total_andares} andares · {est.total_vagas} vagas
                       </Text>
                     </View>

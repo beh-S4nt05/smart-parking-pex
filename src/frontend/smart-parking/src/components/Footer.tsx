@@ -29,7 +29,7 @@ export default function Footer() {
                   accessibilityRole="link"
                   accessibilityLabel="Abrir painel administrativo"
                   hitSlop={4}
-                  className="rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
+                  className="min-h-11 flex-row items-center rounded-md px-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
                 >
                   <Text className="text-sm text-slate-400 active:text-white">
                     Painel Administrativo
@@ -56,7 +56,7 @@ export default function Footer() {
         </View>
 
         <View className="mt-8 border-t border-slate-800 pt-5">
-          <Text className="text-xs text-slate-500">
+          <Text className="text-xs text-slate-400">
             © 2026 Smart Parking Shoppings. Todos os direitos reservados.
           </Text>
         </View>
