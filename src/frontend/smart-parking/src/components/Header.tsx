@@ -117,7 +117,7 @@ export default function Header({ rotaAtual = "/" }: { rotaAtual?: string }) {
           href="/reservas"
           accessibilityRole="link"
           accessibilityLabel="Minhas reservas"
-            className="min-h-11 min-w-11 flex-row items-center content-center justify-center rounded-full bg-blue-50 px-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+          className="min-h-11 min-w-11 flex-row items-center content-center justify-center rounded-full bg-blue-50 px-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
         >
           <Text className="text-sm font-semibold text-blue-700">Minhas reservas</Text>
         </Link>
@@ -200,7 +200,7 @@ export default function Header({ rotaAtual = "/" }: { rotaAtual?: string }) {
             accessibilityState={{ expanded: menuAberto }}
             aria-expanded={menuAberto}
             hitSlop={4}
-            className="min-h-11 min-w-11 flex-row items-center justify-center gap-1.5 rounded-lg border border-slate-200 px-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+            className="min-h-11 min-w-11 flex-row items-center content-center justify-center gap-1.5 rounded-lg border border-slate-200 px-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
           >
             <IconeMenu aberto={menuAberto} />
             <Text className="hidden text-sm font-semibold text-slate-700 sm:inline">Menu</Text>
@@ -212,7 +212,7 @@ export default function Header({ rotaAtual = "/" }: { rotaAtual?: string }) {
                 href="/dashboard"
                 accessibilityRole="link"
                 accessibilityLabel="Ir para o painel"
-                className="min-h-11 min-w-11 flex-row items-center justify-center rounded-full bg-slate-900 px-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                className="min-h-11 min-w-11 flex-row items-center content-center justify-center rounded-full bg-slate-900 px-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
               >
                 <Text className="text-sm font-semibold text-white">Painel</Text>
               </Link>
@@ -221,7 +221,7 @@ export default function Header({ rotaAtual = "/" }: { rotaAtual?: string }) {
                 href="/reservas"
                 accessibilityRole="link"
                 accessibilityLabel="Minhas reservas"
-                className="min-h-11 min-w-11 flex-row items-center justify-center rounded-full bg-blue-50 px-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                className="min-h-11 min-w-11 flex-row items-center content-center justify-center rounded-full bg-blue-50 px-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
               >
                 <Text className="text-sm font-semibold text-blue-700">Reservas</Text>
               </Link>
