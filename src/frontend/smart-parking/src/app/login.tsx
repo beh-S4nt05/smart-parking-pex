@@ -4,7 +4,7 @@
  * - web: split com painel de marca azul à esquerda (a partir de 1024px)
  * Integração real: POST /auth/login aceita e-mail OU telefone e devolve o
  * usuário no mesmo response; AuthContext guarda os tokens. Redirecionamento
- * por papel: staff → painel, motorista → Home/Mapa.
+ * por papel: staff / painel, motorista / Home/Mapa.
  */
 import { useState } from "react";
 import {
@@ -18,18 +18,13 @@ import {
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useAuth } from "../hooks/useAuth";
-import { useLarguraResponsiva } from "../hooks/useLarguraResponsiva";
 import { apiErrorMessage } from "../services/api";
 import { destinoAposLogin } from "../services/authFlow";
-import { Botao, Campo, Logo } from "../components/ui";
+import { Botao, Campo, IconeVoltar, Logo } from "../components/ui";
 
 export default function Login() {
   const router = useRouter();
   const { next } = useLocalSearchParams<{ next?: string | string[] }>();
-  const width = useLarguraResponsiva();
-  // 900px ainda é um tablet estreito: manter o split ali sobrepunha o painel
-  // azul ao formulário. O layout de duas colunas só entra em desktop real.
-  const isWide = width >= 1024;
   const { signIn } = useAuth();
 
   // "← Início" com destino garantido: router.back() sozinho é mudo quando se
@@ -70,19 +65,7 @@ export default function Login() {
   }
 
   const formulario = (
-    <View className="w-full max-w-[420px] px-6 py-8">
-      {!isWide && (
-        <View className="mb-7 items-center">
-          <Logo size={56} />
-          <Text accessibilityRole="header" className="mt-4 text-[22px] font-extrabold text-slate-900">
-            Bem-vindo ao Smart Parking
-          </Text>
-          <Text className="mt-1 text-sm text-slate-600">
-            Entre para acessar sua conta
-          </Text>
-        </View>
-      )}
-
+    <View className="w-full">
       <Campo
         label="E-mail ou telefone"
         placeholder="voce@email.com"
@@ -145,7 +128,7 @@ export default function Login() {
           </Text>
           <Text className="mt-1 text-xs leading-4 text-slate-600">
             O app não tem e-mail transacional: peça ao administrador do
-            estacionamento uma senha temporária (Painel → Usuários → “Reset
+            estacionamento uma senha temporária (Painel / Usuários / “Reset
             senha”). Ela derruba suas sessões antigas — entre com ela e troque
             em “Minha conta”.
           </Text>
@@ -218,7 +201,7 @@ export default function Login() {
             className="flex-row items-center justify-between rounded-lg border border-slate-200 bg-white px-3 py-2 active:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
           >
             <Text className="text-[13px] font-semibold text-slate-700">
-              🚗 Motorista
+              Motorista
             </Text>
             <Text className="text-[11px] text-slate-600">
               motorista@smartparking.com
@@ -236,7 +219,7 @@ export default function Login() {
             className="flex-row items-center justify-between rounded-lg border border-slate-200 bg-white px-3 py-2 active:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
           >
             <Text className="text-[13px] font-semibold text-slate-700">
-              🛠️ Administrador
+              Administrador
             </Text>
             <Text className="text-[11px] text-slate-600">
               admin@smartparking.com
@@ -248,19 +231,28 @@ export default function Login() {
     </View>
   );
 
-  if (isWide) {
-    return (
+  return (
+    <KeyboardAvoidingView
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      className="flex-1 bg-white"
+    >
       <View className="flex-1 flex-row bg-white">
-        <View className="min-w-0 w-[45%] items-center justify-center bg-blue-600 px-12">
+        {/* Painel de marca apenas em desktop real (>= 1024px). CSS puro: o
+            pré-render já nasce com o split, sem o "flash" do layout mobile
+            que aparecia enquanto useLarguraResponsiva hidratava. */}
+        <View className="hidden w-[45%] min-w-0 items-center justify-center bg-blue-600 px-12 lg:flex">
           <View className="w-full max-w-sm gap-5">
             <Logo size={52} tone="white" />
-            <Text accessibilityRole="header" className="text-4xl font-extrabold text-white">Smart Parking</Text>
+            <Text accessibilityRole="header" className="text-4xl font-extrabold text-white">
+              Smart Parking
+            </Text>
             <Text className="text-base leading-6 text-blue-50">
               Monitoramento inteligente de vagas em shoppings de Manaus, em tempo
               real.
             </Text>
           </View>
         </View>
+
         <ScrollView
           className="min-w-0 flex-1"
           contentContainerStyle={{
@@ -269,49 +261,43 @@ export default function Login() {
             alignItems: "center",
           }}
         >
-          <View className="w-full max-w-[420px] px-8 py-10">
+          <View className="w-full max-w-[420px] px-6 py-8 sm:px-8">
+            {/* botão de voltar vive no fluxo: edge-to-edge no Android não
+                deixa o toque cair na barra de status do sistema. */}
             <Pressable
               onPress={voltarInicio}
               accessibilityRole="button"
               accessibilityLabel="Voltar ao Início"
-              hitSlop={8}
-              className="mb-5 min-h-11 flex-row items-center gap-1.5 self-start rounded-full border border-slate-200 bg-white px-3.5 py-1.5 active:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              className="mb-5 min-h-11 flex-row items-center gap-2 self-start rounded-full border border-slate-200 bg-white px-3.5 py-1.5 active:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
             >
-              <Text className="text-[15px] leading-5 text-blue-600">←</Text>
+              <IconeVoltar />
               <Text className="text-[13px] font-semibold text-slate-600">Início</Text>
             </Pressable>
-            <Text accessibilityRole="header" className="text-3xl font-extrabold text-slate-900">Entrar</Text>
-            <Text className="mb-5 mt-1.5 text-sm text-slate-600">
-              Acesse sua conta para continuar
-            </Text>
+
+            <View className="mb-5 hidden lg:flex">
+              <Text accessibilityRole="header" className="text-3xl font-extrabold text-slate-900">
+                Entrar
+              </Text>
+              <Text className="mt-1.5 text-sm text-slate-600">
+                Acesse sua conta para continuar
+              </Text>
+            </View>
+
+            <View className="mb-7 items-center lg:hidden">
+              <Logo size={56} />
+              <Text accessibilityRole="header" className="mt-4 text-[22px] font-extrabold text-slate-900">
+                Bem-vindo ao Smart Parking
+              </Text>
+              <Text className="mt-1 text-sm text-slate-600">
+                Entre para acessar sua conta
+              </Text>
+            </View>
+
             {formulario}
           </View>
         </ScrollView>
       </View>
-    );
-  }
-
-  return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-      className="flex-1 bg-white"
-    >
-      <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: "center" }}>
-        {/* antes: absolute top-4 — com edge-to-edge no Android o toque caía na
-            barra de status do sistema, nunca no botão. Agora vive no fluxo e
-            herda o respiro seguro do _layout (queda clicável garantida). */}
-        <Pressable
-          onPress={voltarInicio}
-          accessibilityRole="button"
-          accessibilityLabel="Voltar ao Início"
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          className="ml-6 mt-4 min-h-11 flex-row items-center gap-1.5 self-start rounded-full border border-slate-200 bg-white px-3 py-1.5 active:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-        >
-          <Text className="text-[15px] leading-5 text-blue-600">←</Text>
-          <Text className="text-[13px] font-semibold text-slate-600">Início</Text>
-        </Pressable>
-        <View className="items-center">{formulario}</View>
-      </ScrollView>
     </KeyboardAvoidingView>
   );
 }

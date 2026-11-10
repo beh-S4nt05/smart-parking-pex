@@ -74,7 +74,7 @@ export default function Index() {
         <View className="mx-auto w-full max-w-7xl gap-8 px-4 py-8 sm:px-6">
           {erro ? (
             <View className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
-              <Text className="text-[13px] font-medium text-amber-700">⚠️ {erro}</Text>
+              <Text className="text-[13px] font-medium text-amber-700">Aviso: {erro}</Text>
             </View>
           ) : null}
 

@@ -139,6 +139,114 @@ export function LogoBlox({ compact }: { compact?: boolean }) {
   );
 }
 
+// ---------------------------------------------------------------- Ícones desenhados
+/**
+ * Glifos Unicode (☰, ✕, ←, ⚠️) não têm cobertura garantida nas fontes do
+ * navegador/aparelho: medimos botões com 44px que apareciam VAZIOS no
+ * Chromium e no celular. Estes ícones usam só Views com cor de fundo/borda,
+ * então renderizam em qualquer plataforma, com ou sem fonte carregada.
+ */
+export function IconeMenu({ aberto = false, cor = "#334155" }: { aberto?: boolean; cor?: string }) {
+  const barra = { backgroundColor: cor } as const;
+  if (aberto) return <IconeFechar cor={cor} tamanho={16} />;
+  return (
+    <View className="h-4 w-4 items-center justify-center gap-[3px]">
+      <View className="h-[2px] w-4 rounded-full" style={barra} />
+      <View className="h-[2px] w-4 rounded-full" style={barra} />
+      <View className="h-[2px] w-4 rounded-full" style={barra} />
+    </View>
+  );
+}
+
+export function IconeFechar({ cor = "#334155", tamanho = 16 }: { cor?: string; tamanho?: number }) {
+  return (
+    <View className="items-center justify-center" style={{ width: tamanho, height: tamanho }}>
+      <View
+        className="absolute rounded-full"
+        style={{ width: tamanho, height: 2, backgroundColor: cor, transform: [{ rotate: "45deg" }] }}
+      />
+      <View
+        className="absolute rounded-full"
+        style={{ width: tamanho, height: 2, backgroundColor: cor, transform: [{ rotate: "-45deg" }] }}
+      />
+    </View>
+  );
+}
+
+export function IconeChevron({
+  aberto = false,
+  cor = "#2563EB",
+  tamanho = 10,
+}: {
+  aberto?: boolean;
+  cor?: string;
+  tamanho?: number;
+}) {
+  return (
+    <View className="items-center justify-center" style={{ width: tamanho + 4, height: tamanho + 4 }}>
+      <View
+        style={{
+          width: tamanho,
+          height: tamanho,
+          borderRightWidth: 2,
+          borderBottomWidth: 2,
+          borderColor: cor,
+          borderRadius: 1,
+          transform: [{ rotate: aberto ? "225deg" : "45deg" }],
+        }}
+      />
+    </View>
+  );
+}
+
+export function IconeCheck({ cor = "#FFFFFF", tamanho = 11 }: { cor?: string; tamanho?: number }) {
+  return (
+    <View className="items-center justify-center" style={{ width: tamanho + 2, height: tamanho + 2 }}>
+      <View
+        style={{
+          width: tamanho * 0.5,
+          height: tamanho * 0.85,
+          borderRightWidth: 2,
+          borderBottomWidth: 2,
+          borderColor: cor,
+          borderRadius: 1,
+          transform: [{ rotate: "45deg" }],
+        }}
+      />
+    </View>
+  );
+}
+
+export function IconeVoltar({
+  cor = "#2563EB",
+  tamanho = 14,
+}: {
+  cor?: string;
+  tamanho?: number;
+}) {
+  return (
+    <View className="items-center justify-center" style={{ width: tamanho, height: tamanho }}>
+      <View
+        className="absolute rounded-full"
+        style={{ width: tamanho, height: 2, backgroundColor: cor }}
+      />
+      <View
+        className="absolute"
+        style={{
+          left: 0,
+          width: tamanho * 0.55,
+          height: tamanho * 0.55,
+          borderLeftWidth: 2,
+          borderBottomWidth: 2,
+          borderColor: cor,
+          borderRadius: 1,
+          transform: [{ rotate: "45deg" }],
+        }}
+      />
+    </View>
+  );
+}
+
 // ---------------------------------------------------------------- Botões
 // Animated.Value SÓ pode viver no style de um componente Animated. Num
 // <Pressable> comum, o objeto passa cru para o nativo e o Fabric derruba a
@@ -715,6 +823,33 @@ export function formatarMinutos(min: number | undefined | null): string {
 export function formatarMoedaBR(valor: number | undefined | null): string {
   if (valor == null) return "—";
   return valor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+}
+
+// ---------------------------------------------------------------- Esqueleto do mapa
+/** Estado de carregamento com conteúdo: o spinner isolado no meio de uma área
+    branca parecia "tela quebrada" no celular. */
+export function EsqueletoMapa() {
+  return (
+    <View
+      accessibilityRole="progressbar"
+      accessibilityLabel="Carregando mapa de vagas"
+      className="items-center py-10"
+    >
+      <ActivityIndicator size="large" color={colors.primary} />
+      <Text className="mt-4 text-sm font-medium text-slate-600">
+        Carregando mapa de vagas…
+      </Text>
+      <View className="mt-6 w-full flex-row flex-wrap justify-center gap-2">
+        {Array.from({ length: 8 }).map((_, indice) => (
+          <View
+            key={indice}
+            className="rounded-xl border border-slate-200 bg-slate-100"
+            style={{ width: 56, height: 44 }}
+          />
+        ))}
+      </View>
+    </View>
+  );
 }
 
 // ---------------------------------------------------------------- Modal de formulário

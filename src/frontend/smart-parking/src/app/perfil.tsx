@@ -86,7 +86,7 @@ export default function Perfil() {
         is_pcd: f.pcd, // RF-47: declarar/revogar a elegibilidade PCD
       });
       await refreshUser();
-      Alert.alert("Perfil atualizado ✅", "Já vale para a reserva da próxima vaga.");
+      Alert.alert("Perfil atualizado", "Já vale para a reserva da próxima vaga.");
     } catch (e) {
       Alert.alert("Não foi possível salvar", apiErrorMessage(e));
     } finally {
@@ -115,7 +115,7 @@ export default function Perfil() {
       }
       setSenha({ atual: "", nova: "", confirma: "" });
       Alert.alert(
-        "Senha alterada ✅",
+        "Senha alterada",
         "As outras sessões suas foram encerradas; esta continua ativa.",
       );
     } catch (e) {
@@ -195,11 +195,11 @@ export default function Perfil() {
 
           <Text className="px-1 text-xs text-slate-600">
             Esqueceu a senha? Peça ao administrador do estacionamento uma senha temporária
-            (balcão) — ele gera em Painel → Usuários → “Reset senha”.
+            (balcão) — ele gera em Painel / Usuários / “Reset senha”.
           </Text>
         </View>
+        <Footer />
       </ScrollView>
-      <Footer />
     </View>
   );
 }

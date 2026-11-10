@@ -13,7 +13,7 @@ import {
 import { useRouter } from "expo-router";
 import { useAuth } from "../hooks/useAuth";
 import { useLarguraResponsiva } from "../hooks/useLarguraResponsiva";
-import { Logo, SeloAoVivo } from "./ui";
+import { IconeVoltar, Logo, SeloAoVivo } from "./ui";
 
 export type AbaPainel =
   | "dashboard"
@@ -131,9 +131,12 @@ export default function AdminShell({
               hitSlop={6}
               className="mt-3 min-h-11 flex-row items-center justify-center rounded-lg border border-slate-700 py-2 active:bg-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
             >
-              <Text className="text-center text-xs font-semibold text-slate-200">
-                ← Voltar ao site
-              </Text>
+              <View className="flex-row items-center justify-center gap-1.5">
+                <IconeVoltar cor="#E2E8F0" tamanho={12} />
+                <Text className="text-center text-xs font-semibold text-slate-200">
+                  Voltar ao site
+                </Text>
+              </View>
             </Pressable>
             <Pressable
               onPress={() => signOut()}
@@ -194,7 +197,10 @@ export default function AdminShell({
               hitSlop={6}
               className="min-h-11 flex-row items-center justify-center rounded-full bg-slate-800 px-3 py-1.5 active:bg-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
             >
-              <Text className="text-xs font-semibold text-slate-200">← Site</Text>
+              <View className="flex-row items-center gap-1">
+                <IconeVoltar cor="#E2E8F0" tamanho={12} />
+                <Text className="text-xs font-semibold text-slate-200">Site</Text>
+              </View>
             </Pressable>
             <Pressable
               onPress={() => signOut()}

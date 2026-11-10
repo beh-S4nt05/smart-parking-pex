@@ -15,7 +15,7 @@ import {
 import { useRouter } from "expo-router";
 import { useAuth } from "../hooks/useAuth";
 import { apiErrorMessage } from "../services/api";
-import { Botao, Campo, Checkbox, Logo } from "../components/ui";
+import { Botao, Campo, Checkbox, IconeCheck, IconeVoltar, Logo } from "../components/ui";
 
 type FormState = {
   nome: string;
@@ -294,9 +294,10 @@ export default function Cadastro() {
                   hitSlop={4}
                   className="mt-2 min-h-11 w-full items-center justify-center py-1"
                 >
-                  <Text className="text-sm font-semibold text-slate-600">
-                    ← Voltar
-                  </Text>
+                  <View className="flex-row items-center gap-2">
+                    <IconeVoltar />
+                    <Text className="text-sm font-semibold text-slate-600">Voltar</Text>
+                  </View>
                 </Pressable>
               </>
             )}
@@ -328,9 +329,11 @@ function PassoEtapa({
     <View
       className={`h-6 w-6 items-center justify-center rounded-full ${fundo}`}
     >
-      <Text className="text-[11px] font-bold text-white">
-        {concluido ? "✓" : numero}
-      </Text>
+      {concluido ? (
+        <IconeCheck cor="#FFFFFF" tamanho={11} />
+      ) : (
+        <Text className="text-[11px] font-bold text-white">{numero}</Text>
+      )}
     </View>
   );
 }

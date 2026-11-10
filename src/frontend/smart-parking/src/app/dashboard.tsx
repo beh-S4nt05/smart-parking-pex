@@ -298,7 +298,7 @@ function AbaDashboard({
     <View className="gap-5">
       {erro ? (
         <View className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
-          <Text className="text-[13px] font-medium text-amber-700">⚠️ {erro}</Text>
+          <Text className="text-[13px] font-medium text-amber-700">Aviso: {erro}</Text>
         </View>
       ) : null}
 
@@ -583,7 +583,7 @@ function AbaEstacionamentos({
           taxa_hora: Math.max(0, num(novo.taxa, 0)),
         });
         Alert.alert(
-          "Estacionamento criado ✅",
+          "Estacionamento criado",
           "Agora adicione os andares e gere as vagas em lote para o mapa funcionar.",
         );
       } else if (modal.tipo === "andar") {
@@ -592,7 +592,7 @@ function AbaEstacionamentos({
           numero_andar: Math.round(num(andarF.numero, 1)),
           capacidade: Math.max(1, Math.round(num(andarF.capacidade, 10))),
         });
-        Alert.alert("Andar criado ✅", "Use “Vagas em lote” para popular o mapa dele.");
+        Alert.alert("Andar criado", "Use “Vagas em lote” para popular o mapa dele.");
       } else if (modal.tipo === "editar") {
         if (novo.nome.trim().length < 2) throw new Error("Informe o nome do estacionamento");
         await parkingApi.atualizarEstacionamento(modal.est.id, {
@@ -602,7 +602,7 @@ function AbaEstacionamentos({
           hora_fechamento: novo.fechamento || "23:00",
           taxa_hora: Math.max(0, num(novo.taxa, 0)),
         });
-        Alert.alert("Alterações salvas ✅", modal.est.nome + " foi atualizado.");
+        Alert.alert("Alterações salvas", modal.est.nome + " foi atualizado.");
       } else {
         if (!loteF.andarId) throw new Error("Escolha o andar que vai receber as vagas");
         const criadas = await parkingApi.criarVagasEmLote({
@@ -611,7 +611,7 @@ function AbaEstacionamentos({
           prefixo_codigo: (loteF.prefixo || "A").toUpperCase().slice(0, 2),
           tipo: loteF.tipo as "comum" | "pcd" | "idoso" | "moto" | "eletrico",
         });
-        Alert.alert("Vagas geradas ✅", `${criadas.length} vagas criadas com códigos em sequência.`);
+        Alert.alert("Vagas geradas", `${criadas.length} vagas criadas com códigos em sequência.`);
       }
       setModal(null);
       onChanged();
@@ -1458,7 +1458,7 @@ function AbaUsuarios({
       setUsuarios((prev) => [novo, ...prev]);
       setModal(false);
       setF({ nome: "", email: "", senha: "", role: "usuario", estacionamento_id: null });
-      Alert.alert("Usuário criado ✅", `${novo.nome} já pode entrar com a senha cadastrada.`);
+      Alert.alert("Usuário criado", `${novo.nome} já pode entrar com a senha cadastrada.`);
     } catch (e) {
       Alert.alert("Não foi possível criar", apiErrorMessage(e));
     } finally {
@@ -1540,7 +1540,7 @@ function AbaUsuarios({
 
       {erro ? (
         <View className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
-          <Text className="text-[13px] text-amber-700">⚠️ {erro}</Text>
+          <Text className="text-[13px] text-amber-700">Aviso: {erro}</Text>
         </View>
       ) : null}
       {carregando ? <BlocoCentral /> : null}
@@ -1610,7 +1610,7 @@ function AbaUsuarios({
         <View className="mb-3 flex-row flex-wrap gap-2">
           {(
             [
-              ["usuario", "🚗 Motorista"],
+              ["usuario", "Motorista"],
               ["gestor", "🏬 Gestor de shopping"],
               ["financeiro", "💰 Financeiro"],
               ["admin", "👑 Admin global"],

@@ -20,7 +20,7 @@ import { useRouter } from "expo-router";
 import { useAuth } from "../hooks/useAuth";
 import { useEstacionamentos } from "../hooks/useEstacionamentos";
 import { apiErrorMessage, parkingApi } from "../services/api";
-import { Botao, Card, Chip, Logo } from "../components/ui";
+import { Botao, Card, Chip, IconeFechar, IconeVoltar, Logo } from "../components/ui";
 import type { SimSession } from "../types/api";
 
 export default function SimuladorQR() {
@@ -143,7 +143,7 @@ export default function SimuladorQR() {
             accessibilityRole="button"
             className="h-11 w-11 items-center justify-center rounded-full border border-slate-200"
           >
-            <Text className="text-base text-slate-600">←</Text>
+            <IconeVoltar cor="#475569" tamanho={16} />
           </Pressable>
           <Logo size={30} />
           <View>
@@ -153,7 +153,7 @@ export default function SimuladorQR() {
             <Text className="text-[11px] text-slate-600">Gerador de QR · Admin</Text>
           </View>
         </View>
-        <Chip label="🛠️ ADMIN" tone="azul" />
+        <Chip label="ADMIN" tone="azul" />
       </View>
 
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 48 }}>
@@ -381,7 +381,7 @@ export default function SimuladorQR() {
                         }}
                         hitSlop={8}
                       >
-                        <Text className="text-xs font-bold text-red-500">✕</Text>
+                        <IconeFechar cor="#DC2626" tamanho={12} />
                       </Pressable>
                     </View>
                   ))}

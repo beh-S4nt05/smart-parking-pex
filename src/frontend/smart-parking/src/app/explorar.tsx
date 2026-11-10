@@ -45,8 +45,8 @@ export default function Explorar() {
         }
       >
         <View className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6">
-          <View className="mb-5 flex-row flex-wrap items-end justify-between gap-3">
-            <View>
+          <View className="mb-5 flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
+            <View className="min-w-0 flex-1">
               <Text className="text-2xl font-extrabold text-slate-900 sm:text-3xl">
                 Vagas disponíveis agora
               </Text>
@@ -55,11 +55,13 @@ export default function Explorar() {
                 entre para reservar.
               </Text>
             </View>
-            <View className="flex-row items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1">
-              <View className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-              <Text className="text-[11px] font-semibold text-emerald-700">
-                Ao vivo
-              </Text>
+            <View className="self-start rounded-full border border-emerald-200 bg-emerald-50 sm:self-auto">
+              <View className="flex-row items-center gap-1.5 px-2.5 py-1">
+                <View className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                <Text className="text-[11px] font-semibold text-emerald-700">
+                  Ao vivo
+                </Text>
+              </View>
             </View>
           </View>
 
@@ -73,13 +75,12 @@ export default function Explorar() {
 
           {erro ? (
             <View className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
-              <Text className="text-[13px] font-medium text-amber-700">⚠️ {erro}</Text>
+              <Text className="text-[13px] font-medium text-amber-700">Aviso: {erro}</Text>
             </View>
           ) : null}
 
           {filtrados.length === 0 && !loading ? (
             <View className="items-center rounded-2xl border border-slate-200 bg-white p-10">
-              <Text className="text-3xl">🔍</Text>
               <Text className="mt-2 text-base font-bold text-slate-900">
                 Nenhum shopping encontrado
               </Text>
@@ -95,8 +96,8 @@ export default function Explorar() {
           )}
 
           {/* CTA de cadastro para reservar */}
-          <View className="mt-8 flex-row flex-wrap items-center justify-between gap-4 rounded-2xl bg-slate-900 p-6">
-            <View>
+          <View className="mt-8 flex-col gap-4 rounded-2xl bg-slate-900 p-6 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+            <View className="min-w-0 sm:flex-1">
               <Text className="text-lg font-bold text-white">
                 Quer garantir sua vaga antes de sair de casa?
               </Text>
@@ -107,7 +108,7 @@ export default function Explorar() {
             <Botao
               label="Criar conta grátis"
               onPress={() => router.push("/cadastro")}
-              className="px-6 py-3"
+              className="w-full px-6 py-3 sm:w-auto"
             />
           </View>
         </View>

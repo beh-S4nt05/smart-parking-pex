@@ -7,7 +7,7 @@ import { useEffect, useState } from "react";
 import { Platform, Pressable, ScrollView, Text, View } from "react-native";
 import { colors } from "../theme";
 import { useLarguraResponsiva } from "../hooks/useLarguraResponsiva";
-import { Botao } from "./ui";
+import { Botao, IconeChevron } from "./ui";
 import ShoppingList from "./ShoppingList";
 import type { Estacionamento } from "../types/api";
 
@@ -109,9 +109,7 @@ export default function Hero({ shoppings, selecionadoId, onSelect, onBuscar }: P
               >
                 {vazio ? "Carregando shoppings…" : `${nomeSelecionado} — Manaus, AM`}
               </Text>
-              <Text className="text-base leading-5 text-blue-600">
-                {listaAberta ? "˄" : "⌄"}
-              </Text>
+              <IconeChevron aberto={listaAberta} />
             </Pressable>
 
             {listaAberta && !vazio ? (
@@ -145,7 +143,7 @@ export default function Hero({ shoppings, selecionadoId, onSelect, onBuscar }: P
           </View>
 
           <Botao
-            label="Ver Vagas Disponíveis  →"
+            label="Ver Vagas Disponíveis"
             onPress={onBuscar}
             className={isWide ? "relative z-0" : "relative z-0 w-full"}
           />

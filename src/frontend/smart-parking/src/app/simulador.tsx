@@ -25,7 +25,7 @@ import { useMapaVagas } from "../hooks/useMapaVagas";
 import { useAgora, desdeAte } from "../hooks/useAgora";
 import { apiErrorMessage, parkingApi } from "../services/api";
 import VagaMapa from "../components/VagaMapa";
-import { Botao, Chip, Logo } from "../components/ui";
+import { Botao, Chip, IconeFechar, Logo } from "../components/ui";
 import type { SimSession } from "../types/api";
 
 export default function Simulador() {
@@ -301,7 +301,7 @@ function SimuladorInterno({
     <View className="gap-3">
       {erro ? (
         <View className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2">
-          <Text className="text-xs text-amber-700">⚠️ {erro}</Text>
+          <Text className="text-xs text-amber-700">Aviso: {erro}</Text>
         </View>
       ) : null}
 
@@ -460,7 +460,7 @@ function SimuladorInterno({
               </>
             )}
             <Pressable onPress={() => setSel(new Set())} hitSlop={8}>
-              <Text className="text-sm font-bold text-slate-600">✕</Text>
+              <IconeFechar cor="#475569" tamanho={14} />
             </Pressable>
           </View>
         </View>

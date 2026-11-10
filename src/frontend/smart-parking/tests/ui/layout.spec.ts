@@ -249,3 +249,63 @@ test("menu compacto do header abre, é acessível e fecha com Escape", async ({ 
   await expect(painel).toHaveCount(0);
   await expect(menu).toHaveAttribute("aria-expanded", "false");
 });
+
+
+test("ícones são desenhados, não glifos de fonte que somem", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/");
+  const menu = page.locator('[id="menu-toggle"]');
+  await expect(menu).toBeVisible();
+  const barras = await menu.evaluate((el) =>
+    Array.from(el.querySelectorAll("*")).filter((filho) => {
+      const c = getComputedStyle(filho);
+      return c.backgroundColor !== "rgba(0, 0, 0, 0)" && c.backgroundColor !== "transparent";
+    }).length,
+  );
+  expect(barras, "menu com barras desenhadas").toBeGreaterThanOrEqual(2);
+  const texto = await menu.innerText();
+  expect(texto).not.toMatch(/[☰✕←→⌄˄]/);
+  const cta = page.getByRole("button", { name: /Ver Vagas Disponíveis/ });
+  expect(await cta.innerText()).not.toContain("→");
+});
+
+test("login desktop já nasce com o split, sem flash do layout mobile", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  // domcontentloaded: o pré-render precisa estar correto ANTES da hidratação.
+  await page.goto("/login", { waitUntil: "domcontentloaded" });
+  const painel = page.getByText(
+    "Monitoramento inteligente de vagas em shoppings de Manaus, em tempo real.",
+  );
+  await expect(painel).toBeVisible();
+  const caixa = await painel.boundingBox();
+  expect(caixa?.x).toBeLessThan(700);
+  await expect(page.getByText("Bem-vindo ao Smart Parking")).toBeHidden();
+});
+
+test("rodapé do perfil vem depois do formulário, sem cortar o conteúdo", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await login(page, "admin@smartparking.com", "admin123");
+  await expect(page).not.toHaveURL(/\/login$/);
+  await page.goto("/perfil");
+  await expect(page.getByText("Dados de cadastro")).toBeVisible();
+  const medidas = await page.evaluate(() => {
+    const achar = (txt: string) =>
+      Array.from(document.querySelectorAll("*")).find(
+        (e) => e.children.length === 0 && (e.textContent ?? "").trim() === txt,
+      );
+    const titulo = achar("Segurança");
+    const rodape = Array.from(document.querySelectorAll("*")).find(
+      (e) =>
+        e.children.length === 0 &&
+        (e.textContent ?? "").includes("Todos os direitos reservados"),
+    );
+    return {
+      tituloY: titulo?.getBoundingClientRect().bottom ?? 0,
+      rodapeY: rodape?.getBoundingClientRect().top ?? 0,
+      doc: Math.max(document.documentElement.scrollWidth, document.body.scrollWidth),
+      vp: window.innerWidth,
+    };
+  });
+  expect(medidas.rodapeY, "rodapé abaixo do último card").toBeGreaterThan(medidas.tituloY);
+  expect(medidas.doc).toBeLessThanOrEqual(medidas.vp + 1);
+});

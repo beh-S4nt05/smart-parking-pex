@@ -3,7 +3,7 @@ import { Alert, Linking, Platform, Pressable, Text, View } from "react-native";
 import { Link, useRouter } from "expo-router";
 import { useAuth } from "../hooks/useAuth";
 import { API_URL } from "../services/api";
-import { Botao, LogoBlox, Logo } from "./ui";
+import { Botao, IconeMenu, LogoBlox, Logo } from "./ui";
 
 /**
  * Cabeçalho público unificado, com dois arranjos puramente CSS (sem medir a
@@ -21,10 +21,10 @@ import { Botao, LogoBlox, Logo } from "./ui";
  * árvore de acessibilidade (dois "links" com o mesmo nome).
  */
 const LINKS = [
-  { label: "Home", href: "/" },
-  { label: "Reservar Vaga", href: "/explorar" },
-  { label: "Status do Estacionamento", href: "/" },
-  { label: "Lista de Shoppings", href: "/explorar" },
+  { label: "Home", href: "/", destacar: true },
+  { label: "Reservar Vaga", href: "/explorar", destacar: true },
+  { label: "Status do Estacionamento", href: "/", destacar: false },
+  { label: "Lista de Shoppings", href: "/explorar", destacar: false },
 ] as const;
 
 const CLASSE_LINK =
@@ -64,7 +64,7 @@ export default function Header({ rotaAtual = "/" }: { rotaAtual?: string }) {
 
   const links = (compacto: boolean) =>
     LINKS.map((l) => {
-      const ativo = rotaAtual === l.href && l.label !== "Reservar Vaga";
+      const ativo = l.destacar && rotaAtual === l.href;
       return (
         <Link
           key={l.label}
@@ -204,9 +204,7 @@ export default function Header({ rotaAtual = "/" }: { rotaAtual?: string }) {
             hitSlop={4}
             className="min-h-11 min-w-11 flex-row items-center justify-center gap-1.5 rounded-lg border border-slate-200 px-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
           >
-            <Text className="text-base leading-5 text-slate-700">
-              {menuAberto ? "✕" : "☰"}
-            </Text>
+            <IconeMenu aberto={menuAberto} />
             <Text className="hidden text-sm font-semibold text-slate-700 sm:inline">Menu</Text>
           </Pressable>
 

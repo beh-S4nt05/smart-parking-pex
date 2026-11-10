@@ -9,7 +9,6 @@
  */
 import { useEffect, useMemo, useState } from "react";
 import {
-  ActivityIndicator,
   Alert,
   Platform,
   Pressable,
@@ -30,6 +29,8 @@ import { apiErrorMessage, parkingApi } from "../../services/api";
 import {
   Botao,
   Card,
+  EsqueletoMapa,
+  IconeVoltar,
   LegendaVagas,
   SeloAoVivo,
   StatTile,
@@ -125,7 +126,7 @@ export default function MapaVagas() {
               );
               setVagaSel(null);
               refresh();
-              Alert.alert("Reserva cancelada", `A vaga ${codigo} foi liberada. ✅`);
+              Alert.alert("Reserva cancelada", `A vaga ${codigo} foi liberada.`);
             } catch (e) {
               Alert.alert("Não foi possível cancelar", apiErrorMessage(e));
             }
@@ -512,7 +513,7 @@ export default function MapaVagas() {
               accessibilityRole="button"
               className="h-11 w-11 items-center justify-center rounded-full bg-white"
             >
-              <Text className="text-base font-bold text-slate-900">←</Text>
+              <IconeVoltar cor="#0F172A" tamanho={16} />
             </Pressable>
           }
         />
@@ -524,16 +525,10 @@ export default function MapaVagas() {
         >
           {erro ? (
             <View className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
-              <Text className="text-[13px] font-medium text-amber-700">⚠️ {erro}</Text>
+              <Text className="text-[13px] font-medium text-amber-700">Aviso: {erro}</Text>
             </View>
           ) : null}
-          {loading && !mapa ? (
-            <View className="items-center py-20">
-              <ActivityIndicator size="large" color={colors.primary} />
-            </View>
-          ) : (
-            conteudo
-          )}
+          {loading && !mapa ? <EsqueletoMapa /> : conteudo}
         </ScrollView>
       </View>
     );
@@ -578,16 +573,10 @@ export default function MapaVagas() {
           </View>
           {erro ? (
             <View className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
-              <Text className="text-[13px] font-medium text-amber-700">⚠️ {erro}</Text>
+              <Text className="text-[13px] font-medium text-amber-700">Aviso: {erro}</Text>
             </View>
           ) : null}
-          {loading && !mapa ? (
-            <View className="items-center py-24">
-              <ActivityIndicator size="large" color={colors.primary} />
-            </View>
-          ) : (
-            conteudo
-          )}
+          {loading && !mapa ? <EsqueletoMapa /> : conteudo}
         </View>
       </ScrollView>
     </View>
