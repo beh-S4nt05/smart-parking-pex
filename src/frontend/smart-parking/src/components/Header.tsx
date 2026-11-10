@@ -28,7 +28,7 @@ const LINKS = [
 ] as const;
 
 const CLASSE_LINK =
-  "min-h-11 flex-row items-center rounded-lg px-3 transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 motion-reduce:transition-none";
+  "min-h-11 flex-row content-center rounded-lg px-3 transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 motion-reduce:transition-none";
 
 export default function Header({ rotaAtual = "/" }: { rotaAtual?: string }) {
   const router = useRouter();
@@ -53,12 +53,12 @@ export default function Header({ rotaAtual = "/" }: { rotaAtual?: string }) {
       "Documentação da API em /docs · (92) 98123-0258\nbehsolutionsandautomations@gmail.com",
       Platform.OS === "web"
         ? [
-            { text: "Fechar", style: "cancel" },
-            {
-              text: "Abrir /docs",
-              onPress: () => Linking.openURL(`${API_URL}/docs`),
-            },
-          ]
+          { text: "Fechar", style: "cancel" },
+          {
+            text: "Abrir /docs",
+            onPress: () => Linking.openURL(`${API_URL}/docs`),
+          },
+        ]
         : [{ text: "Fechar" }],
     );
 
@@ -76,9 +76,8 @@ export default function Header({ rotaAtual = "/" }: { rotaAtual?: string }) {
           className={`${CLASSE_LINK} ${compacto ? "w-full" : ""} ${ativo ? "bg-blue-50" : ""}`}
         >
           <Text
-            className={`text-sm font-semibold ${
-              ativo ? "text-blue-700" : "text-slate-700"
-            }`}
+            className={`text-sm font-semibold content-center items-center ${ativo ? "text-blue-700" : "text-slate-700"
+              }`}
           >
             {l.label}
           </Text>
@@ -95,9 +94,8 @@ export default function Header({ rotaAtual = "/" }: { rotaAtual?: string }) {
       accessibilityRole="button"
       accessibilityLabel="Abrir ajuda do HelpDesk"
       hitSlop={4}
-      className={`min-h-11 flex-row items-center rounded-lg px-3 py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
-        compacto ? "w-full" : ""
-      }`}
+      className={`min-h-11 flex-row items-center content-center rounded-lg px-3 py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${compacto ? "w-full" : ""
+        }`}
     >
       <Text className="text-sm font-semibold text-blue-700">HelpDesk</Text>
     </Pressable>
@@ -110,7 +108,7 @@ export default function Header({ rotaAtual = "/" }: { rotaAtual?: string }) {
           href="/dashboard"
           accessibilityRole="link"
           accessibilityLabel="Abrir painel administrativo"
-          className="min-h-11 min-w-11 flex-row items-center justify-center rounded-full bg-slate-900 px-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+          className="min-h-11 min-w-11 flex-row items-center content-center justify-center rounded-full bg-slate-900 px-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
         >
           <Text className="text-sm font-semibold text-white">Painel</Text>
         </Link>
@@ -119,7 +117,7 @@ export default function Header({ rotaAtual = "/" }: { rotaAtual?: string }) {
           href="/reservas"
           accessibilityRole="link"
           accessibilityLabel="Minhas reservas"
-          className="min-h-11 min-w-11 flex-row items-center justify-center rounded-full bg-blue-50 px-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+            className="min-h-11 min-w-11 flex-row items-center content-center justify-center rounded-full bg-blue-50 px-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
         >
           <Text className="text-sm font-semibold text-blue-700">Minhas reservas</Text>
         </Link>
@@ -128,7 +126,7 @@ export default function Header({ rotaAtual = "/" }: { rotaAtual?: string }) {
         href="/perfil"
         accessibilityRole="link"
         accessibilityLabel="Minha conta"
-        className="min-h-11 min-w-11 flex-row items-center justify-center rounded-md px-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+        className="min-h-11 min-w-11 flex-row items-center content-center justify-center rounded-md px-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
       >
         <Text className="text-sm font-semibold text-blue-700">Minha conta</Text>
       </Link>
@@ -137,7 +135,7 @@ export default function Header({ rotaAtual = "/" }: { rotaAtual?: string }) {
         accessibilityRole="button"
         accessibilityLabel="Encerrar sessão"
         hitSlop={6}
-        className="min-h-11 min-w-11 flex-row items-center justify-center rounded-md px-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+        className="min-h-11 min-w-11 flex-row items-center content-center justify-center rounded-md px-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
       >
         <Text className="text-sm font-medium text-slate-600">Sair</Text>
       </Pressable>
@@ -157,7 +155,7 @@ export default function Header({ rotaAtual = "/" }: { rotaAtual?: string }) {
         />
       ) : null}
 
-      <View className="mx-auto w-full max-w-7xl flex-row items-center justify-between gap-3 px-4 py-3 sm:px-6">
+      <View className="mx-auto w-full max-w-7xl flex-row items-center content-center justify-between gap-3 px-4 py-3 sm:px-6">
         <Link
           href="/"
           accessibilityRole="link"
@@ -172,9 +170,9 @@ export default function Header({ rotaAtual = "/" }: { rotaAtual?: string }) {
           <View className="min-w-0 flex-row items-center gap-1">{links(false)}</View>
           {ajuda(false)}
           {isAuthenticated ? (
-            <View className="flex-row items-center gap-2">
-              <View className="flex-row items-center gap-2 rounded-full bg-slate-100 py-1 pl-1 pr-3">
-                <View className="h-7 w-7 items-center justify-center rounded-full bg-blue-600">
+            <View className="flex-row items-center content-center gap-2">
+              <View className="flex-row items-center content-center gap-2 rounded-full bg-slate-100 py-1 pl-1 pr-3">
+                <View className="h-7 w-7 items-center content-center justify-center rounded-full bg-blue-600">
                   <Text className="text-xs font-bold text-white">
                     {nomePrim.slice(0, 1).toUpperCase()}
                   </Text>
@@ -241,7 +239,7 @@ export default function Header({ rotaAtual = "/" }: { rotaAtual?: string }) {
               nativeID="menu-navegacao"
               accessibilityRole="menu"
               accessibilityLabel="Menu de navegação"
-              className="absolute right-0 top-full z-30 mt-2 w-64 rounded-2xl border border-slate-200 bg-white p-2"
+              className="absolute right-0 top-full z-30 flex mt-2 w-64 rounded-2xl border border-slate-200 bg-white p-2"
               style={{
                 position: "absolute",
                 elevation: 12,
@@ -260,7 +258,7 @@ export default function Header({ rotaAtual = "/" }: { rotaAtual?: string }) {
                     onPress={() => setMenuAberto(false)}
                     accessibilityRole="link"
                     accessibilityLabel="Minha conta"
-                    className="min-h-11 w-full flex-row items-center rounded-lg px-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                    className="min-h-11 w-full flex-row items-center content-center rounded-lg px-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                   >
                     <Text className="text-sm font-semibold text-blue-700">Minha conta</Text>
                   </Link>
@@ -272,7 +270,7 @@ export default function Header({ rotaAtual = "/" }: { rotaAtual?: string }) {
                     accessibilityRole="button"
                     accessibilityLabel="Encerrar sessão"
                     hitSlop={4}
-                    className="min-h-11 w-full flex-row items-center rounded-lg px-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                    className="min-h-11 w-full flex-row items-center content-center rounded-lg px-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                   >
                     <Text className="text-sm font-medium text-slate-600">Sair</Text>
                   </Pressable>
