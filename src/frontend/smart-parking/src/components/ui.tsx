@@ -133,8 +133,116 @@ export function LogoBlox({ compact }: { compact?: boolean }) {
         >
           Smart Parking
         </Text>
-        <Text className="text-[11px] font-medium text-slate-500">Shoppings</Text>
+        <Text className="text-[11px] font-medium text-slate-600">Shoppings</Text>
       </View>
+    </View>
+  );
+}
+
+// ---------------------------------------------------------------- Ícones desenhados
+/**
+ * Glifos Unicode (☰, ✕, ←, ⚠️) não têm cobertura garantida nas fontes do
+ * navegador/aparelho: medimos botões com 44px que apareciam VAZIOS no
+ * Chromium e no celular. Estes ícones usam só Views com cor de fundo/borda,
+ * então renderizam em qualquer plataforma, com ou sem fonte carregada.
+ */
+export function IconeMenu({ aberto = false, cor = "#334155" }: { aberto?: boolean; cor?: string }) {
+  const barra = { backgroundColor: cor } as const;
+  if (aberto) return <IconeFechar cor={cor} tamanho={16} />;
+  return (
+    <View className="h-4 w-4 items-center justify-center gap-[3px]">
+      <View className="h-[2px] w-4 rounded-full" style={barra} />
+      <View className="h-[2px] w-4 rounded-full" style={barra} />
+      <View className="h-[2px] w-4 rounded-full" style={barra} />
+    </View>
+  );
+}
+
+export function IconeFechar({ cor = "#334155", tamanho = 16 }: { cor?: string; tamanho?: number }) {
+  return (
+    <View className="items-center justify-center" style={{ width: tamanho, height: tamanho }}>
+      <View
+        className="absolute rounded-full"
+        style={{ width: tamanho, height: 2, backgroundColor: cor, transform: [{ rotate: "45deg" }] }}
+      />
+      <View
+        className="absolute rounded-full"
+        style={{ width: tamanho, height: 2, backgroundColor: cor, transform: [{ rotate: "-45deg" }] }}
+      />
+    </View>
+  );
+}
+
+export function IconeChevron({
+  aberto = false,
+  cor = "#2563EB",
+  tamanho = 10,
+}: {
+  aberto?: boolean;
+  cor?: string;
+  tamanho?: number;
+}) {
+  return (
+    <View className="items-center justify-center" style={{ width: tamanho + 4, height: tamanho + 4 }}>
+      <View
+        style={{
+          width: tamanho,
+          height: tamanho,
+          borderRightWidth: 2,
+          borderBottomWidth: 2,
+          borderColor: cor,
+          borderRadius: 1,
+          transform: [{ rotate: aberto ? "225deg" : "45deg" }],
+        }}
+      />
+    </View>
+  );
+}
+
+export function IconeCheck({ cor = "#FFFFFF", tamanho = 11 }: { cor?: string; tamanho?: number }) {
+  return (
+    <View className="items-center justify-center" style={{ width: tamanho + 2, height: tamanho + 2 }}>
+      <View
+        style={{
+          width: tamanho * 0.5,
+          height: tamanho * 0.85,
+          borderRightWidth: 2,
+          borderBottomWidth: 2,
+          borderColor: cor,
+          borderRadius: 1,
+          transform: [{ rotate: "45deg" }],
+        }}
+      />
+    </View>
+  );
+}
+
+export function IconeVoltar({
+  cor = "#2563EB",
+  tamanho = 14,
+}: {
+  cor?: string;
+  tamanho?: number;
+}) {
+  return (
+    <View className="items-center justify-center" style={{ width: tamanho, height: tamanho }}>
+      <View
+        className="absolute rounded-full"
+        style={{ width: tamanho, height: 2, backgroundColor: cor }}
+      />
+      <View
+        className="absolute"
+        style={{
+          left: 0,
+          width: tamanho * 0.55,
+          height: tamanho * 0.55,
+          borderLeftWidth: 2,
+          borderBottomWidth: 2,
+          borderColor: cor,
+          borderRadius: 1,
+          transform: [{ rotate: "45deg" }],
+        }}
+      />
     </View>
   );
 }
@@ -301,7 +409,7 @@ export function TituloSecao({
       <View>
         <Text className="text-xl font-bold text-slate-900">{titulo}</Text>
         {subtitulo ? (
-          <Text className="mt-0.5 text-sm text-slate-500">{subtitulo}</Text>
+          <Text className="mt-0.5 text-sm text-slate-600">{subtitulo}</Text>
         ) : null}
       </View>
       <View className="flex-row items-center gap-3">
@@ -375,7 +483,7 @@ export function StatTile({
   const t = tones[tone];
   return (
     <View className={`items-start rounded-2xl p-4 ${t.bg} ${className}`}>
-      <Text className="text-[13px] font-medium text-slate-500">{rotulo}</Text>
+      <Text className="text-[13px] font-medium text-slate-600">{rotulo}</Text>
       <Text className={`mt-1 text-2xl font-extrabold ${t.text}`}>{valor}</Text>
     </View>
   );
@@ -395,7 +503,7 @@ export function Chip({
     ambar: "bg-amber-100 text-amber-700",
     azul: "bg-blue-100 text-blue-700",
     neutro: "bg-slate-100 text-slate-600",
-    vaga: "bg-slate-100 text-slate-500",
+    vaga: "bg-slate-100 text-slate-600",
   };
   return (
     <View className={`self-start rounded-full px-2.5 py-1 ${tones[tone]}`}>
@@ -466,11 +574,11 @@ export function Campo({
       <Text className="mb-1.5 text-[13px] font-semibold text-slate-700">
         {label}
         {opcional ? (
-          <Text className="font-normal text-slate-400"> (opcional)</Text>
+          <Text className="font-normal text-slate-600"> (opcional)</Text>
         ) : null}
       </Text>
       <View
-        className={`flex-row items-center rounded-xl border-2 bg-slate-50 px-3.5 ${
+        className={`min-w-0 flex-row items-center rounded-xl border-2 bg-slate-50 px-3.5 ${
           erro ? "border-red-300 bg-red-50" : "border-slate-200"
         }`}
       >
@@ -478,9 +586,9 @@ export function Campo({
           accessibilityLabel={label}
           accessibilityHint={descricao}
           accessibilityState={{ disabled: desabilitado }}
-          placeholderTextColor="#94A3B8"
+          placeholderTextColor="#64748B"
           secureTextEntry={senha && !visivel}
-          className={`flex-1 py-3 text-base ${
+          className={`min-w-0 flex-1 py-3 text-base ${
             erro ? "text-red-600" : "text-slate-900"
           }`}
           {...(Platform.OS === "web"
@@ -500,16 +608,16 @@ export function Campo({
             accessibilityLabel={visivel ? "Ocultar senha" : "Mostrar senha"}
             accessibilityHint="Alterna a visualização da senha digitada"
             accessibilityState={{ disabled: !onAlternarVisivel }}
-            className="rounded-md px-1 py-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+            className="min-h-11 min-w-11 flex-row items-center justify-center rounded-md px-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
           >
-            <Text className="pl-2 text-xs font-semibold text-blue-600">
+            <Text className="text-xs font-semibold text-blue-600">
               {visivel ? "Ocultar" : "Mostrar"}
             </Text>
           </Pressable>
         ) : null}
       </View>
       {helper && !erro ? (
-        <Text className="mt-1 text-[11px] text-slate-400">{helper}</Text>
+        <Text className="mt-1 text-[11px] text-slate-600">{helper}</Text>
       ) : null}
       <Text
         accessibilityRole={erro ? "alert" : undefined}
@@ -568,7 +676,7 @@ export function Checkbox({
         </Text>
       </Pressable>
       {hint ? (
-        <Text className="mt-1 text-[11px] leading-4 text-slate-400">{hint}</Text>
+        <Text className="mt-1 text-[11px] leading-4 text-slate-600">{hint}</Text>
       ) : null}
     </View>
   );
@@ -636,7 +744,7 @@ export function LegendaVagas({
       {lista.map((i) => (
         <View key={i.rotulo} className="flex-row items-center gap-1.5">
           <View className="h-2 w-2 rounded-full" style={{ backgroundColor: i.cor }} />
-          <Text className="text-xs text-slate-500">{i.rotulo}</Text>
+          <Text className="text-xs text-slate-600">{i.rotulo}</Text>
         </View>
       ))}
     </View>
@@ -648,7 +756,7 @@ export function BlocoCarregando({ label = "Carregando…" }: { label?: string })
   return (
     <View className="items-center gap-3 py-16">
       <ActivityIndicator size="large" color={colors.primary} />
-      <Text className="text-sm text-slate-500">{label}</Text>
+      <Text className="text-sm text-slate-600">{label}</Text>
     </View>
   );
 }
@@ -669,7 +777,7 @@ export function BlocoErro({
       <Text className="text-3xl">🚧</Text>
       <Text className="text-base font-bold text-slate-900">{titulo}</Text>
       {descricao ? (
-        <Text className="text-center text-sm text-slate-500">{descricao}</Text>
+        <Text className="text-center text-sm text-slate-600">{descricao}</Text>
       ) : null}
       {onAcao ? <Botao label={acaoLabel} onPress={onAcao} variant="contorno" /> : null}
     </Card>
@@ -694,7 +802,7 @@ export function BlocoVazio({
       <Text className="text-4xl">{emoji}</Text>
       <Text className="text-base font-bold text-slate-900">{titulo}</Text>
       {descricao ? (
-        <Text className="text-center text-sm text-slate-500">{descricao}</Text>
+        <Text className="text-center text-sm text-slate-600">{descricao}</Text>
       ) : null}
       {acaoLabel && onAcao ? (
         <Botao label={acaoLabel} onPress={onAcao} className="mt-1" />
@@ -715,6 +823,33 @@ export function formatarMinutos(min: number | undefined | null): string {
 export function formatarMoedaBR(valor: number | undefined | null): string {
   if (valor == null) return "—";
   return valor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+}
+
+// ---------------------------------------------------------------- Esqueleto do mapa
+/** Estado de carregamento com conteúdo: o spinner isolado no meio de uma área
+    branca parecia "tela quebrada" no celular. */
+export function EsqueletoMapa() {
+  return (
+    <View
+      accessibilityRole="progressbar"
+      accessibilityLabel="Carregando mapa de vagas"
+      className="items-center py-10"
+    >
+      <ActivityIndicator size="large" color={colors.primary} />
+      <Text className="mt-4 text-sm font-medium text-slate-600">
+        Carregando mapa de vagas…
+      </Text>
+      <View className="mt-6 w-full flex-row flex-wrap justify-center gap-2">
+        {Array.from({ length: 8 }).map((_, indice) => (
+          <View
+            key={indice}
+            className="rounded-xl border border-slate-200 bg-slate-100"
+            style={{ width: 56, height: 44 }}
+          />
+        ))}
+      </View>
+    </View>
+  );
 }
 
 // ---------------------------------------------------------------- Modal de formulário
@@ -797,7 +932,7 @@ export function ModalForma({
           <Card className="overflow-hidden p-5">
             <Text className="text-lg font-extrabold text-slate-900">{titulo}</Text>
             {descricao ? (
-              <Text className="mt-0.5 text-[13px] text-slate-500">{descricao}</Text>
+              <Text className="mt-0.5 text-[13px] text-slate-600">{descricao}</Text>
             ) : null}
             <ScrollView
               style={{ maxHeight: 420 }}

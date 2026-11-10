@@ -9,7 +9,6 @@
  */
 import { useEffect, useMemo, useState } from "react";
 import {
-  ActivityIndicator,
   Alert,
   Platform,
   Pressable,
@@ -30,6 +29,8 @@ import { apiErrorMessage, parkingApi } from "../../services/api";
 import {
   Botao,
   Card,
+  EsqueletoMapa,
+  IconeVoltar,
   LegendaVagas,
   SeloAoVivo,
   StatTile,
@@ -125,7 +126,7 @@ export default function MapaVagas() {
               );
               setVagaSel(null);
               refresh();
-              Alert.alert("Reserva cancelada", `A vaga ${codigo} foi liberada. ✅`);
+              Alert.alert("Reserva cancelada", `A vaga ${codigo} foi liberada.`);
             } catch (e) {
               Alert.alert("Não foi possível cancelar", apiErrorMessage(e));
             }
@@ -266,13 +267,13 @@ export default function MapaVagas() {
       className="rounded-2xl p-5"
       style={{ backgroundColor: colors.primary }}
     >
-      <Text className="text-[11px] font-bold uppercase tracking-wider text-blue-200">
+      <Text className="text-[11px] font-bold uppercase tracking-wider text-blue-50">
         Próxima vaga sugerida
       </Text>
       <Text className="mt-1 text-4xl font-extrabold text-white">
         {sugestao?.vaga?.codigo ?? "—"}
       </Text>
-      <Text className="mt-1 text-sm text-blue-100">
+      <Text className="mt-1 text-sm text-blue-50">
         {sugestao?.vaga
           ? `${sugestao.andar_numero}º andar · Vaga ${sugestao.vaga.tipo}`
           : "Sem vagas com esse filtro no momento"}
@@ -357,7 +358,7 @@ export default function MapaVagas() {
 
       {vagasFiltradas.length === 0 && !loading ? (
         <View className="items-center py-12">
-          <Text className="text-base font-semibold text-slate-500">
+          <Text className="text-base font-semibold text-slate-600">
             Nenhuma vaga exibida — troque o filtro ou o andar.
           </Text>
         </View>
@@ -395,7 +396,7 @@ export default function MapaVagas() {
               onPress={() => pedirCancelamentoReserva(reservaDestaVaga.id, vagaSel.codigo)}
             />
           ) : (
-            <Text className="mt-1 text-xs text-slate-500">
+            <Text className="mt-1 text-xs text-slate-600">
               Vaga indisponível para reserva neste momento.
             </Text>
           )}
@@ -510,9 +511,9 @@ export default function MapaVagas() {
             <Pressable
               onPress={() => router.back()}
               accessibilityRole="button"
-              className="h-9 w-9 items-center justify-center rounded-full bg-white"
+              className="h-11 w-11 items-center justify-center rounded-full bg-white"
             >
-              <Text className="text-base font-bold text-slate-900">←</Text>
+              <IconeVoltar cor="#0F172A" tamanho={16} />
             </Pressable>
           }
         />
@@ -524,16 +525,10 @@ export default function MapaVagas() {
         >
           {erro ? (
             <View className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
-              <Text className="text-[13px] font-medium text-amber-700">⚠️ {erro}</Text>
+              <Text className="text-[13px] font-medium text-amber-700">Aviso: {erro}</Text>
             </View>
           ) : null}
-          {loading && !mapa ? (
-            <View className="items-center py-20">
-              <ActivityIndicator size="large" color={colors.primary} />
-            </View>
-          ) : (
-            conteudo
-          )}
+          {loading && !mapa ? <EsqueletoMapa /> : conteudo}
         </ScrollView>
       </View>
     );
@@ -553,7 +548,7 @@ export default function MapaVagas() {
           <View className="mb-6 flex-row flex-wrap items-end justify-between">
             <View>
               <Text className="text-3xl font-extrabold text-slate-900">{titulo}</Text>
-              <Text className="mt-1 text-sm text-slate-500">{subtitulo}</Text>
+              <Text className="mt-1 text-sm text-slate-600">{subtitulo}</Text>
             </View>
             <View className="flex-row items-center gap-2">
               <Pressable
@@ -578,16 +573,10 @@ export default function MapaVagas() {
           </View>
           {erro ? (
             <View className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
-              <Text className="text-[13px] font-medium text-amber-700">⚠️ {erro}</Text>
+              <Text className="text-[13px] font-medium text-amber-700">Aviso: {erro}</Text>
             </View>
           ) : null}
-          {loading && !mapa ? (
-            <View className="items-center py-24">
-              <ActivityIndicator size="large" color={colors.primary} />
-            </View>
-          ) : (
-            conteudo
-          )}
+          {loading && !mapa ? <EsqueletoMapa /> : conteudo}
         </View>
       </ScrollView>
     </View>
@@ -612,7 +601,7 @@ function FiltroPill({
     >
       <Text
         className={`text-[12px] font-semibold ${
-          ativo ? "text-blue-700" : "text-slate-500"
+          ativo ? "text-blue-700" : "text-slate-600"
         }`}
       >
         {item.label}

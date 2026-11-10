@@ -86,7 +86,7 @@ export default function Perfil() {
         is_pcd: f.pcd, // RF-47: declarar/revogar a elegibilidade PCD
       });
       await refreshUser();
-      Alert.alert("Perfil atualizado ✅", "Já vale para a reserva da próxima vaga.");
+      Alert.alert("Perfil atualizado", "Já vale para a reserva da próxima vaga.");
     } catch (e) {
       Alert.alert("Não foi possível salvar", apiErrorMessage(e));
     } finally {
@@ -115,7 +115,7 @@ export default function Perfil() {
       }
       setSenha({ atual: "", nova: "", confirma: "" });
       Alert.alert(
-        "Senha alterada ✅",
+        "Senha alterada",
         "As outras sessões suas foram encerradas; esta continua ativa.",
       );
     } catch (e) {
@@ -133,7 +133,7 @@ export default function Perfil() {
           <View className="flex-row items-center justify-between">
             <View>
               <Text className="text-2xl font-extrabold text-slate-900">Minha conta</Text>
-              <Text className="mt-0.5 text-[13px] text-slate-500">{user.email}</Text>
+              <Text className="mt-0.5 text-[13px] text-slate-600">{user.email}</Text>
             </View>
             <Chip label={ROLE_LABEL[user.role] ?? user.role} tone="azul" />
           </View>
@@ -149,7 +149,7 @@ export default function Perfil() {
               label="Sou pessoa com deficiência (PCD)"
               hint="Com a declaração, você ganha prioridade (e exclusividade) nas vagas PCD. Sem ela, o sistema sempre atribui vaga Comum."
             />
-            <Text className="mt-1 text-xs text-slate-400">
+            <Text className="mt-1 text-xs text-slate-600">
               A placa entra na reserva para a leitura do portão — use maiúsculas sem hífen.
             </Text>
             <Botao
@@ -162,40 +162,44 @@ export default function Perfil() {
 
           <Card className="p-5">
             <Text className="mb-1 text-[15px] font-bold text-slate-800">Segurança</Text>
-            <Text className="mb-3 text-xs text-slate-500">
+            <Text className="mb-3 text-xs text-slate-600">
               Trocar a senha encerra todas as outras sessões (celular, navegador). RF-13/14.
             </Text>
             <Campo label="Senha atual" senha value={senha.atual} onChangeText={(v) => setSenha((p) => ({ ...p, atual: v }))} />
-            <View className="flex-row gap-3">
-              <View className="flex-1">
+            <View className="flex-col gap-0 sm:flex-row sm:gap-3">
+              <View className="w-full sm:min-w-0 sm:flex-1">
                 <Campo label="Nova senha" senha value={senha.nova} onChangeText={(v) => setSenha((p) => ({ ...p, nova: v }))} />
               </View>
-              <View className="flex-1">
+              <View className="w-full sm:min-w-0 sm:flex-1">
                 <Campo label="Confirmar" senha value={senha.confirma} onChangeText={(v) => setSenha((p) => ({ ...p, confirma: v }))} />
               </View>
             </View>
-            <View className="mt-4 flex-row gap-2">
-              <Botao label="Trocar senha" onPress={trocarSenha} loading={trocando} />
+            <View className="mt-4 flex-col gap-2 sm:flex-row">
+              <View className="w-full sm:min-w-0 sm:flex-1">
+                <Botao label="Trocar senha" onPress={trocarSenha} loading={trocando} className="w-full" />
+              </View>
+              <View className="w-full sm:min-w-0 sm:flex-1">
               <Botao
                 label="Sair de todas as sessões"
                 variant="contorno"
-                className="border-red-300"
+                className="w-full border-red-300"
                 onPress={async () => {
                   await signOut();
                   if (Platform.OS === "web") router.push("/login");
                   else router.replace("/login");
                 }}
               />
+              </View>
             </View>
           </Card>
 
-          <Text className="px-1 text-xs text-slate-400">
+          <Text className="px-1 text-xs text-slate-600">
             Esqueceu a senha? Peça ao administrador do estacionamento uma senha temporária
-            (balcão) — ele gera em Painel → Usuários → “Reset senha”.
+            (balcão) — ele gera em Painel / Usuários / “Reset senha”.
           </Text>
         </View>
+        <Footer />
       </ScrollView>
-      <Footer />
     </View>
   );
 }

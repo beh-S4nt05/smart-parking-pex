@@ -78,15 +78,29 @@ class WebHandler(BaseHTTPRequestHandler):
     def log_message(self, *_args: object) -> None:
         return
 
+    def handle_one_request(self) -> None:  # noqa: N802
+        # Conexões fechadas pelo Chrome antes do request chegar não são
+        # falha da aplicação; só não devem virar traceback na saída de QA.
+        try:
+            super().handle_one_request()
+        except (ConnectionResetError, BrokenPipeError):
+            self.close_connection = True
+
     def _caminhos_estaticos(self, pathname: str) -> list[Path]:
         limpo = "/index" if pathname == "/" else pathname.rstrip("/")
         relativo = urllib.parse.unquote(limpo).lstrip("/")
-        return [
+        candidatos = [
             DIST / relativo,
             DIST / f"{relativo}.html",
             DIST / relativo / "index.html",
-            DIST / "index.html",
         ]
+        # Deep-link de rota dinâmica: o export gera shopping/[id].html.
+        if re.fullmatch(r"shopping/[^/]+", relativo):
+            candidatos.append(DIST / "shopping" / "[id].html")
+        # 404 real em vez de index.html (evita React #418 na tela de rota
+        # inexistente e mantém o conteúdo "Unmatched Route" visível).
+        candidatos.append(DIST / "+not-found.html")
+        return candidatos
 
     def _responder_arquivo(self, metodo: str, arquivo: Path) -> None:
         dados = arquivo.read_bytes()
@@ -409,7 +423,9 @@ def responsividade_login(page, _api_urls: list[str]) -> None:
     page.set_viewport_size({"width": 900, "height": 900})
     page.goto(BASE_URL + "/login")
     expect(page.get_by_text("Bem-vindo ao Smart Parking")).to_be_visible()
-    expect(page.get_by_text("Monitoramento inteligente de vagas", exact=False)).to_have_count(0)
+    # O split agora é CSS puro: o painel existe no DOM em 900px, mas está
+    # escondido por `hidden lg:flex`. O que importa é não estar visível.
+    expect(page.get_by_text("Monitoramento inteligente de vagas", exact=False)).to_be_hidden()
     assert_sem_overflow(page)
 
     page.set_viewport_size({"width": 1024, "height": 900})

@@ -7,7 +7,7 @@ import { useEffect, useState } from "react";
 import { Platform, Pressable, ScrollView, Text, View } from "react-native";
 import { colors } from "../theme";
 import { useLarguraResponsiva } from "../hooks/useLarguraResponsiva";
-import { Botao } from "./ui";
+import { Botao, IconeChevron } from "./ui";
 import ShoppingList from "./ShoppingList";
 import type { Estacionamento } from "../types/api";
 
@@ -72,7 +72,7 @@ export default function Hero({ shoppings, selecionadoId, onSelect, onBuscar }: P
         >
           Encontre Vagas de{"\n"}Estacionamento!
         </Text>
-        <Text className="mt-4 max-w-xl text-center text-base leading-6 text-slate-500">
+        <Text className="mt-4 max-w-xl text-center text-base leading-6 text-slate-600">
           {isWide
             ? "Saiba onde estacionar nos principais shoppings de Manaus em tempo real, com atualização automática por andar."
             : "Saiba onde estacionar nos principais shoppings de Manaus, em tempo real, com atualização por andar."}
@@ -109,9 +109,7 @@ export default function Hero({ shoppings, selecionadoId, onSelect, onBuscar }: P
               >
                 {vazio ? "Carregando shoppings…" : `${nomeSelecionado} — Manaus, AM`}
               </Text>
-              <Text className="text-base leading-5 text-blue-600">
-                {listaAberta ? "˄" : "⌄"}
-              </Text>
+              <IconeChevron aberto={listaAberta} />
             </Pressable>
 
             {listaAberta && !vazio ? (
@@ -145,7 +143,7 @@ export default function Hero({ shoppings, selecionadoId, onSelect, onBuscar }: P
           </View>
 
           <Botao
-            label="Ver Vagas Disponíveis  →"
+            label="Ver Vagas Disponíveis"
             onPress={onBuscar}
             className={isWide ? "relative z-0" : "relative z-0 w-full"}
           />
@@ -160,7 +158,7 @@ export default function Hero({ shoppings, selecionadoId, onSelect, onBuscar }: P
           ].map((i) => (
             <View key={i.t} className="flex-row items-center gap-1.5">
               <View className="h-2 w-2 rounded-full" style={{ backgroundColor: i.c }} />
-              <Text className="text-[13px] text-slate-500">{i.t}</Text>
+              <Text className="text-[13px] text-slate-600">{i.t}</Text>
             </View>
           ))}
         </View>

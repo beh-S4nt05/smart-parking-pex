@@ -25,7 +25,7 @@ import { useMapaVagas } from "../hooks/useMapaVagas";
 import { useAgora, desdeAte } from "../hooks/useAgora";
 import { apiErrorMessage, parkingApi } from "../services/api";
 import VagaMapa from "../components/VagaMapa";
-import { Botao, Chip, Logo } from "../components/ui";
+import { Botao, Chip, IconeFechar, Logo } from "../components/ui";
 import type { SimSession } from "../types/api";
 
 export default function Simulador() {
@@ -94,7 +94,7 @@ export default function Simulador() {
       <View className="flex-1 items-center justify-center gap-3 bg-slate-950">
         <Logo size={44} tone="white" />
         <ActivityIndicator color="#60A5FA" />
-        <Text className="text-sm text-slate-400">Validando QR…</Text>
+        <Text className="text-sm text-slate-600">Validando QR…</Text>
       </View>
     );
   }
@@ -107,7 +107,7 @@ export default function Simulador() {
           <Text className="mt-3 text-lg font-extrabold text-slate-900">
             QR inválido
           </Text>
-          <Text className="mt-1 text-center text-sm text-slate-500">
+          <Text className="mt-1 text-center text-sm text-slate-600">
             {motivo ?? "Gere um novo QR no painel do administrador."}
           </Text>
           <Botao
@@ -128,7 +128,7 @@ export default function Simulador() {
           <Text className="mt-3 text-lg font-extrabold text-slate-900">
             Acesso restrito
           </Text>
-          <Text className="mt-1 text-center text-sm text-slate-500">
+          <Text className="mt-1 text-center text-sm text-slate-600">
             O simulador de sensores é exclusivo do administrador global.{" "}
             {isAuthenticated
               ? "Sua conta não tem esse nível de acesso."
@@ -301,7 +301,7 @@ function SimuladorInterno({
     <View className="gap-3">
       {erro ? (
         <View className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2">
-          <Text className="text-xs text-amber-700">⚠️ {erro}</Text>
+          <Text className="text-xs text-amber-700">Aviso: {erro}</Text>
         </View>
       ) : null}
 
@@ -346,7 +346,7 @@ function SimuladorInterno({
               className="min-w-[86px] flex-1 items-center rounded-xl border border-slate-200 bg-white py-2"
             >
               <Text className={`text-lg font-extrabold ${s.cor}`}>{s.v}</Text>
-              <Text className="text-[11px] font-medium text-slate-500">{s.rot}</Text>
+              <Text className="text-[11px] font-medium text-slate-600">{s.rot}</Text>
             </View>
           ))}
         </View>
@@ -393,7 +393,7 @@ function SimuladorInterno({
             rotuloInferior="status"
           />
         )}
-        <Text className="mt-3 text-center text-[11px] text-slate-400">
+        <Text className="mt-3 text-center text-[11px] text-slate-600">
           {modo === "alternar"
             ? "Toque na vaga para inverter o status (o painel reflete em segundos)."
             : "Toque para marcar as vagas e aplique em lote na barra abaixo."}
@@ -424,7 +424,7 @@ function SimuladorInterno({
             </View>
           </View>
         </View>
-        <Text className="mx-auto mt-2 max-w-5xl text-xs text-slate-400">
+        <Text className="mx-auto mt-2 max-w-5xl text-xs text-slate-600">
           {mapa?.estacionamento_nome ?? "…"}
           {andar != null ? ` · ${andar}º andar` : ""} · sessão via QR ·{" "}
           {user?.nome ?? "admin"} · atualizado {desdeAte(atualizadoEm, agora)}
@@ -460,7 +460,7 @@ function SimuladorInterno({
               </>
             )}
             <Pressable onPress={() => setSel(new Set())} hitSlop={8}>
-              <Text className="text-sm font-bold text-slate-400">✕</Text>
+              <IconeFechar cor="#475569" tamanho={14} />
             </Pressable>
           </View>
         </View>

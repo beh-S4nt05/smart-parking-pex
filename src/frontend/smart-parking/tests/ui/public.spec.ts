@@ -118,7 +118,7 @@ test("login em 900px usa coluna única e em 1024px mantém o split sem overflow"
   await expect(page.getByText("Bem-vindo ao Smart Parking")).toBeVisible();
   await expect(
     page.getByText("Monitoramento inteligente de vagas em shoppings de Manaus, em tempo real."),
-  ).toHaveCount(0);
+  ).toBeHidden();
   await expectSemOverflowHorizontal(page);
 
   await page.setViewportSize({ width: 1024, height: 900 });

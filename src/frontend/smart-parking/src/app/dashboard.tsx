@@ -298,7 +298,7 @@ function AbaDashboard({
     <View className="gap-5">
       {erro ? (
         <View className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
-          <Text className="text-[13px] font-medium text-amber-700">⚠️ {erro}</Text>
+          <Text className="text-[13px] font-medium text-amber-700">Aviso: {erro}</Text>
         </View>
       ) : null}
 
@@ -335,7 +335,7 @@ function AbaDashboard({
       </View>
 
       {gestor ? (
-        <Text className="text-xs text-slate-500">
+        <Text className="text-xs text-slate-600">
           Faturamento hoje: {formatarMoedaBR(gestor.faturamento_hoje)} ·{" "}
           {gestor.total_pagamentos_hoje} pagamentos
         </Text>
@@ -348,7 +348,7 @@ function AbaDashboard({
             Ocupação por andar
           </Text>
           {andares.length === 0 ? (
-            <Text className="text-[13px] text-slate-400">
+            <Text className="text-[13px] text-slate-600">
               Selecione um shopping no topo para ver a divisão por andar.
             </Text>
           ) : (
@@ -389,7 +389,7 @@ function AbaDashboard({
                     }}
                   />
                   <Text
-                    className={`text-[9px] ${ativoHora ? "font-bold text-blue-600" : "text-slate-400"}`}
+                    className={`text-[9px] ${ativoHora ? "font-bold text-blue-600" : "text-slate-600"}`}
                   >
                     {b.hora}h
                   </Text>
@@ -399,13 +399,13 @@ function AbaDashboard({
           </View>
           <View className="mt-4 flex-row gap-3">
             <View className="flex-1 rounded-xl bg-slate-50 p-3">
-              <Text className="text-[11px] font-medium text-slate-500">Entradas</Text>
+              <Text className="text-[11px] font-medium text-slate-600">Entradas</Text>
               <Text className="text-xl font-extrabold text-emerald-600">
                 {fluxo?.total_entradas ?? 0}
               </Text>
             </View>
             <View className="flex-1 rounded-xl bg-slate-50 p-3">
-              <Text className="text-[11px] font-medium text-slate-500">Saídas</Text>
+              <Text className="text-[11px] font-medium text-slate-600">Saídas</Text>
               <Text className="text-xl font-extrabold text-red-500">
                 {fluxo?.total_saidas ?? 0}
               </Text>
@@ -420,7 +420,7 @@ function AbaDashboard({
           Últimos eventos de vagas
         </Text>
         {eventos.length === 0 ? (
-          <Text className="text-[13px] text-slate-400">
+          <Text className="text-[13px] text-slate-600">
             Nenhum movimento registrado hoje — altere vagas pelo simulador para
             popular o feed.
           </Text>
@@ -459,11 +459,11 @@ function AbaDashboard({
                             ? ` · ${ev.andar_numero}º`
                             : ""}
                         </Text>
-                        <Text className="text-xs text-slate-400">{hora}</Text>
+                        <Text className="text-xs text-slate-600">{hora}</Text>
                       </View>
                       <View className="flex-row items-center gap-2">
                         <StatusVagaChip status={ev.vaga_status} />
-                        <Text className="text-xs text-slate-500">
+                        <Text className="text-xs text-slate-600">
                           {ORIGEM_LABEL[ev.origem] ?? ev.origem}
                         </Text>
                       </View>
@@ -484,10 +484,10 @@ function AbaDashboard({
                     <View className="w-[110px]">
                       <StatusVagaChip status={ev.vaga_status} />
                     </View>
-                    <Text className="w-[130px] text-sm text-slate-500">
+                    <Text className="w-[130px] text-sm text-slate-600">
                       {ORIGEM_LABEL[ev.origem] ?? ev.origem}
                     </Text>
-                    <Text className="flex-1 text-xs text-slate-400">{hora}</Text>
+                    <Text className="flex-1 text-xs text-slate-600">{hora}</Text>
                   </View>
                 );
               })}
@@ -515,7 +515,7 @@ function AbaDashboard({
 function HeaderCol({ t, w, flex }: { t: string; w: number; flex?: boolean }) {
   return (
     <Text
-      className="text-[11px] font-bold uppercase tracking-wide text-slate-400"
+      className="text-[11px] font-bold uppercase tracking-wide text-slate-600"
       style={flex ? { flex: 1 } : { width: w }}
     >
       {t}
@@ -583,7 +583,7 @@ function AbaEstacionamentos({
           taxa_hora: Math.max(0, num(novo.taxa, 0)),
         });
         Alert.alert(
-          "Estacionamento criado ✅",
+          "Estacionamento criado",
           "Agora adicione os andares e gere as vagas em lote para o mapa funcionar.",
         );
       } else if (modal.tipo === "andar") {
@@ -592,7 +592,7 @@ function AbaEstacionamentos({
           numero_andar: Math.round(num(andarF.numero, 1)),
           capacidade: Math.max(1, Math.round(num(andarF.capacidade, 10))),
         });
-        Alert.alert("Andar criado ✅", "Use “Vagas em lote” para popular o mapa dele.");
+        Alert.alert("Andar criado", "Use “Vagas em lote” para popular o mapa dele.");
       } else if (modal.tipo === "editar") {
         if (novo.nome.trim().length < 2) throw new Error("Informe o nome do estacionamento");
         await parkingApi.atualizarEstacionamento(modal.est.id, {
@@ -602,7 +602,7 @@ function AbaEstacionamentos({
           hora_fechamento: novo.fechamento || "23:00",
           taxa_hora: Math.max(0, num(novo.taxa, 0)),
         });
-        Alert.alert("Alterações salvas ✅", modal.est.nome + " foi atualizado.");
+        Alert.alert("Alterações salvas", modal.est.nome + " foi atualizado.");
       } else {
         if (!loteF.andarId) throw new Error("Escolha o andar que vai receber as vagas");
         const criadas = await parkingApi.criarVagasEmLote({
@@ -611,7 +611,7 @@ function AbaEstacionamentos({
           prefixo_codigo: (loteF.prefixo || "A").toUpperCase().slice(0, 2),
           tipo: loteF.tipo as "comum" | "pcd" | "idoso" | "moto" | "eletrico",
         });
-        Alert.alert("Vagas geradas ✅", `${criadas.length} vagas criadas com códigos em sequência.`);
+        Alert.alert("Vagas geradas", `${criadas.length} vagas criadas com códigos em sequência.`);
       }
       setModal(null);
       onChanged();
@@ -679,8 +679,8 @@ function AbaEstacionamentos({
             <View className="flex-row flex-wrap items-center justify-between gap-3">
               <View className="flex-1" style={{ minWidth: 220 }}>
                 <Text className="text-base font-bold text-slate-900" numberOfLines={1}>{e.nome}</Text>
-                <Text className="mt-0.5 text-[13px] text-slate-500" numberOfLines={1}>{e.endereco}</Text>
-                <Text className="mt-0.5 text-xs text-slate-400">
+                <Text className="mt-0.5 text-[13px] text-slate-600" numberOfLines={1}>{e.endereco}</Text>
+                <Text className="mt-0.5 text-xs text-slate-600">
                   {e.total_andares} andares · {e.total_vagas} vagas ·{" "}
                   {e.hora_abertura}–{e.hora_fechamento} · {formatarMoedaBR(e.taxa_hora)}/h
                 </Text>
@@ -848,7 +848,7 @@ function AbaEstacionamentos({
                 <Campo label="Prefixo dos códigos" autoCapitalize="characters" maxLength={2} value={loteF.prefixo} onChangeText={(v) => setLoteF((f) => ({ ...f, prefixo: v }))} />
               </View>
             </View>
-            <Text className="mb-1.5 mt-1 text-xs font-semibold text-slate-500">Tipo das vagas do lote (ACH-17)</Text>
+            <Text className="mb-1.5 mt-1 text-xs font-semibold text-slate-600">Tipo das vagas do lote (ACH-17)</Text>
             <View className="flex-row flex-wrap gap-2">
               {(
                 [
@@ -866,7 +866,7 @@ function AbaEstacionamentos({
                     onPress={() => setLoteF((f) => ({ ...f, tipo }))}
                     className={`rounded-full border px-3.5 py-1.5 ${ativo ? "border-blue-600 bg-blue-50" : "border-slate-200 bg-white"}`}
                   >
-                    <Text className={`text-[12px] font-semibold ${ativo ? "text-blue-700" : "text-slate-500"}`}>{label}</Text>
+                    <Text className={`text-[12px] font-semibold ${ativo ? "text-blue-700" : "text-slate-600"}`}>{label}</Text>
                   </Pressable>
                 );
               })}
@@ -903,7 +903,7 @@ function AbaAndares({
   if (!est) {
     return (
       <Card className="p-8">
-        <Text className="text-center text-sm text-slate-500">
+        <Text className="text-center text-sm text-slate-600">
           Selecione um estacionamento no topo para inspecionar andares e vagas.
         </Text>
       </Card>
@@ -1043,7 +1043,7 @@ function AbaAndares({
         {andarAtual ? (
           <>
             <View className="mb-3 flex-row flex-wrap items-center justify-between gap-2">
-              <Text className="text-[13px] text-slate-500">
+              <Text className="text-[13px] text-slate-600">
                 {vagas.length} vaga(s) · capacidade {andarAtual.capacidade}
               </Text>
               <View className="flex-row gap-2">
@@ -1054,13 +1054,13 @@ function AbaAndares({
             </View>
             <VagaMapa vagas={vagas.slice(0, 96)} />
             {vagas.length > 96 ? (
-              <Text className="mt-3 text-xs text-slate-400">
+              <Text className="mt-3 text-xs text-slate-600">
                 + {vagas.length - 96} vagas não exibidas aqui — edite pela lista abaixo.
               </Text>
             ) : null}
           </>
         ) : (
-          <Text className="text-center text-[13px] text-slate-400">
+          <Text className="text-center text-[13px] text-slate-600">
             Este estacionamento ainda não tem andares — crie o primeiro acima.
           </Text>
         )}
@@ -1069,7 +1069,7 @@ function AbaAndares({
       {andarAtual && vagas.length > 0 ? (
         <Card className="p-5">
           <Text className="mb-1 text-[15px] font-bold text-slate-800">Editar vagas (RF-33)</Text>
-          <Text className="mb-3 text-xs text-slate-500">
+          <Text className="mb-3 text-xs text-slate-600">
             Ajuste código/tipo sem quebrar o status — as 24 primeiras deste andar.
           </Text>
           <View className="gap-1.5">
@@ -1123,7 +1123,7 @@ function AbaAndares({
         ) : (
           <>
             <Campo label="Código" placeholder="Ex.: A21" autoCapitalize="characters" value={f.codigo} onChangeText={(v) => setF((p) => ({ ...p, codigo: v }))} />
-            <Text className="mb-1.5 mt-1 text-xs font-semibold text-slate-500">Tipo</Text>
+            <Text className="mb-1.5 mt-1 text-xs font-semibold text-slate-600">Tipo</Text>
             <View className="flex-row flex-wrap gap-2">
               {TIPS_VAGA.map(([tipo, label]) => {
                 const ativo = f.tipo === tipo;
@@ -1133,7 +1133,7 @@ function AbaAndares({
                     onPress={() => setF((p) => ({ ...p, tipo }))}
                     className={`rounded-full border px-3.5 py-1.5 ${ativo ? "border-blue-600 bg-blue-50" : "border-slate-200 bg-white"}`}
                   >
-                    <Text className={`text-[12px] font-semibold ${ativo ? "text-blue-700" : "text-slate-500"}`}>{label}</Text>
+                    <Text className={`text-[12px] font-semibold ${ativo ? "text-blue-700" : "text-slate-600"}`}>{label}</Text>
                   </Pressable>
                 );
               })}
@@ -1264,7 +1264,7 @@ function AbaRelatorios({ estSel }: { estSel: string | null }) {
         <Text className="text-[15px] font-bold text-slate-800">
           Ocupação por hora × andar
         </Text>
-        <Text className="mt-0.5 text-xs text-slate-500">
+        <Text className="mt-0.5 text-xs text-slate-600">
           Média de {hist?.dias ?? "—"} dia(s) no período — horas locais (America/Manaus).
         </Text>
         <View className="mt-3 gap-2">
@@ -1285,17 +1285,17 @@ function AbaRelatorios({ estSel }: { estSel: string | null }) {
                   />
                 ))}
               </View>
-              <Text className="w-12 text-right text-[11px] tabular-nums text-slate-500">
+              <Text className="w-12 text-right text-[11px] tabular-nums text-slate-600">
                 {Math.max(...a.ocupacao_por_hora, 0).toFixed(0)}%
               </Text>
             </View>
           ))}
           {(hist?.dados_por_andar ?? []).length === 0 ? (
-            <Text className="text-[13px] text-slate-400">Sem dados no período.</Text>
+            <Text className="text-[13px] text-slate-600">Sem dados no período.</Text>
           ) : (
             <View className="flex-row justify-between pl-16">
               {["0h", "6h", "12h", "18h", "23h"].map((h) => (
-                <Text key={h} className="text-[10px] text-slate-400">{h}</Text>
+                <Text key={h} className="text-[10px] text-slate-600">{h}</Text>
               ))}
             </View>
           )}
@@ -1306,7 +1306,7 @@ function AbaRelatorios({ estSel }: { estSel: string | null }) {
       {rot && rot.por_andar.length > 0 ? (
         <Card className="p-5">
           <Text className="text-[15px] font-bold text-slate-800">Rotação dos andares</Text>
-          <Text className="mt-0.5 text-xs text-slate-500">
+          <Text className="mt-0.5 text-xs text-slate-600">
             {rot.total_entradas} entrada(s) · permanência média {formatarMinutos(rot.tempo_medio_min)}
           </Text>
           <View className="mt-3 gap-1.5">
@@ -1315,11 +1315,11 @@ function AbaRelatorios({ estSel }: { estSel: string | null }) {
                 <Text className="w-14 text-[12px] font-semibold text-slate-600">
                   {a.andar_numero >= 0 ? `P${a.andar_numero}` : `B${-a.andar_numero}`}
                 </Text>
-                <Text className="flex-1 text-[12px] text-slate-500">
+                <Text className="flex-1 text-[12px] text-slate-600">
                   {a.entradas} entradas · {a.vagas_ativas} vagas ativas
                 </Text>
                 <Chip label={`giro ${a.giro.toFixed(2)}`} tone="azul" />
-                <Text className="ml-2 w-16 text-right text-[11px] tabular-nums text-slate-500">
+                <Text className="ml-2 w-16 text-right text-[11px] tabular-nums text-slate-600">
                   {formatarMinutos(a.tempo_medio_min)}
                 </Text>
               </View>
@@ -1351,7 +1351,7 @@ function AbaRelatorios({ estSel }: { estSel: string | null }) {
             ].map((m) => (
               <View key={m.k} className="flex-row items-center">
                 <Text className="flex-1 text-[13px] text-slate-600">{m.k}</Text>
-                <Text className="text-[12px] tabular-nums text-slate-400">{m.n}×</Text>
+                <Text className="text-[12px] tabular-nums text-slate-600">{m.n}×</Text>
                 <Text className="ml-3 w-24 text-right text-[13px] font-semibold tabular-nums text-slate-700">
                   {formatarMoedaBR(m.v)}
                 </Text>
@@ -1360,12 +1360,12 @@ function AbaRelatorios({ estSel }: { estSel: string | null }) {
           </View>
           {fin.faturamento_por_dia.length > 0 ? (
             <View className="mt-4">
-              <Text className="mb-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-400">
+              <Text className="mb-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-600">
                 Faturamento por dia
               </Text>
               {fin.faturamento_por_dia.map((d) => (
                 <View key={d.data} className="mb-1 flex-row items-center gap-2">
-                  <Text className="w-20 text-[11px] tabular-nums text-slate-500">{d.data}</Text>
+                  <Text className="w-20 text-[11px] tabular-nums text-slate-600">{d.data}</Text>
                   <View className="h-2.5 rounded" style={{ width: `${Math.max(2, (d.valor / maxDia) * 100)}%`, backgroundColor: "#10B981" }} />
                   <Text className="ml-auto text-[11px] font-semibold tabular-nums text-slate-600">
                     {formatarMoedaBR(d.valor)}
@@ -1377,7 +1377,7 @@ function AbaRelatorios({ estSel }: { estSel: string | null }) {
         </Card>
       ) : null}
 
-      <Text className="text-xs text-slate-400">
+      <Text className="text-xs text-slate-600">
         Relatórios consolidados (SDD M6): fluxo, ocupação histórica derivada do
         Histórico, rotação e financeiro — CSV com escape para Excel pt-BR.
       </Text>
@@ -1428,7 +1428,7 @@ function AbaUsuarios({
   if (!isAdmin) {
     return (
       <Card className="p-8">
-        <Text className="text-center text-sm text-slate-500">
+        <Text className="text-center text-sm text-slate-600">
           Gestão de usuários é exclusiva do administrador global.
         </Text>
       </Card>
@@ -1458,7 +1458,7 @@ function AbaUsuarios({
       setUsuarios((prev) => [novo, ...prev]);
       setModal(false);
       setF({ nome: "", email: "", senha: "", role: "usuario", estacionamento_id: null });
-      Alert.alert("Usuário criado ✅", `${novo.nome} já pode entrar com a senha cadastrada.`);
+      Alert.alert("Usuário criado", `${novo.nome} já pode entrar com a senha cadastrada.`);
     } catch (e) {
       Alert.alert("Não foi possível criar", apiErrorMessage(e));
     } finally {
@@ -1532,7 +1532,7 @@ function AbaUsuarios({
   return (
     <View className="gap-3">
       <View className="flex-row items-center justify-between">
-        <Text className="text-sm text-slate-500">
+        <Text className="text-sm text-slate-600">
           {usuarios.length} conta(s) · níveis controlam o que cada um vê no painel
         </Text>
         <Botao label="＋ Novo usuário" onPress={() => setModal(true)} />
@@ -1540,7 +1540,7 @@ function AbaUsuarios({
 
       {erro ? (
         <View className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
-          <Text className="text-[13px] text-amber-700">⚠️ {erro}</Text>
+          <Text className="text-[13px] text-amber-700">Aviso: {erro}</Text>
         </View>
       ) : null}
       {carregando ? <BlocoCentral /> : null}
@@ -1553,7 +1553,7 @@ function AbaUsuarios({
           </View>
           <View className="min-w-[160px] flex-1">
             <Text className="text-sm font-bold text-slate-900" numberOfLines={1}>{u.nome}</Text>
-            <Text className="text-xs text-slate-500" numberOfLines={1} ellipsizeMode="middle">{u.email}</Text>
+            <Text className="text-xs text-slate-600" numberOfLines={1} ellipsizeMode="middle">{u.email}</Text>
           </View>
           <Chip
             label={ROLE_LABEL[u.role] ?? u.role}
@@ -1600,17 +1600,17 @@ function AbaUsuarios({
         <Campo label="Nome completo *" value={f.nome} onChangeText={(v) => setF((p) => ({ ...p, nome: v }))} autoCapitalize="words" />
         <Campo label="E-mail *" placeholder="pessoa@empresa.com" value={f.email} onChangeText={(v) => setF((p) => ({ ...p, email: v }))} autoCapitalize="none" keyboardType="email-address" />
         {editando ? (
-          <Text className="text-xs text-slate-400">
+          <Text className="text-xs text-slate-600">
             Senha só se altera por aqui via “Reset senha” (balcão) ou pelo próprio usuário em “Minha conta”.
           </Text>
         ) : (
           <Campo label="Senha *" senha value={f.senha} onChangeText={(v) => setF((p) => ({ ...p, senha: v }))} />
         )}
-        <Text className="mb-1.5 mt-1 text-xs font-semibold text-slate-500">Nível de acesso</Text>
+        <Text className="mb-1.5 mt-1 text-xs font-semibold text-slate-600">Nível de acesso</Text>
         <View className="mb-3 flex-row flex-wrap gap-2">
           {(
             [
-              ["usuario", "🚗 Motorista"],
+              ["usuario", "Motorista"],
               ["gestor", "🏬 Gestor de shopping"],
               ["financeiro", "💰 Financeiro"],
               ["admin", "👑 Admin global"],
@@ -1623,7 +1623,7 @@ function AbaUsuarios({
                 onPress={() => setF((p) => ({ ...p, role }))}
                 className={`rounded-full border px-3.5 py-1.5 ${ativo ? "border-blue-600 bg-blue-50" : "border-slate-200 bg-white"}`}
               >
-                <Text className={`text-[12px] font-semibold ${ativo ? "text-blue-700" : "text-slate-500"}`}>
+                <Text className={`text-[12px] font-semibold ${ativo ? "text-blue-700" : "text-slate-600"}`}>
                   {label}
                 </Text>
               </Pressable>
@@ -1632,7 +1632,7 @@ function AbaUsuarios({
         </View>
         {exigeVinculo ? (
           <>
-            <Text className="mb-1.5 text-xs font-semibold text-slate-500">
+            <Text className="mb-1.5 text-xs font-semibold text-slate-600">
               Estacionamento vinculado * (painel limitado a ele)
             </Text>
             <View className="mb-2 flex-row flex-wrap gap-2">
@@ -1644,7 +1644,7 @@ function AbaUsuarios({
                     onPress={() => setF((p) => ({ ...p, estacionamento_id: e.id }))}
                     className={`rounded-full border px-3.5 py-1.5 ${ativo ? "border-blue-600 bg-blue-50" : "border-slate-200 bg-white"}`}
                   >
-                    <Text className={`text-[12px] font-semibold ${ativo ? "text-blue-700" : "text-slate-500"}`}>
+                    <Text className={`text-[12px] font-semibold ${ativo ? "text-blue-700" : "text-slate-600"}`}>
                       {e.nome}
                     </Text>
                   </Pressable>

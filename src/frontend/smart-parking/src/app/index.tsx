@@ -74,7 +74,7 @@ export default function Index() {
         <View className="mx-auto w-full max-w-7xl gap-8 px-4 py-8 sm:px-6">
           {erro ? (
             <View className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
-              <Text className="text-[13px] font-medium text-amber-700">⚠️ {erro}</Text>
+              <Text className="text-[13px] font-medium text-amber-700">Aviso: {erro}</Text>
             </View>
           ) : null}
 
@@ -88,7 +88,7 @@ export default function Index() {
               <Text className={`text-center text-2xl font-extrabold text-slate-900 ${isWeb ? "text-3xl" : ""}`}>
                 Shoppings Parceiros
               </Text>
-              <Text className="text-sm text-slate-500">
+              <Text className="text-sm text-slate-600">
                 Escolha um shopping para ver o mapa de vagas em tempo real.
               </Text>
             </View>
@@ -98,7 +98,7 @@ export default function Index() {
                 <Text className="text-base font-bold text-slate-900">
                   Nenhum estacionamento cadastrado ainda
                 </Text>
-                <Text className="mt-1 text-sm text-slate-500">
+                <Text className="mt-1 text-sm text-slate-600">
                   Rode o backend — o seed de demonstração popula os shoppings de
                   Manaus automaticamente.
                 </Text>

@@ -49,7 +49,7 @@ export default function Reservas() {
               await cancelar(id);
               Alert.alert(
                 "Reserva cancelada",
-                `A vaga ${codigo} voltou a ficar livre no mapa. ✅`,
+                `A vaga ${codigo} voltou a ficar livre no mapa.`,
               );
             } catch (e) {
               Alert.alert("Erro", apiErrorMessage(e));
@@ -68,7 +68,7 @@ export default function Reservas() {
           <Text className="text-2xl font-extrabold text-slate-900">
             Minhas reservas
           </Text>
-          <Text className="mt-1 text-sm text-slate-500">
+          <Text className="mt-1 text-sm text-slate-600">
             Acompanhe e gerencie as vagas que você garantiu.
           </Text>
 
@@ -129,8 +129,8 @@ export default function Reservas() {
                             }
                           />
                         </View>
-                        <Text className="mt-0.5 text-[13px] text-slate-500">
-                          {formatarDataHora(r.horario_inicio)} →{" "}
+                        <Text className="mt-0.5 text-[13px] text-slate-600">
+                          {formatarDataHora(r.horario_inicio)} até{" "}
                           {formatarDataHora(r.horario_fim)}
                           {r.observacoes ? ` · ${r.observacoes}` : ""}
                         </Text>

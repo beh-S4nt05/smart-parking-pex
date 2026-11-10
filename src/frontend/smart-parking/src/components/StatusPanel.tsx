@@ -20,7 +20,7 @@ export default function StatusPanel({ shopping, tempoMedioMin }: Props) {
     <Card className="p-5 sm:p-6">
       <View className="mb-4 flex-row items-center gap-2">
         <View className="h-2 w-2 rounded-full bg-emerald-500" />
-        <Text className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+        <Text className="text-[11px] font-bold uppercase tracking-wider text-slate-600">
           Status do estacionamento{shopping ? ` — ${shopping.nome}` : ""}
         </Text>
       </View>

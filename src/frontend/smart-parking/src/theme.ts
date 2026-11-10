@@ -22,9 +22,9 @@ export const colors = {
   border: "#E2E8F0",
 
   // feedback
-  success: "#059669",
+  success: "#047857",
   successSoft: "#ECFDF5",
-  danger: "#DC2626",
+  danger: "#B91C1C",
   dangerSoft: "#FEF2F2",
   warning: "#D97706",
   warningSoft: "#FFFBEB",
@@ -32,10 +32,10 @@ export const colors = {
   accentPurple: "#4F46E5",
 
   // status de vaga (mapa do app e do simulador)
-  vagaLivre: "#059669",
+  vagaLivre: "#047857",
   vagaLivreBg: "#ECFDF5",
   vagaLivreBorder: "#6EE7B7",
-  vagaOcupada: "#DC2626",
+  vagaOcupada: "#B91C1C",
   vagaOcupadaBg: "#FEF2F2",
   vagaOcupadaBorder: "#FCA5A5",
   vagaReservada: "#2563EB", // código azul sobre borda âmbar, como no Figma

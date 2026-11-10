@@ -13,7 +13,7 @@ import {
 import { useRouter } from "expo-router";
 import { useAuth } from "../hooks/useAuth";
 import { useLarguraResponsiva } from "../hooks/useLarguraResponsiva";
-import { Logo, SeloAoVivo } from "./ui";
+import { IconeVoltar, Logo, SeloAoVivo } from "./ui";
 
 export type AbaPainel =
   | "dashboard"
@@ -88,7 +88,7 @@ export default function AdminShell({
                     accessibilityHint={`Abre a seção ${item.label} do painel`}
                     accessibilityState={{ selected: ativo, disabled: false }}
                     hitSlop={6}
-                    className={`flex-row items-center gap-2.5 rounded-lg px-3.5 py-2.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 motion-reduce:transition-none ${
+                    className={`min-h-11 flex-row items-center gap-2.5 rounded-lg px-3.5 py-2.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 motion-reduce:transition-none ${
                       ativo ? "bg-blue-600" : "hover:bg-slate-800 active:bg-slate-800"
                     }`}
                   >
@@ -129,18 +129,21 @@ export default function AdminShell({
               accessibilityRole="button"
               accessibilityLabel="Voltar ao site"
               hitSlop={6}
-              className="mt-3 rounded-lg border border-slate-700 py-2 active:bg-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
+              className="mt-3 min-h-11 flex-row items-center justify-center rounded-lg border border-slate-700 py-2 active:bg-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
             >
-              <Text className="text-center text-xs font-semibold text-slate-200">
-                ← Voltar ao site
-              </Text>
+              <View className="flex-row items-center justify-center gap-1.5">
+                <IconeVoltar cor="#E2E8F0" tamanho={12} />
+                <Text className="text-center text-xs font-semibold text-slate-200">
+                  Voltar ao site
+                </Text>
+              </View>
             </Pressable>
             <Pressable
               onPress={() => signOut()}
               accessibilityRole="button"
               accessibilityLabel="Encerrar sessão"
               hitSlop={6}
-              className="mt-2 rounded-lg py-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-300"
+              className="mt-2 min-h-11 flex-row items-center justify-center rounded-lg py-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-300"
             >
               <Text className="text-center text-xs font-semibold text-red-300">
                 Encerrar sessão
@@ -158,7 +161,7 @@ export default function AdminShell({
                   {titulo}
                 </Text>
                 {subtitulo ? (
-                  <Text className="mt-1 text-sm text-slate-500">{subtitulo}</Text>
+                  <Text className="mt-1 text-sm text-slate-600">{subtitulo}</Text>
                 ) : null}
               </View>
               <View className="flex-row items-center gap-3">
@@ -192,16 +195,19 @@ export default function AdminShell({
               accessibilityRole="button"
               accessibilityLabel="Voltar ao site"
               hitSlop={6}
-              className="rounded-full bg-slate-800 px-3 py-1.5 active:bg-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
+              className="min-h-11 flex-row items-center justify-center rounded-full bg-slate-800 px-3 py-1.5 active:bg-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
             >
-              <Text className="text-xs font-semibold text-slate-200">← Site</Text>
+              <View className="flex-row items-center gap-1">
+                <IconeVoltar cor="#E2E8F0" tamanho={12} />
+                <Text className="text-xs font-semibold text-slate-200">Site</Text>
+              </View>
             </Pressable>
             <Pressable
               onPress={() => signOut()}
               accessibilityRole="button"
               accessibilityLabel="Encerrar sessão"
               hitSlop={6}
-              className="rounded-full bg-red-500/20 px-3 py-1.5 active:bg-red-500/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-300"
+              className="min-h-11 flex-row items-center justify-center rounded-full bg-red-500/20 px-3 py-1.5 active:bg-red-500/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-300"
             >
               <Text className="text-xs font-semibold text-red-200">Sair</Text>
             </Pressable>
@@ -224,7 +230,7 @@ export default function AdminShell({
                 accessibilityHint={`Abre a seção ${item.label} do painel`}
                 accessibilityState={{ selected: ativo, disabled: false }}
                 hitSlop={6}
-                className={`rounded-full px-3.5 py-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 motion-reduce:transition-none ${
+                className={`min-h-11 flex-row items-center justify-center rounded-full px-3.5 py-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 motion-reduce:transition-none ${
                   ativo ? "bg-blue-600" : "bg-slate-800 hover:bg-slate-700 active:bg-slate-700"
                 }`}
               >
