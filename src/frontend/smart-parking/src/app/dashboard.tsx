@@ -343,7 +343,7 @@ function AbaDashboard({
 
       <View className="flex-row flex-wrap gap-5">
         {/* ocupação por andar */}
-        <Card className="flex-1 p-5" style={{ minWidth: 300 }}>
+        <Card className="min-w-0 basis-[300px] flex-grow flex-shrink p-5">
           <Text className="mb-4 text-base font-bold text-slate-900">
             Ocupação por andar
           </Text>
@@ -371,7 +371,7 @@ function AbaDashboard({
         </Card>
 
         {/* fluxo por hora (web) / fluxo hoje (mobile) */}
-        <Card className="flex-1 p-5" style={{ minWidth: 300 }}>
+        <Card className="min-w-0 basis-[300px] flex-grow flex-shrink p-5">
           <Text className="mb-4 text-base font-bold text-slate-900">
             Fluxo de veículos por hora
           </Text>
@@ -1046,7 +1046,7 @@ function AbaAndares({
               <Text className="text-[13px] text-slate-600">
                 {vagas.length} vaga(s) · capacidade {andarAtual.capacidade}
               </Text>
-              <View className="flex-row gap-2">
+              <View className="flex-row flex-wrap gap-2">
                 <Botao label="✎ Andar" variant="contorno" className="px-3.5 py-1.5" onPress={() => abrir("andarEditar", andarAtual)} />
                 <Botao label="Excluir andar" variant="contorno" className="border-red-300 px-3.5 py-1.5" onPress={() => excluirAndar(andarAtual)} />
                 <Botao label="＋ Vaga" className="px-3.5 py-1.5" onPress={() => abrir("vagaNova")} />
@@ -1233,7 +1233,7 @@ function AbaRelatorios({ estSel }: { estSel: string | null }) {
             </Pressable>
           ))}
         </View>
-        <View className="flex-row gap-2">
+        <View className="flex-row flex-wrap gap-2">
           <Botao label="CSV fluxo" variant="contorno" className="px-4 py-2" loading={baixando === "fluxo"} onPress={() => exportar("fluxo")} />
           <Botao label="CSV financeiro" variant="contorno" className="px-4 py-2" loading={baixando === "financeiro"} onPress={() => exportar("financeiro")} />
         </View>

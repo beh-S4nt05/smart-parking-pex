@@ -30,21 +30,27 @@ function VagaMapa({
   colunas,
 }: Props) {
   const width = useLarguraResponsiva();
+  const [larguraGrade, setLarguraGrade] = useState<number | null>(null);
   const reduzido = useMovimentoReduzido();
   // Pressable do react-native-web NÃO aplica style em função: o feedback de
   // pressão precisa de estado próprio para o width/height continuarem fixos.
   const [pressionada, setPressionada] = useState<string | null>(null);
-  const numColunas = Math.max(1, colunas ?? (width >= 1024 ? 8 : width >= 640 ? 6 : 4));
-  // Piso de 56px: a célula continua sendo um alvo de toque confortável mesmo
-  // em viewports estreitos; o teto de 128px evita cards gigantes no desktop.
-  const larguraBase = Math.floor(
-    (Math.min(Math.max(width, 320), 1200) - 96) / numColunas,
-  );
-  const larguraCelula = Math.max(56, Math.min(128, larguraBase));
+  // O mapa também vive dentro de cards e da coluna lateral do painel. A
+  // largura da janela não representa o espaço disponível para suas células.
+  const disponivel = larguraGrade ?? Math.max(240, width - 80);
+  const desejadas = Math.max(1, colunas ?? (width >= 1024 ? 8 : width >= 640 ? 6 : 4));
+  const numColunas = Math.max(1, Math.min(desejadas, Math.floor((disponivel + 8) / 64)));
+  const larguraCelula = Math.min(128, Math.floor((disponivel - 8 * (numColunas - 1)) / numColunas));
   const interativo = Boolean(onPressVaga);
 
   return (
-    <View className="flex-row flex-wrap justify-start gap-2">
+    <View
+      className="w-full min-w-0 flex-row flex-wrap justify-start gap-2"
+      onLayout={(event) => {
+        const nova = Math.floor(event.nativeEvent.layout.width);
+        if (nova > 0 && nova !== larguraGrade) setLarguraGrade(nova);
+      }}
+    >
       {vagas.map((vaga) => {
         const tom = vagaTone(vaga.status);
         const destacada = destaqueId === vaga.id;

@@ -331,7 +331,7 @@ function SimuladorInterno({
 
       {/* resumo + modos + ações rápidas */}
       <View className="flex-row flex-wrap items-center gap-2">
-        <View className="flex-row gap-2">
+        <View className="min-w-0 flex-row flex-wrap gap-2">
           {[
             { rot: "Livres", v: contagem.livre ?? 0, cor: "text-emerald-600" },
             {
@@ -350,7 +350,7 @@ function SimuladorInterno({
             </View>
           ))}
         </View>
-        <View className="ml-auto flex-row gap-2">
+        <View className="flex-row flex-wrap gap-2 sm:ml-auto">
           {(["alternar", "selecionar"] as const).map((m) => (
             <Pressable
               key={m}
@@ -406,15 +406,15 @@ function SimuladorInterno({
     <View className="flex-1 bg-slate-50">
       {/* cabeçalho escuro do simulador (idêntico no web e no mobile) */}
       <View className="bg-slate-950 px-4 pb-5 pt-4">
-        <View className="mx-auto flex w-full max-w-5xl flex-row items-center justify-between">
-          <View className="flex-row items-center gap-2">
+        <View className="mx-auto flex w-full max-w-5xl flex-row flex-wrap items-center justify-between gap-3">
+          <View className="min-w-0 flex-row flex-wrap items-center gap-2">
             <Logo size={26} tone="white" />
             <Text className="text-[15px] font-extrabold text-white">
               Simulador de Sensores
             </Text>
             <Chip label="ADMIN" tone="neutro" />
           </View>
-          <View className="flex-row items-center gap-2">
+          <View className="flex-row flex-wrap items-center gap-2">
             <Chip label={`QR ${token.slice(0, 6)}…`} tone="neutro" />
             <View className="flex-row items-center gap-1.5 rounded-full bg-emerald-500/15 px-2.5 py-1">
               <View className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
@@ -439,7 +439,7 @@ function SimuladorInterno({
       {/* barra de lote (modo selecionar) */}
       {sel.size > 0 ? (
         <View className="border-t border-slate-200 bg-white px-4 py-3">
-          <View className="mx-auto flex w-full max-w-5xl flex-row items-center gap-2">
+          <View className="mx-auto flex w-full max-w-5xl flex-row flex-wrap items-center gap-2">
             <Text className="flex-1 text-sm font-bold text-slate-800">
               {sel.size} selecionada{sel.size > 1 ? "s" : ""}
             </Text>

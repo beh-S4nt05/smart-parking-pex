@@ -106,15 +106,15 @@ export default function Reservas() {
                 return (
                   <AnimarEntrada key={r.id} delay={idx * 45}>
                   <Card className="p-4">
-                    <View className="flex-row items-center gap-4">
+                    <View className="min-w-0 flex-row flex-wrap items-center gap-4">
                       <View className="h-12 w-12 items-center justify-center rounded-xl bg-blue-600">
                         <Text className="text-[13px] font-extrabold text-white">
                           {codigo.split("-")[1] ?? codigo}
                         </Text>
                       </View>
-                      <View className="flex-1">
-                        <View className="flex-row items-center gap-2">
-                          <Text className="text-base font-bold text-slate-900">
+                      <View className="min-w-0 flex-1">
+                        <View className="min-w-0 flex-row flex-wrap items-center gap-2">
+                          <Text className="min-w-0 text-base font-bold text-slate-900">
                             Vaga {codigo}
                             {andar != null ? ` · ${andar}º andar` : ""}
                           </Text>

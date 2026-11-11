@@ -136,8 +136,8 @@ export default function SimuladorQR() {
   return (
     <View className="flex-1 bg-slate-50">
       {/* topo (mobile) / faixa (web) */}
-      <View className="flex-row items-center justify-between border-b border-slate-200 bg-white px-4 py-3">
-        <View className="flex-row items-center gap-2.5">
+      <View className="flex-row flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 py-3">
+        <View className="min-w-0 flex-row items-center gap-2.5">
           <Pressable
             onPress={() => router.back()}
             accessibilityRole="button"
@@ -146,7 +146,7 @@ export default function SimuladorQR() {
             <IconeVoltar cor="#475569" tamanho={16} />
           </Pressable>
           <Logo size={30} />
-          <View>
+          <View className="min-w-0 flex-1">
             <Text className="text-[15px] font-extrabold text-slate-900">
               Simulador de Sensores
             </Text>
@@ -157,9 +157,9 @@ export default function SimuladorQR() {
       </View>
 
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 48 }}>
-        <View className="mx-auto w-full max-w-6xl flex-row flex-wrap items-start gap-5">
+        <View className="mx-auto w-full min-w-0 max-w-6xl flex-row flex-wrap items-start gap-5">
           {/* coluna principal */}
-          <View className="min-w-[300px] flex-1 gap-5" style={{ flexBasis: 520 }}>
+          <View className="min-w-0 flex-1 gap-5" style={{ flexBasis: 520 }}>
             <Card className="p-6">
               <Passo numero="1" titulo="Escolha o local" />
               <View className="mt-4 gap-4">
@@ -270,7 +270,7 @@ export default function SimuladorQR() {
                     />
                   </View>
 
-                  <View className="min-w-[240px] flex-1 gap-3">
+                  <View className="min-w-0 flex-1 gap-3" style={{ flexBasis: 240 }}>
                     <View>
                       <Text className="text-[11px] font-bold uppercase tracking-wider text-slate-600">
                         URL da sessão
@@ -323,7 +323,7 @@ export default function SimuladorQR() {
           </View>
 
           {/* lateral */}
-          <View className="min-w-[260px] flex-1 gap-5" style={{ flexBasis: 300 }}>
+          <View className="min-w-0 flex-1 gap-5" style={{ flexBasis: 300 }}>
             <Card className="p-5">
               <Text className="text-base font-bold text-slate-900">Como funciona</Text>
               <View className="mt-3 gap-3">

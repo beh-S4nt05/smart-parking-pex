@@ -153,10 +153,10 @@ export default function AdminShell({
         </View>
 
         {/* conteúdo */}
-        <ScrollView className="flex-1" contentContainerStyle={{ padding: 28 }}>
-          <View className="mx-auto w-full max-w-6xl">
-            <View className="mb-6 flex-row items-end justify-between">
-              <View>
+        <ScrollView className="min-w-0 flex-1" contentContainerStyle={{ padding: 28 }}>
+          <View className="mx-auto w-full min-w-0 max-w-6xl">
+            <View className="mb-6 flex-row flex-wrap items-end justify-between gap-3">
+              <View className="min-w-0 flex-1">
                 <Text className="text-3xl font-extrabold text-slate-900">
                   {titulo}
                 </Text>
@@ -164,7 +164,7 @@ export default function AdminShell({
                   <Text className="mt-1 text-sm text-slate-600">{subtitulo}</Text>
                 ) : null}
               </View>
-              <View className="flex-row items-center gap-3">
+              <View className="flex-row flex-wrap items-center gap-3">
                 <SeloAoVivo />
                 {direita}
               </View>
@@ -180,14 +180,14 @@ export default function AdminShell({
   return (
     <View className="flex-1 bg-slate-50">
       <View className="border-b border-slate-800 bg-slate-900 px-4 pb-3 pt-5">
-        <View className="flex-row items-center justify-between">
-          <View>
+        <View className="flex-row flex-wrap items-center justify-between gap-3">
+          <View className="min-w-0 flex-1">
             <Text className="text-xl font-bold text-white">{titulo}</Text>
             {subtitulo ? (
               <Text className="mt-0.5 text-xs text-slate-300">{subtitulo}</Text>
             ) : null}
           </View>
-          <View className="flex-row items-center gap-2">
+          <View className="flex-row flex-wrap items-center gap-2">
             <SeloAoVivo />
             {/* saída do painel no mobile — no web já existe na sidebar */}
             <Pressable

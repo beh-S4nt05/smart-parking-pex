@@ -80,13 +80,13 @@ export default function Hero({ shoppings, selecionadoId, onSelect, onBuscar }: P
 
         {/* seletor + CTA */}
         <View
-          className={`relative z-20 mt-7 w-full max-w-2xl ${
+          className={`relative z-20 mt-7 w-full min-w-0 max-w-2xl ${
             isWide ? "flex-row items-start gap-2.5" : "gap-3"
           }`}
         >
           {/* barra fechada = shopping atual; a mini-lista flutua SOBRE o
               conteúdo (absolute) em vez de empurrar cards para baixo. */}
-          <View className="relative z-20 flex-1">
+          <View className="relative z-20 min-w-0 flex-1">
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={`Selecionar shopping: ${nomeSelecionado} — Manaus, AM`}
@@ -105,7 +105,7 @@ export default function Hero({ shoppings, selecionadoId, onSelect, onBuscar }: P
               <View className="h-2 w-2 rounded-full bg-blue-600" />
               <Text
                 numberOfLines={1}
-                className="mx-2 flex-1 text-sm font-semibold text-slate-700"
+              className="mx-2 min-w-0 flex-1 text-sm font-semibold text-slate-700"
               >
                 {vazio ? "Carregando shoppings…" : `${nomeSelecionado} — Manaus, AM`}
               </Text>
