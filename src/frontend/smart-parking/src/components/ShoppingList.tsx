@@ -119,6 +119,11 @@ export default function ShoppingList({
                     />
                   </View>
                 )}
+                {variante !== "lista" ? (
+                  <Text className="mt-3 border-t border-slate-100 pt-2 text-xs font-bold text-blue-700">
+                    Ver mapa de vagas →
+                  </Text>
+                ) : null}
               </Card>
             </Pressable>
             </AnimarEntrada>
