@@ -153,10 +153,10 @@ export default function AdminShell({
         </View>
 
         {/* conteúdo */}
-        <ScrollView className="flex-1" contentContainerStyle={{ padding: 28 }}>
-          <View className="mx-auto w-full max-w-6xl">
-            <View className="mb-6 flex-row items-end justify-between">
-              <View>
+        <ScrollView className="min-w-0 flex-1" contentContainerStyle={{ padding: 28 }}>
+          <View className="mx-auto w-full min-w-0 max-w-6xl">
+            <View className="mb-6 flex-row flex-wrap items-end justify-between gap-3">
+              <View className="min-w-0 flex-1">
                 <Text className="text-3xl font-extrabold text-slate-900">
                   {titulo}
                 </Text>
@@ -164,7 +164,7 @@ export default function AdminShell({
                   <Text className="mt-1 text-sm text-slate-600">{subtitulo}</Text>
                 ) : null}
               </View>
-              <View className="flex-row items-center gap-3">
+              <View className="flex-row flex-wrap items-center gap-3">
                 <SeloAoVivo />
                 {direita}
               </View>
@@ -179,23 +179,23 @@ export default function AdminShell({
   // -------- mobile --------
   return (
     <View className="flex-1 bg-slate-50">
-      <View className="border-b border-slate-800 bg-slate-900 px-4 pb-3 pt-5">
-        <View className="flex-row items-center justify-between">
-          <View>
+      <View className="border-b border-slate-800 bg-slate-900 pt-5">
+        <View className="px-4">
+          <View className="min-w-0 flex-1">
             <Text className="text-xl font-bold text-white">{titulo}</Text>
             {subtitulo ? (
-              <Text className="mt-0.5 text-xs text-slate-300">{subtitulo}</Text>
+              <Text className="mt-1 text-xs leading-5 text-slate-300">{subtitulo}</Text>
             ) : null}
           </View>
-          <View className="flex-row items-center gap-2">
+          <View className="mt-3 flex-row flex-wrap items-center justify-between gap-2 border-t border-slate-700 py-2">
             <SeloAoVivo />
-            {/* saída do painel no mobile — no web já existe na sidebar */}
+            <View className="flex-row items-center gap-1">
             <Pressable
               onPress={() => router.push("/" as never)}
               accessibilityRole="button"
               accessibilityLabel="Voltar ao site"
               hitSlop={6}
-              className="min-h-11 flex-row items-center justify-center rounded-full bg-slate-800 px-3 py-1.5 active:bg-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
+              className="min-h-11 flex-row items-center justify-center rounded-lg px-3 transition-colors active:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
             >
               <View className="flex-row items-center gap-1">
                 <IconeVoltar cor="#E2E8F0" tamanho={12} />
@@ -207,18 +207,14 @@ export default function AdminShell({
               accessibilityRole="button"
               accessibilityLabel="Encerrar sessão"
               hitSlop={6}
-              className="min-h-11 flex-row items-center justify-center rounded-full bg-red-500/20 px-3 py-1.5 active:bg-red-500/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-300"
+              className="min-h-11 flex-row items-center justify-center rounded-lg px-3 transition-colors active:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-300"
             >
               <Text className="text-xs font-semibold text-red-200">Sair</Text>
             </Pressable>
+            </View>
           </View>
         </View>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          className="mt-3"
-          contentContainerStyle={{ gap: 8 }}
-        >
+        <View className="flex-row flex-wrap gap-1 border-t border-slate-700 px-2">
           {abas.map((item) => {
             const ativo = item.id === aba;
             return (
@@ -230,8 +226,8 @@ export default function AdminShell({
                 accessibilityHint={`Abre a seção ${item.label} do painel`}
                 accessibilityState={{ selected: ativo, disabled: false }}
                 hitSlop={6}
-                className={`min-h-11 flex-row items-center justify-center rounded-full px-3.5 py-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 motion-reduce:transition-none ${
-                  ativo ? "bg-blue-600" : "bg-slate-800 hover:bg-slate-700 active:bg-slate-700"
+                className={`min-h-11 flex-row items-center justify-center border-b-2 px-3.5 py-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 motion-reduce:transition-none ${
+                  ativo ? "border-blue-400" : "border-transparent hover:bg-slate-800 active:bg-slate-800"
                 }`}
               >
                 <Text
@@ -244,7 +240,7 @@ export default function AdminShell({
               </Pressable>
             );
           })}
-        </ScrollView>
+        </View>
       </View>
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
         <View className="gap-4">

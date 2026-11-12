@@ -232,39 +232,29 @@ test("404 próprio explica o erro, quebra a URL e oferece ações de 44px", asyn
   await expect(page).toHaveURL(/\/$/);
 });
 
-test("menu compacto do header abre, é acessível e fecha com Escape", async ({ page }) => {
+test("navegação compacta permanece visível e dentro do fluxo", async ({ page }) => {
   await page.setViewportSize({ width: 900, height: 900 });
   await page.goto("/");
-  const menu = page.locator('[id="menu-toggle"]');
-  await expect(menu).toBeVisible();
-  await expect(menu).toHaveAttribute("aria-label", "Abrir menu de navegação");
-  await expect(menu).toHaveAttribute("aria-expanded", "false");
-  await menu.click();
-  await expect(menu).toHaveAttribute("aria-expanded", "true");
-  const painel = page.getByRole("menu", { name: "Menu de navegação" });
-  await expect(painel).toBeVisible();
-  expect(await painel.evaluate((el) => getComputedStyle(el).position)).toBe("absolute");
-  await expect(painel.getByRole("link", { name: "Reservar Vaga" })).toBeVisible();
-  await page.keyboard.press("Escape");
-  await expect(painel).toHaveCount(0);
-  await expect(menu).toHaveAttribute("aria-expanded", "false");
+  const explorar = page.getByRole("link", { name: "Explorar shoppings", exact: true });
+  await expect(explorar).toBeVisible();
+  await expect(page.locator('[id="menu-toggle"]')).toHaveCount(0);
+  expect(await explorar.evaluate((el) => getComputedStyle(el).position)).not.toBe("absolute");
+  await explorar.click();
+  await expect(page).toHaveURL(/\/explorar$/);
 });
 
 
-test("ícones são desenhados, não glifos de fonte que somem", async ({ page }) => {
+test("navegação cabe no celular e ícones de ações não usam glifos de fonte", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/");
-  const menu = page.locator('[id="menu-toggle"]');
-  await expect(menu).toBeVisible();
-  const barras = await menu.evaluate((el) =>
-    Array.from(el.querySelectorAll("*")).filter((filho) => {
-      const c = getComputedStyle(filho);
-      return c.backgroundColor !== "rgba(0, 0, 0, 0)" && c.backgroundColor !== "transparent";
-    }).length,
-  );
-  expect(barras, "menu com barras desenhadas").toBeGreaterThanOrEqual(2);
-  const texto = await menu.innerText();
-  expect(texto).not.toMatch(/[☰✕←→⌄˄]/);
+  await expect(page.getByRole("link", { name: "Início", exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Explorar shoppings", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Abrir ajuda do HelpDesk" })).toBeVisible();
+  const medidas = await page.evaluate(() => ({
+    documento: Math.max(document.body.scrollWidth, document.documentElement.scrollWidth),
+    viewport: window.innerWidth,
+  }));
+  expect(medidas.documento).toBeLessThanOrEqual(medidas.viewport + 1);
   const cta = page.getByRole("button", { name: /Ver Vagas Disponíveis/ });
   expect(await cta.innerText()).not.toContain("→");
 });

@@ -18,27 +18,27 @@ export default function StatusPanel({ shopping, tempoMedioMin }: Props) {
 
   return (
     <Card className="p-5 sm:p-6">
-      <View className="mb-4 flex-row items-center gap-2">
+      <View className="mb-4 min-w-0 flex-row items-start gap-2">
         <View className="h-2 w-2 rounded-full bg-emerald-500" />
-        <Text className="text-[11px] font-bold uppercase tracking-wider text-slate-600">
+        <Text className="min-w-0 flex-1 text-[11px] font-bold uppercase tracking-wider text-slate-600">
           Status do estacionamento{shopping ? ` — ${shopping.nome}` : ""}
         </Text>
       </View>
       <View className="flex-row flex-wrap gap-3">
-        <View className="min-w-[140px] flex-1">
+        <View className="min-w-0 basis-[140px] flex-grow">
           <StatTile rotulo="Vagas Disponíveis" valor={String(livres)} tone="verde" />
         </View>
-        <View className="min-w-[140px] flex-1">
+        <View className="min-w-0 basis-[140px] flex-grow">
           <StatTile rotulo="Ocupação Atual" valor={`${ocupacao}%`} tone="azul" />
         </View>
-        <View className="min-w-[140px] flex-1">
+        <View className="min-w-0 basis-[140px] flex-grow">
           <StatTile
             rotulo="Tempo Médio"
             valor={formatarMinutos(tempoMedioMin)}
             tone="roxo"
           />
         </View>
-        <View className="min-w-[140px] flex-1">
+        <View className="min-w-0 basis-[140px] flex-grow">
           <StatTile rotulo="Total de Vagas" valor={String(total)} tone="neutro" />
         </View>
       </View>

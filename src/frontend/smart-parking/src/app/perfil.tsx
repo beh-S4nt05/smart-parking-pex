@@ -130,8 +130,8 @@ export default function Perfil() {
       <Header />
       <ScrollView className="flex-1" contentContainerStyle={{ paddingVertical: 20 }}>
         <View className="mx-auto w-full max-w-3xl gap-4 px-4">
-          <View className="flex-row items-center justify-between">
-            <View>
+          <View className="flex-row flex-wrap items-center justify-between gap-3">
+            <View className="min-w-0 flex-1">
               <Text className="text-2xl font-extrabold text-slate-900">Minha conta</Text>
               <Text className="mt-0.5 text-[13px] text-slate-600">{user.email}</Text>
             </View>

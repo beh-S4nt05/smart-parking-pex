@@ -47,23 +47,27 @@ test("home usa API same-origin, CTA visível e mapa público navegável", async 
 });
 
 
-test("seletor de shopping flutua sobre o conteúdo, é acessível e fecha com Escape", async ({ page }) => {
+test("seletor expande o conteúdo sem sobreposição, é acessível e fecha com Escape", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/");
   const seletor = page.getByRole("button", { name: /Selecionar shopping:/ });
   await expect(seletor).toBeVisible();
   await expect(seletor).toHaveAttribute("aria-expanded", "false");
+  const cta = page.getByRole("button", { name: /Ver Vagas Disponíveis/ });
+  const yAntes = (await cta.boundingBox())?.y ?? 0;
 
   await seletor.click();
   await expect(seletor).toHaveAttribute("aria-expanded", "true");
   const lista = page.getByRole("list", { name: "Lista de shoppings" });
   await expect(lista).toBeVisible();
-  expect(await lista.evaluate((element) => getComputedStyle(element).position)).toBe("absolute");
+  expect(await lista.evaluate((element) => getComputedStyle(element).position)).not.toBe("absolute");
 
   const caixaSeletor = await seletor.boundingBox();
   const caixaLista = await lista.boundingBox();
   expect(caixaLista?.y).toBeGreaterThanOrEqual(
     (caixaSeletor?.y ?? 0) + (caixaSeletor?.height ?? 0) - 2,
   );
+  expect((await cta.boundingBox())?.y ?? 0).toBeGreaterThan(yAntes + 20);
   await expect(page.getByRole("button", { name: /Shopping QA Norte/ }).first()).toBeVisible();
 
   await page.keyboard.press("Escape");

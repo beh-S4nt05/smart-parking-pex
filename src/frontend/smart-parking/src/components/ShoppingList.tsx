@@ -50,30 +50,17 @@ export default function ShoppingList({
           : 1;
 
   return (
-    <View
-      style={
-        colunas > 1
-          ? {
-              flexDirection: "row",
-              flexWrap: "wrap",
-              gap: 14,
-            }
-          : { gap: 12 }
-      }
-    >
+    <View className={colunas > 1 ? "w-full flex-row flex-wrap gap-3.5" : "w-full gap-3"}>
       {shoppings.map((est, i) => {
         const selecionado = est.id === selecionadoId;
         const livres = est.vagas_disponiveis_total ?? 0;
         return (
-          <AnimarEntrada key={est.id} delay={i * 60}>
           <View
-            style={
-              colunas > 1
-                ? { width: `calc(${100 / colunas}% - ${14 * ((colunas - 1) / colunas)}px)` as unknown as import("react-native").DimensionValue }
-                : undefined
-            }
-            className={colunas > 1 ? "min-w-[240px] flex-1" : "w-full"}
+            key={est.id}
+            className={colunas > 1 ? "min-w-0 flex-grow" : "w-full min-w-0"}
+            style={colunas > 1 ? { flexBasis: `${100 / colunas - 2}%` } : undefined}
           >
+            <AnimarEntrada delay={i * 60}>
             <Pressable
               onPress={() => onPress(est)}
               accessibilityRole="button"
@@ -113,9 +100,9 @@ export default function ShoppingList({
                     </View>
                   </View>
                 ) : (
-                  <View className="flex-row items-center gap-3">
+                  <View className="min-w-0 flex-row flex-wrap items-center gap-3">
                     <Logo size={40} />
-                    <View className="flex-1">
+                    <View className="min-w-0 flex-1">
                       <Text numberOfLines={1} className="text-[15px] font-bold text-slate-900">
                         {est.nome}
                       </Text>
@@ -134,8 +121,8 @@ export default function ShoppingList({
                 )}
               </Card>
             </Pressable>
+            </AnimarEntrada>
           </View>
-          </AnimarEntrada>
         );
       })}
     </View>

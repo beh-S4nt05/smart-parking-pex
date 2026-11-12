@@ -67,8 +67,6 @@ jobs:
         working-directory: .
       - run: npm install --global npm@11.17.0
       - run: npm ci --no-audit --no-fund
-      # Ferramenta exclusiva do runner: não altera package.json nem o lockfile.
-      - run: npm install --no-save --no-audit --no-fund @playwright/test@1.64.1
       - run: npx playwright install --with-deps chromium
       - name: Executar jornadas UI
         run: |
@@ -83,5 +81,13 @@ jobs:
           path: |
             src/frontend/smart-parking/test-results/
             src/frontend/smart-parking/playwright-report/
+          if-no-files-found: ignore
+          retention-days: 5
+      - name: Preview das telas
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: preview-ui
+          path: src/frontend/smart-parking/test-results/**/preview-*.png
           if-no-files-found: ignore
           retention-days: 5

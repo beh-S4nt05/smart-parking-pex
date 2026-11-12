@@ -6,7 +6,6 @@ import { ReactNode, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Animated,
-  Dimensions,
   Easing,
   KeyboardAvoidingView,
   Modal,
@@ -19,6 +18,7 @@ import {
   TextInputProps,
   View,
   ViewStyle,
+  useWindowDimensions,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { colors, ocupacaoColor } from "../theme";
@@ -877,6 +877,7 @@ export function ModalForma({
   ocupado?: boolean;
   children: ReactNode;
 }) {
+  const { height } = useWindowDimensions();
   const surg = useRef(new Animated.Value(0)).current;
   const reduzido = useMovimentoReduzido();
   useEffect(() => {
@@ -922,14 +923,14 @@ export function ModalForma({
           style={{
             width: "100%",
             maxWidth: 448,
-            maxHeight: Math.round(Dimensions.get("window").height * 0.88),
+            maxHeight: Math.round(height * 0.88),
             opacity: surg,
             transform: [
               { scale: surg.interpolate({ inputRange: [0, 1], outputRange: [0.95, 1] }) },
             ],
           }}
         >
-          <Card className="overflow-hidden p-5">
+          <Card className="min-w-0 overflow-hidden p-5">
             <Text className="text-lg font-extrabold text-slate-900">{titulo}</Text>
             {descricao ? (
               <Text className="mt-0.5 text-[13px] text-slate-600">{descricao}</Text>
@@ -942,18 +943,18 @@ export function ModalForma({
             >
               {children}
             </ScrollView>
-            <View className="mt-5 flex-row gap-2">
+            <View className="mt-5 flex-row flex-wrap gap-2">
               <Botao
                 label="Cancelar"
                 variant="contorno"
                 onPress={aoFechar}
-                className="flex-1"
+                className="min-w-0 basis-[120px] flex-grow flex-shrink"
               />
               <Botao
                 label={rotuloConfirmar}
                 onPress={aoConfirmar}
                 loading={ocupado}
-                className="flex-1"
+                className="min-w-0 basis-[120px] flex-grow flex-shrink"
               />
             </View>
           </Card>
