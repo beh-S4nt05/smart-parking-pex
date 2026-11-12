@@ -71,7 +71,7 @@ export default function Index() {
           onBuscar={() => selecionado && abrirMapa(selecionado.id)}
         />
 
-        <View className="mx-auto w-full max-w-7xl gap-8 px-4 py-8 sm:px-6">
+        <View className="mx-auto w-full max-w-7xl gap-7 px-4 py-5 sm:px-6 sm:py-8">
           {erro ? (
             <View className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
               <Text className="text-[13px] font-medium text-amber-700">Aviso: {erro}</Text>
@@ -99,8 +99,7 @@ export default function Index() {
                   Nenhum estacionamento cadastrado ainda
                 </Text>
                 <Text className="mt-1 text-sm text-slate-600">
-                  Rode o backend — o seed de demonstração popula os shoppings de
-                  Manaus automaticamente.
+                  Não encontramos locais disponíveis agora. Tente atualizar a página em instantes.
                 </Text>
               </View>
             ) : (
