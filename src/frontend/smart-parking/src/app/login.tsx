@@ -240,7 +240,7 @@ export default function Login() {
         {/* Painel de marca apenas em desktop real (>= 1024px). CSS puro: o
             pré-render já nasce com o split, sem o "flash" do layout mobile
             que aparecia enquanto useLarguraResponsiva hidratava. */}
-        <View className="hidden w-[45%] min-w-0 items-center justify-center bg-blue-600 px-12 lg:flex">
+        <View className="sp-barra hidden w-[45%] min-w-0 items-center justify-center bg-blue-600 px-12 lg:flex">
           <View className="w-full max-w-sm gap-5 3xl:max-w-md 3xl:gap-7">
             <Logo size={52} tone="white" />
             <Text accessibilityRole="header" className="text-4xl font-extrabold text-white">

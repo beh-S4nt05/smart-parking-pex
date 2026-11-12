@@ -134,7 +134,7 @@ export default function SimuladorQR() {
   }
 
   return (
-    <View className="flex-1 bg-slate-50">
+    <View className="sp-page flex-1 bg-slate-50">
       {/* topo (mobile) / faixa (web) */}
       <View className="flex-row flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 py-3">
         <View className="min-w-0 flex-row items-center gap-2.5">

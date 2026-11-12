@@ -22,6 +22,10 @@ import Header from "../components/Header";
 import Footer from "../components/Footer";
 import { colors } from "../theme";
 
+/** Lei de Postel: aceita minúsculas, hífen e espaços; envia placa limpa. */
+const normalizarPlaca = (valor: string) =>
+  valor.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8);
+
 const ROLE_LABEL: Record<string, string> = {
   admin: "Admin global",
   gestor: "Gestor de estacionamento",
@@ -126,7 +130,7 @@ export default function Perfil() {
   }
 
   return (
-    <View className="flex-1 bg-slate-50">
+    <View className="sp-page flex-1 bg-slate-50">
       <Header />
       <ScrollView className="flex-1" contentContainerStyle={{ paddingVertical: 20 }}>
         <View className="mx-auto w-full max-w-3xl gap-4 px-4 sm:px-6 3xl:gap-6 3xl:px-8">
@@ -138,11 +142,29 @@ export default function Perfil() {
             <Chip label={ROLE_LABEL[user.role] ?? user.role} tone="azul" />
           </View>
 
+          {/* Zeigarnic: uma tarefa incompleta visível incentiva o fechamento.
+              Desaparece assim que telefone e placa são preenchidos. */}
+          {!f.telefone.trim() || !f.placa.trim() ? (
+            <Card className="sp-alerta flex-row items-start gap-3 border-blue-200 bg-blue-50/60 p-4">
+              <View className="mt-0.5 h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-600">
+                <Text className="text-base font-bold text-white">!</Text>
+              </View>
+              <View className="min-w-0 flex-1">
+                <Text className="text-[15px] font-bold text-slate-900">
+                  Complete seu cadastro
+                </Text>
+                <Text className="mt-1 text-[13px] leading-5 text-slate-600">
+                  Telefone e placa agilizam a leitura do portão nas suas reservas.
+                </Text>
+              </View>
+            </Card>
+          ) : null}
+
           <Card className="p-5">
             <Text className="mb-3 text-[15px] font-bold text-slate-800">Dados de cadastro</Text>
             <Campo label="Nome completo" value={f.nome} onChangeText={(v) => setF((p) => ({ ...p, nome: v }))} autoCapitalize="words" />
             <Campo label="Telefone" keyboardType="phone-pad" placeholder="(92) 99999-0000" value={f.telefone} onChangeText={(v) => setF((p) => ({ ...p, telefone: v }))} />
-            <Campo label="Placa do veículo" autoCapitalize="characters" maxLength={8} placeholder="RRA1A23" value={f.placa} onChangeText={(v) => setF((p) => ({ ...p, placa: v }))} />
+            <Campo label="Placa do veículo" normalizar={normalizarPlaca} autoCapitalize="characters" maxLength={8} placeholder="RRA1A23" value={f.placa} onChangeText={(v) => setF((p) => ({ ...p, placa: v }))} />
             <Checkbox
               checked={f.pcd}
               onPress={() => setF((p) => ({ ...p, pcd: !p.pcd }))}

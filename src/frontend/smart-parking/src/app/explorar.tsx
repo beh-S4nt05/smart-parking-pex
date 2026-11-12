@@ -37,7 +37,7 @@ export default function Explorar() {
   }, [estacionamentos, busca]);
 
   return (
-    <View className="flex-1 bg-slate-50">
+    <View className="sp-page flex-1 bg-slate-50">
       <Header rotaAtual="/explorar" />
       <ScrollView
         refreshControl={
@@ -65,14 +65,24 @@ export default function Explorar() {
             </View>
           </View>
 
+          {/* Hick: um único filtro, com rótulo e contagem de resultados. */}
+          <View className="mb-2 flex-row items-center gap-2">
+            <View className="h-4 w-1 rounded-full bg-blue-600" />
+            <Text className="text-[13px] font-bold uppercase tracking-wider text-slate-600">
+              Filtre a lista
+            </Text>
+          </View>
           <TextInput
             accessibilityLabel="Buscar shopping ou bairro"
             placeholder="Buscar por shopping ou bairro…"
             placeholderTextColor="#94A3B8"
             value={busca}
             onChangeText={setBusca}
-            className="mb-5 min-h-12 rounded-xl border-2 border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 focus:border-blue-500 sm:text-base"
+            className="sp-field mb-2 min-h-12 rounded-xl border-2 border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 focus:border-blue-500 sm:text-base"
           />
+          <Text className="mb-5 text-[12px] font-medium text-slate-600">
+            {filtrados.length} {filtrados.length === 1 ? "local disponível" : "locais disponíveis"}
+          </Text>
 
           {erro ? (
             <View className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
@@ -97,7 +107,7 @@ export default function Explorar() {
           )}
 
           {/* CTA de cadastro para reservar */}
-          <View className="mt-8 flex-col gap-4 rounded-2xl bg-slate-900 p-5 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:p-6 3xl:p-8">
+          <View className="sp-destaque mt-8 flex-col gap-4 rounded-2xl bg-slate-900 p-5 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:p-6 3xl:p-8">
             <View className="min-w-0 sm:flex-1">
               <Text className="text-base font-bold text-white sm:text-lg">
                 Quer garantir sua vaga antes de sair de casa?

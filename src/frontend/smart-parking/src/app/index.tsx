@@ -55,7 +55,7 @@ export default function Index() {
   const abrirMapa = (id: string) => router.push(`/shopping/${id}` as never);
 
   return (
-    <View className="flex-1 bg-slate-50">
+    <View className="sp-page flex-1 bg-slate-50">
       <Header rotaAtual="/" />
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -78,7 +78,7 @@ export default function Index() {
           <StatusPanel shopping={selecionado} tempoMedioMin={tempoMedio} />
 
           <View>
-            <View className="mb-5 items-center gap-1">
+            <View className="mb-6 items-center gap-1">
               <Text className="text-[11px] font-bold uppercase tracking-wider text-blue-600">
                 Rede credenciada
               </Text>

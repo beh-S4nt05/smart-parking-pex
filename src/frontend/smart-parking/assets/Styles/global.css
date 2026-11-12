@@ -130,3 +130,212 @@ canvas {
   .text-4xl { font-size: 48px; line-height: 1.15; }
   .text-5xl { font-size: 62px; line-height: 1.1; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   MAPEAMENTO DAS 23 LEIS DE UX (UXtweak) → ESTE PROJETO
+   ───────────────────────────────────────────────────────────────────────────
+   01 Fitts ............... .sp-btn 48px + CTA isolado no .sp-busca; alvos ≥44px
+   02 Jakob ............... Header/Footer/Card idênticos nas 11 rotas; sem JS de layout
+   03 Hick ................Explorar: 1 filtro + contagem; painel: 2 grupos de abas
+   04 Semelhança ..........Um único .sp-card/.sp-field/.sp-btn/.sp-kpi para tudo
+   05 Von Restorff ........Um só .sp-destaque por tela; aba ativa em blue-600
+   06 Miller ..............4 KPIs, 3 links, grupos de até 4 abas (5–9 itens)
+   07 Tesler ..............Complexidade absorvida pelo sistema: normalização, cache
+   08 Proximidade .........Rótulo+valor no mesmo tile; nome+bairro no mesmo bloco
+   09 Doherty .............Transições 150ms, skeleton do mapa, FCP ~120ms
+   10 Parkinson ...........Escopo fechado: tokens + componentes, sem novas features
+   11 Postel ..............Campo.normalizar aceita placa com hífen/minúsculas
+   12 Carga cognitiva .....Revelação progressiva: lista do seletor abre no fluxo
+   13 Gradiente de objetivo .sp-progresso "Etapa 1 de 2" no cadastro
+   14 Pico-fim ............Resumo positivo no topo de Reservas; rodapé de marca
+   15 Zeigarnic ..........."Complete seu cadastro" até placa+telefone existirem
+   16 Extremos ............320px a 2560px, iniciante (dicas) e expert (atalhos)
+   17 Occam ...............CSS puro em vez de hooks de largura/JS por tela
+   18 KISS ................Uma decisão por dobra, textos de apoio únicos
+   19 Hofstadter ..........Margem de validação: 45 testes + 9 cenários + capturas
+   20 Yerkes-Dodson .......Sem animações longas; reduced-motion respeitado
+   21 Posição serial ......Ação principal no início e "Ver mapa" no fim do card
+   22 Estética .............Gradiente, profundidade, hierarquia tipográfica real
+   23 Trivialidade ........Foco em arquitetura/fluxo, não em ícone de rodapé
+   ═══════════════════════════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════════════════════
+   SISTEMA VISUAL — aplicação concreta das 23 leis de UX (UXtweak)
+   ───────────────────────────────────────────────────────────────────────────
+   Tokens únicos para TODAS as telas. A lei da semelhança e a lei de Jakob
+   exigem que cards, campos, botões e navegação tenham a mesma forma em
+   qualquer rota; efeito estético-usabilidade exige uma superfície com
+   profundidade real, não retângulos cinza empilhados. As cores dos botões
+   primários permanecem exatamente blue-600/700/800 (contratos de QA).
+   ═══════════════════════════════════════════════════════════════════════ */
+:root {
+  --sp-canvas: #f3f6fc;
+  --sp-surface: #ffffff;
+  --sp-ink: #0b1b33;
+  --sp-line: #d9e3f3;
+  --sp-brand: #2563eb;
+  --sp-brand-dark: #1d4ed8;
+  --sp-brand-soft: #e7efff;
+  --sp-radius: 20px;
+  --sp-shadow: 0 20px 44px -22px rgba(11, 32, 71, 0.45),
+    0 2px 10px -4px rgba(11, 32, 71, 0.12);
+  --sp-shadow-hover: 0 28px 56px -24px rgba(11, 32, 71, 0.55),
+    0 4px 14px -6px rgba(11, 32, 71, 0.18);
+}
+
+/* Fundo comum: uma única "luz" no topo dá profundidade sem poluir. */
+.sp-page {
+  background-color: var(--sp-canvas);
+  background-image: radial-gradient(
+    980px 340px at 50% -150px,
+    rgba(37, 99, 235, 0.11),
+    transparent 72%
+  );
+}
+
+/* Cabeçalho em gradiente de marca — ainda no fluxo, sem posição fixa. */
+.sp-header {
+  background-color: #0b1b33;
+  background-image: linear-gradient(105deg, #0b1b33 0%, #123a78 58%, #1d4ed8 150%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow: 0 16px 34px -20px rgba(6, 20, 48, 0.9);
+}
+.sp-header-divisor {
+  border-top-color: rgba(255, 255, 255, 0.14);
+}
+
+/* Superfície elevada: usada por TODOS os cards do app. */
+.sp-card {
+  background-color: var(--sp-surface);
+  border: 1px solid var(--sp-line);
+  border-radius: var(--sp-radius);
+  box-shadow: var(--sp-shadow);
+  transition: box-shadow 150ms ease-out, transform 150ms ease-out;
+}
+@media (hover: hover) {
+  .sp-card:hover {
+    box-shadow: var(--sp-shadow-hover);
+  }
+}
+
+/* Ação primária: maior, mais próxima e com profundidade (Fitts + Von Restorff). */
+.sp-btn {
+  min-height: 48px;
+  border-radius: 14px;
+  box-shadow: 0 12px 24px -12px rgba(37, 99, 235, 0.8),
+    0 2px 6px -2px rgba(11, 32, 71, 0.18);
+}
+.sp-btn:active:not(:disabled) {
+  box-shadow: 0 4px 10px -6px rgba(37, 99, 235, 0.8);
+}
+button.sp-btn:focus-visible,
+[role="button"].sp-btn:focus-visible {
+  outline: 2px solid #bfdbfe;
+  outline-offset: 2px;
+}
+
+/* Campo: alvo alto, fundo levemente azulado e foco inequívoco (Postel / Doherty). */
+.sp-field {
+  min-height: 52px;
+  border-radius: 14px;
+  border-color: #c7d6ee;
+  background-color: #f8fbff;
+  box-shadow: inset 0 1px 2px rgba(11, 32, 71, 0.05);
+  transition: border-color 150ms ease-out, box-shadow 150ms ease-out;
+}
+.sp-field:focus-within {
+  border-color: var(--sp-brand);
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.16);
+}
+.sp-field--erro {
+  border-color: #fca5a5;
+  background-color: #fef2f2;
+}
+
+/* Hero: profundidade e atmosfera, sem imagem externa. */
+.sp-hero {
+  background-color: #e9f0ff;
+  background-image:
+    radial-gradient(620px 340px at 12% -12%, rgba(37, 99, 235, 0.24), transparent 70%),
+    radial-gradient(560px 320px at 90% -4%, rgba(56, 189, 248, 0.2), transparent 72%);
+}
+.sp-busca {
+  background-color: #ffffff;
+  border: 1px solid #d3e1f8;
+  border-radius: 24px;
+  box-shadow: 0 28px 56px -26px rgba(11, 32, 71, 0.5);
+}
+
+/* Indicadores e agrupamento: hierarquia explícita (Miller / proximidade). */
+.sp-kpi {
+  border: 1px solid rgba(11, 32, 71, 0.07);
+  border-radius: 16px;
+  padding: 16px;
+}
+.sp-kpi-valor {
+  font-size: 30px;
+  line-height: 1.05;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+.sp-secao {
+  border-left: 4px solid var(--sp-brand);
+  padding-left: 12px;
+}
+.sp-grupo {
+  letter-spacing: 0.14em;
+}
+
+/* Barra de progresso preenchida — gradiente de objetivo. */
+.sp-progresso {
+  height: 8px;
+  border-radius: 999px;
+  background-color: #dbe6f8;
+  overflow: hidden;
+}
+.sp-progresso-fill {
+  height: 8px;
+  border-radius: 999px;
+  background-color: var(--sp-brand);
+  transition: width 150ms ease-out;
+}
+
+/* Bloco de destaque: UM elemento isolado por tela (Von Restorff). */
+.sp-destaque {
+  background-color: #0b1b33;
+  background-image: linear-gradient(112deg, #0b1b33 0%, #153e86 62%, #1d4ed8 130%);
+  border-radius: var(--sp-radius);
+  box-shadow: 0 24px 48px -24px rgba(11, 32, 71, 0.75);
+}
+
+/* Rodapé e barras escuras com a mesma identidade do cabeçalho. */
+.sp-footer {
+  background-color: #09182f;
+  background-image: linear-gradient(118deg, #09182f 0%, #102a55 100%);
+  border-top: 3px solid var(--sp-brand);
+}
+.sp-sidebar {
+  background-color: #0b1b33;
+  background-image: linear-gradient(180deg, #0b1b33 0%, #0f2c5c 100%);
+  border-right: 1px solid rgba(255, 255, 255, 0.09);
+}
+.sp-barra {
+  background-color: #0b1b33;
+  background-image: linear-gradient(105deg, #0b1b33, #163f88);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sp-card,
+  .sp-field,
+  .sp-progresso-fill {
+    transition: none !important;
+  }
+  .sp-card:hover {
+    box-shadow: var(--sp-shadow) !important;
+  }
+}
+
+/* Alerta de tarefa pendente: mesma forma dos cards, cor isolada (Zeigarnic). */
+.sp-alerta {
+  background-color: #eff6ff;
+  border-color: #bfdbfe;
+}

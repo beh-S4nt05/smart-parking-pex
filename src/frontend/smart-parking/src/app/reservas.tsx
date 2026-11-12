@@ -61,7 +61,7 @@ export default function Reservas() {
   }
 
   return (
-    <View className="flex-1 bg-slate-50">
+    <View className="sp-page flex-1 bg-slate-50">
       <Header rotaAtual="/" />
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 48 }}>
         <View className="mx-auto w-full max-w-3xl">
@@ -71,6 +71,23 @@ export default function Reservas() {
           <Text className="mt-1 text-sm text-slate-600">
             Acompanhe e gerencie as vagas que você garantiu.
           </Text>
+
+          {/* Regra do pico-fim: o resumo positivo aparece logo ao entrar. */}
+          {isAuthenticated && !loading && !erro && reservas.length > 0 ? (
+            <Card className="sp-alerta mt-5 flex-row items-center gap-3 p-4">
+              <View className="h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-600">
+                <Text className="text-[13px] font-bold text-white">OK</Text>
+              </View>
+              <View className="min-w-0 flex-1">
+                <Text className="text-[15px] font-bold text-slate-900">
+                  {reservas.length} {reservas.length === 1 ? "reserva ativa" : "reservas ativas"}
+                </Text>
+                <Text className="mt-0.5 text-[13px] text-slate-600">
+                  Suas vagas estão garantidas. Cancele aqui quando não precisar mais.
+                </Text>
+              </View>
+            </Card>
+          ) : null}
 
           <View className="mt-6 gap-3 3xl:gap-6">
             {authLoading || (!isAuthenticated && loading) ? (

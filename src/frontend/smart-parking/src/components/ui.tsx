@@ -123,17 +123,30 @@ export function Logo({
   );
 }
 
-export function LogoBlox({ compact }: { compact?: boolean }) {
+export function LogoBlox({
+  compact,
+  claro = false,
+}: {
+  compact?: boolean;
+  /** Cabeçalho em gradiente escuro: o lockup precisa inverter as cores. */
+  claro?: boolean;
+}) {
   return (
     <View className="flex-row items-center gap-2.5">
-      <Logo size={compact ? 34 : 40} />
+      <Logo size={compact ? 34 : 40} tone={claro ? "white" : "blue"} />
       <View>
         <Text
-          className={`font-extrabold text-slate-900 ${compact ? "text-[15px]" : "text-base"}`}
+          className={`font-extrabold ${claro ? "text-white" : "text-slate-900"} ${
+            compact ? "text-[15px]" : "text-base"
+          }`}
         >
           Smart Parking
         </Text>
-        <Text className="text-[11px] font-medium text-slate-600">Shoppings</Text>
+        <Text
+          className={`text-[11px] font-medium ${claro ? "text-blue-100" : "text-slate-600"}`}
+        >
+          Shoppings
+        </Text>
       </View>
     </View>
   );
@@ -302,7 +315,7 @@ export function Botao({
   };
 
   const base =
-    "relative min-h-11 flex-row select-none items-center justify-center gap-2 rounded-xl px-5 py-3.5";
+    "sp-btn relative min-h-11 flex-row select-none items-center justify-center gap-2 rounded-xl px-5 py-3.5";
   const variants: Record<string, string> = {
     primario: "bg-blue-600 hover:bg-blue-700 active:bg-blue-800",
     contorno: "border border-blue-600 bg-white hover:bg-blue-50 active:bg-blue-100",
@@ -385,7 +398,7 @@ export function Card({
 }) {
   return (
     <View
-      className={`rounded-2xl border border-slate-200 bg-white ${className}`}
+      className={`sp-card rounded-2xl border border-slate-200 bg-white ${className}`}
       style={style}
     >
       {children}
@@ -406,7 +419,7 @@ export function TituloSecao({
 }) {
   return (
     <View className="mb-4 flex-row items-end justify-between">
-      <View>
+      <View className="sp-secao">
         <Text className="text-xl font-bold text-slate-900">{titulo}</Text>
         {subtitulo ? (
           <Text className="mt-0.5 text-sm text-slate-600">{subtitulo}</Text>
@@ -482,9 +495,9 @@ export function StatTile({
   };
   const t = tones[tone];
   return (
-    <View className={`items-start rounded-2xl p-4 ${t.bg} ${className}`}>
+    <View className={`sp-kpi items-start rounded-2xl p-4 ${t.bg} ${className}`}>
       <Text className="text-[13px] font-medium text-slate-600">{rotulo}</Text>
-      <Text className={`mt-1 text-2xl font-extrabold ${t.text}`}>{valor}</Text>
+      <Text className={`sp-kpi-valor mt-1 text-2xl font-extrabold ${t.text}`}>{valor}</Text>
     </View>
   );
 }
@@ -554,6 +567,8 @@ interface CampoProps extends TextInputProps {
   opcional?: boolean;
   visivel?: boolean;
   onAlternarVisivel?: () => void;
+  /** Lei de Postel: aceita o que o usuário digitar e normaliza antes de enviar. */
+  normalizar?: (valor: string) => string;
 }
 
 export function Campo({
@@ -564,11 +579,15 @@ export function Campo({
   opcional,
   visivel,
   onAlternarVisivel,
+  normalizar,
   ...inputProps
 }: CampoProps) {
   const descricao = erro ?? helper;
   const invalido = Boolean(erro);
   const desabilitado = inputProps.editable === false;
+  const aoMudar = normalizar
+    ? (texto: string) => inputProps.onChangeText?.(normalizar(texto))
+    : inputProps.onChangeText;
   return (
     <View className="mb-4">
       <Text className="mb-1.5 text-[13px] font-semibold text-slate-700">
@@ -578,8 +597,8 @@ export function Campo({
         ) : null}
       </Text>
       <View
-        className={`min-w-0 flex-row items-center rounded-xl border-2 bg-slate-50 px-3.5 ${
-          erro ? "border-red-300 bg-red-50" : "border-slate-200"
+        className={`sp-field min-w-0 flex-row items-center rounded-xl border-2 bg-slate-50 px-3.5 ${
+          erro ? "sp-field--erro border-red-300 bg-red-50" : "border-slate-200"
         }`}
       >
         <TextInput
@@ -598,6 +617,7 @@ export function Campo({
               }
             : {})}
           {...inputProps}
+          onChangeText={aoMudar}
         />
         {senha ? (
           <Pressable

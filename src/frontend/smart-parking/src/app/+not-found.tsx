@@ -14,7 +14,7 @@ export default function NaoEncontrado() {
   const router = useRouter();
 
   return (
-    <View className="flex-1 bg-slate-50">
+    <View className="sp-page flex-1 bg-slate-50">
       <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: "center" }}>
         <View className="mx-auto w-full max-w-lg items-center gap-4 px-6 py-14">
           <Logo size={56} />

@@ -132,7 +132,7 @@ export default function Cadastro() {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : undefined}
-      className="flex-1 bg-slate-50"
+      className="sp-page flex-1 bg-slate-50"
     >
       <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: "center" }}>
         <View className="w-full max-w-[440px] self-center px-5 py-10 3xl:max-w-[520px] 3xl:py-14">
@@ -148,7 +148,22 @@ export default function Cadastro() {
             </Text>
           </View>
 
-          {/* progresso */}
+          {/* Gradiente de objetivo: etapa explícita + barra preenchida.
+              O usuário vê o quanto falta e não abandona no meio. */}
+          <View className="mb-3 flex-row items-center justify-between px-1">
+            <Text className="text-[13px] font-bold text-slate-800">
+              Etapa {step} de 2
+            </Text>
+            <Text className="text-[12px] font-semibold text-blue-700">
+              {step === 1 ? "Comece aqui" : "Quase pronto"}
+            </Text>
+          </View>
+          <View className="sp-progresso mb-4">
+            <View
+              className="sp-progresso-fill"
+              style={{ width: step === 1 ? "50%" : "100%" }}
+            />
+          </View>
           <View className="mb-2 flex-row items-center gap-2 px-1">
             <PassoEtapa numero={1} ativo={step === 1} concluido={step > 1} />
             <View
@@ -324,15 +339,17 @@ function PassoEtapa({
   ativo: boolean;
   concluido: boolean;
 }) {
-  const fundo = concluido ? "bg-blue-600" : ativo ? "bg-blue-600" : "bg-slate-200";
+  const fundo = concluido || ativo ? "bg-blue-600" : "bg-slate-200";
   return (
     <View
-      className={`h-6 w-6 items-center justify-center rounded-full ${fundo}`}
+      className={`h-9 w-9 items-center justify-center rounded-full border-2 border-white shadow-sm ${fundo}`}
     >
       {concluido ? (
-        <IconeCheck cor="#FFFFFF" tamanho={11} />
+        <IconeCheck cor="#FFFFFF" tamanho={14} />
       ) : (
-        <Text className="text-[11px] font-bold text-white">{numero}</Text>
+        <Text className={`text-sm font-bold ${ativo ? "text-white" : "text-slate-600"}`}>
+          {numero}
+        </Text>
       )}
     </View>
   );
