@@ -287,17 +287,18 @@ function AbaDashboard({
   }, [estacionamentos, estSel]);
 
   const horas = useMemo(() => {
-    // buckets 8h..19h de entradas por hora
-    const base = Array.from({ length: 12 }, (_, i) => ({ hora: 8 + i, n: 0 }));
+    // Mostra até 12 horas recentes do dia, incluindo a hora atual.
+    const agoraHora = new Date().getHours();
+    const inicio = Math.max(0, agoraHora - 11);
+    const base = Array.from({ length: agoraHora - inicio + 1 }, (_, i) => ({ hora: inicio + i, n: 0 }));
     (fluxo?.registros ?? []).forEach((r) => {
       if (!r.entrada_em) return;
       const h = new Date(r.entrada_em).getHours();
-      const idx = h - 8;
+      const idx = h - inicio;
       if (idx >= 0 && idx < base.length) base[idx].n += 1;
     });
     const max = Math.max(...base.map((b) => b.n), 1);
-    const agoraHora = new Date().getHours();
-    return { base, max, agoraHora };
+    return { base, max, agoraHora, temDados: base.some((b) => b.n > 0) };
   }, [fluxo]);
 
   return (
@@ -400,7 +401,7 @@ function AbaDashboard({
           <Text className="mb-4 text-base font-bold text-slate-900">
             {compacto ? "Fluxo de veículos hoje" : "Fluxo de veículos por hora"}
           </Text>
-          {!compacto && (fluxo?.total_entradas ?? 0) > 0 ? <View className="h-36 flex-row items-end gap-1.5">
+          {!compacto && horas.temDados ? <View className="h-36 flex-row items-end gap-1.5">
             {horas.base.map((b) => {
               const h = Math.max(6, (b.n / horas.max) * 110);
               const ativoHora = b.hora === horas.agoraHora;
@@ -414,7 +415,7 @@ function AbaDashboard({
                     }}
                   />
                   <Text
-                    className={`text-[9px] ${ativoHora ? "font-bold text-blue-600" : "text-slate-600"}`}
+                    className={`text-[10px] ${ativoHora ? "font-bold text-blue-600" : "text-slate-600"}`}
                   >
                     {b.hora}h
                   </Text>
@@ -422,7 +423,7 @@ function AbaDashboard({
               );
             })}
           </View> : !compacto ? (
-            <Text className="text-[13px] text-slate-600">Ainda não houve entradas hoje.</Text>
+            <Text className="text-[13px] text-slate-600">Sem entradas nas horas exibidas. O total do dia aparece abaixo.</Text>
           ) : null}
           <View className="mt-4 flex-row gap-3">
             <View className="flex-1 rounded-xl bg-slate-50 p-3">
