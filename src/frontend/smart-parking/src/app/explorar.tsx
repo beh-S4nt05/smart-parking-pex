@@ -44,10 +44,10 @@ export default function Explorar() {
           <RefreshControl refreshing={loading} onRefresh={refresh} tintColor="#2563EB" />
         }
       >
-        <View className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6">
+        <View className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-8 3xl:px-8">
           <View className="mb-5 flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
             <View className="min-w-0 flex-1">
-              <Text className="text-2xl font-extrabold text-slate-900 sm:text-3xl">
+              <Text className="text-balance text-xl font-extrabold text-slate-900 sm:text-3xl 3xl:text-4xl">
                 Vagas disponíveis agora
               </Text>
               <Text className="mt-1 text-sm text-slate-600">
@@ -66,11 +66,12 @@ export default function Explorar() {
           </View>
 
           <TextInput
+            accessibilityLabel="Buscar shopping ou bairro"
             placeholder="Buscar por shopping ou bairro…"
             placeholderTextColor="#94A3B8"
             value={busca}
             onChangeText={setBusca}
-            className="mb-5 rounded-xl border-2 border-slate-200 bg-white px-4 py-3 text-base text-slate-900 focus:border-blue-500"
+            className="mb-5 min-h-12 rounded-xl border-2 border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 focus:border-blue-500 sm:text-base"
           />
 
           {erro ? (
@@ -96,9 +97,9 @@ export default function Explorar() {
           )}
 
           {/* CTA de cadastro para reservar */}
-          <View className="mt-8 flex-col gap-4 rounded-2xl bg-slate-900 p-6 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+          <View className="mt-8 flex-col gap-4 rounded-2xl bg-slate-900 p-5 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:p-6 3xl:p-8">
             <View className="min-w-0 sm:flex-1">
-              <Text className="text-lg font-bold text-white">
+              <Text className="text-base font-bold text-white sm:text-lg">
                 Quer garantir sua vaga antes de sair de casa?
               </Text>
               <Text className="mt-1 text-sm text-slate-300">

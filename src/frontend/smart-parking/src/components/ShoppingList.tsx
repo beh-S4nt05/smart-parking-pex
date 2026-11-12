@@ -71,7 +71,7 @@ export default function ShoppingList({
               className="rounded-2xl transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 motion-reduce:transition-none"
             >
               <Card
-                className="p-4"
+                className="p-4 3xl:p-5"
                 style={
                   selecionado
                     ? { borderColor: "#2563EB", borderWidth: 2, backgroundColor: "#EFF6FF" }
@@ -88,7 +88,7 @@ export default function ShoppingList({
                       />
                     </View>
                     <View>
-                      <Text numberOfLines={1} className="text-base font-bold text-slate-900">
+                      <Text numberOfLines={2} className="text-base font-bold text-slate-900">
                         {est.nome}
                       </Text>
                       <Text numberOfLines={1} className="mt-0.5 text-[13px] text-slate-600">
@@ -100,23 +100,30 @@ export default function ShoppingList({
                     </View>
                   </View>
                 ) : (
-                  <View className="min-w-0 flex-row flex-wrap items-center gap-3">
-                    <Logo size={40} />
-                    <View className="min-w-0 flex-1">
-                      <Text numberOfLines={1} className="text-[15px] font-bold text-slate-900">
-                        {est.nome}
-                      </Text>
-                      <Text numberOfLines={1} className="mt-0.5 text-xs text-slate-600">
-                        {bairroDe(est.endereco)}
-                      </Text>
-                      <Text className="mt-0.5 text-[11px] text-slate-600">
+                  /* Lista estreita: nome e local juntos (proximidade), status
+                     e metadados na linha seguinte. Em 320px o nome inteiro
+                     aparece — antes o Chip comprimia o texto em 122px. */
+                  <View className="gap-3">
+                    <View className="min-w-0 flex-row items-center gap-3">
+                      <Logo size={40} />
+                      <View className="min-w-0 flex-1">
+                        <Text numberOfLines={2} className="text-[15px] font-bold text-slate-900">
+                          {est.nome}
+                        </Text>
+                        <Text numberOfLines={1} className="mt-0.5 text-xs text-slate-600">
+                          {bairroDe(est.endereco)}
+                        </Text>
+                      </View>
+                    </View>
+                    <View className="flex-row items-center justify-between gap-2">
+                      <Text className="min-w-0 flex-1 text-[11px] text-slate-600">
                         {est.total_andares} andares · {est.total_vagas} vagas
                       </Text>
+                      <Chip
+                        label={`${livres} livres`}
+                        tone={tonePorDisponibilidade(est)}
+                      />
                     </View>
-                    <Chip
-                      label={`${livres} livres`}
-                      tone={tonePorDisponibilidade(est)}
-                    />
                   </View>
                 )}
               </Card>

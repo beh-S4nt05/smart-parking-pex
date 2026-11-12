@@ -20,7 +20,7 @@ import { useRouter } from "expo-router";
 import { useAuth } from "../hooks/useAuth";
 import { useEstacionamentos } from "../hooks/useEstacionamentos";
 import { apiErrorMessage, parkingApi } from "../services/api";
-import { Botao, Card, Chip, IconeFechar, IconeVoltar, Logo } from "../components/ui";
+import { Botao, Card, Chip, IconeEstado, IconeFechar, IconeVoltar, Logo } from "../components/ui";
 import type { SimSession } from "../types/api";
 
 export default function SimuladorQR() {
@@ -157,7 +157,7 @@ export default function SimuladorQR() {
       </View>
 
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 48 }}>
-        <View className="mx-auto w-full min-w-0 max-w-6xl flex-row flex-wrap items-start gap-5">
+        <View className="mx-auto w-full min-w-0 max-w-6xl flex-row flex-wrap items-start gap-5 3xl:gap-8">
           {/* coluna principal */}
           <View className="min-w-0 flex-1 gap-5" style={{ flexBasis: 520 }}>
             <Card className="p-6">
@@ -315,7 +315,7 @@ export default function SimuladorQR() {
               </Card>
             ) : (
               <Card className="items-center border-dashed p-8">
-                <Text className="text-3xl">📲</Text>
+                <IconeEstado nome="qr-code-outline" tom="azul" />
                 <Text className="mt-2 text-sm text-slate-600">
                   Gere o QR no passo 1 para liberar o acesso do celular ao mapa
                   de vagas.

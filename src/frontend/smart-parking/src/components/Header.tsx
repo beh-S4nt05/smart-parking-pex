@@ -25,7 +25,7 @@ const LINKS = [
 ] as const;
 
 const CLASSE_LINK =
-  "min-h-11 flex-row items-center content-center rounded-lg px-3 transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 motion-reduce:transition-none";
+  "min-h-11 min-w-0 flex-row items-center content-center rounded-lg px-2 transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 motion-reduce:transition-none sm:px-3";
 
 export default function Header({ rotaAtual = "/" }: { rotaAtual?: string }) {
   const router = useRouter();
@@ -74,7 +74,7 @@ export default function Header({ rotaAtual = "/" }: { rotaAtual?: string }) {
       accessibilityRole="button"
       accessibilityLabel="Abrir ajuda do HelpDesk"
       hitSlop={4}
-      className="min-h-11 flex-row items-center content-center rounded-lg px-3 py-2 transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+      className="min-h-11 min-w-0 flex-row items-center content-center rounded-lg px-2 py-2 transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 motion-reduce:transition-none sm:px-3"
     >
       <Text className="text-sm font-semibold text-blue-700">Ajuda</Text>
     </Pressable>
@@ -82,7 +82,7 @@ export default function Header({ rotaAtual = "/" }: { rotaAtual?: string }) {
 
   return (
     <View className="border-b border-slate-200 bg-white">
-      <View className="mx-auto w-full max-w-7xl flex-row items-center justify-between gap-3 px-4 py-3 sm:px-6">
+      <View className="mx-auto w-full max-w-7xl flex-row items-center justify-between gap-2 px-3 py-3 sm:gap-3 sm:px-6 3xl:px-8 3xl:py-4">
         <Link
           href="/"
           accessibilityRole="link"
@@ -98,17 +98,17 @@ export default function Header({ rotaAtual = "/" }: { rotaAtual?: string }) {
           {ajuda()}
         </View>
 
-        <View className="flex-row items-center gap-2">
+        <View className="min-w-0 flex-row items-center gap-1 sm:gap-2">
           {isAuthenticated ? (
             <>
-              <Text numberOfLines={1} className="hidden max-w-32 text-sm font-semibold text-slate-700 lg:flex">
+              <Text numberOfLines={1} className="hidden max-w-40 text-sm font-semibold text-slate-700 lg:flex 3xl:max-w-48">
                 {user?.nome}
               </Text>
               <Link
                 href={canAccessPanel ? "/dashboard" : "/reservas"}
                 accessibilityRole="link"
                 accessibilityLabel={canAccessPanel ? "Abrir painel administrativo" : "Minhas reservas"}
-                className="min-h-11 flex-row items-center justify-center rounded-lg bg-blue-600 px-4 transition-colors hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                className="min-h-11 flex-row items-center justify-center rounded-lg bg-blue-600 px-3 transition-colors hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 sm:px-4"
               >
                 <Text className="text-sm font-semibold text-white">{canAccessPanel ? "Painel" : "Minhas reservas"}</Text>
               </Link>
@@ -135,9 +135,9 @@ export default function Header({ rotaAtual = "/" }: { rotaAtual?: string }) {
         </View>
       </View>
 
-      <View className="border-t border-slate-100 px-2 sm:px-4 lg:hidden">
-        <View className="mx-auto w-full max-w-7xl flex-row flex-wrap items-center justify-between gap-x-2">
-          <View className="flex-row items-center gap-1">
+      <View className="border-t border-slate-100 px-1 py-1 sm:px-4 lg:hidden 3xl:px-8">
+        <View className="mx-auto w-full max-w-7xl flex-row flex-wrap items-center justify-between gap-x-2 gap-y-1">
+          <View className="min-w-0 flex-row flex-wrap items-center gap-1">
             {links()}
             {ajuda()}
           </View>
@@ -182,7 +182,7 @@ export function BarraEscura({
   direita?: React.ReactNode;
 }) {
   return (
-    <View className="bg-slate-900 px-4 py-4 sm:px-6">
+    <View className="bg-slate-900 px-4 py-4 sm:px-6 3xl:py-5">
       <View className="mx-auto flex w-full max-w-7xl flex-row items-center gap-3">
         {voltar}
         <View className="min-w-0 flex-1">
