@@ -83,3 +83,11 @@ jobs:
             src/frontend/smart-parking/playwright-report/
           if-no-files-found: ignore
           retention-days: 5
+      - name: Preview das telas
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: preview-ui
+          path: src/frontend/smart-parking/test-results/**/preview-*.png
+          if-no-files-found: ignore
+          retention-days: 5
