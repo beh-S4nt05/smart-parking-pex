@@ -164,18 +164,16 @@ export default function SimuladorQR() {
               <Passo numero="1" titulo="Escolha o local" />
               <View className="mt-4 gap-4">
                 <CampoRotulo rotulo="Estacionamento">
-                  <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={{ gap: 8 }}
-                  >
+                  <View className="flex-row flex-wrap gap-2">
                     {estacionamentos.map((e) => {
                       const ativo = e.id === estId;
                       return (
                         <Pressable
                           key={e.id}
                           onPress={() => setEstId(e.id)}
-                          className={`rounded-full border px-4 py-2 ${
+                          accessibilityRole="button"
+                          accessibilityState={{ selected: ativo }}
+                          className={`min-h-11 flex-row items-center rounded-lg border px-4 py-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
                             ativo ? "border-blue-600 bg-blue-50" : "border-slate-200 bg-white"
                           }`}
                         >
@@ -189,11 +187,11 @@ export default function SimuladorQR() {
                         </Pressable>
                       );
                     })}
-                  </ScrollView>
+                  </View>
                 </CampoRotulo>
 
                 <CampoRotulo rotulo="Andar">
-                  <View className="flex-row gap-2">
+                  <View className="flex-row flex-wrap gap-2">
                     {(est?.andares ?? [])
                       .slice()
                       .sort((a, b) => a.numero_andar - b.numero_andar)
@@ -203,7 +201,9 @@ export default function SimuladorQR() {
                           <Pressable
                             key={a.id}
                             onPress={() => setAndar(a.numero_andar)}
-                            className={`rounded-full border px-4 py-2 ${
+                            accessibilityRole="button"
+                            accessibilityState={{ selected: ativo }}
+                            className={`min-h-11 flex-row items-center rounded-lg border px-4 py-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
                               ativo ? "border-blue-600 bg-blue-50" : "border-slate-200 bg-white"
                             }`}
                           >
@@ -221,12 +221,14 @@ export default function SimuladorQR() {
                 </CampoRotulo>
 
                 <CampoRotulo rotulo="Validade da sessão">
-                  <View className="flex-row gap-2">
+                  <View className="flex-row flex-wrap gap-2">
                     {[1, 4, 8, 12, 24].map((h) => (
                       <Pressable
                         key={h}
                         onPress={() => setDuracao(h)}
-                        className={`rounded-full border px-4 py-2 ${
+                        accessibilityRole="button"
+                        accessibilityState={{ selected: duracao === h }}
+                        className={`min-h-11 flex-row items-center rounded-lg border px-4 py-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
                           duracao === h
                             ? "border-blue-600 bg-blue-50"
                             : "border-slate-200 bg-white"
