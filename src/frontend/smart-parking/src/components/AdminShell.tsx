@@ -179,15 +179,16 @@ export default function AdminShell({
   // -------- mobile --------
   return (
     <View className="flex-1 bg-slate-50">
-      <View className="border-b border-slate-800 bg-slate-900 pt-5">
-        <View className="px-4">
-          <View className="min-w-0 flex-1">
+      <View className="border-b border-slate-200 bg-white">
+        <View className="bg-slate-900 px-4 pb-4 pt-5">
+          <View className="min-w-0">
             <Text className="text-xl font-bold text-white">{titulo}</Text>
             {subtitulo ? (
               <Text className="mt-1 text-xs leading-5 text-slate-300">{subtitulo}</Text>
             ) : null}
           </View>
-          <View className="mt-3 flex-row flex-wrap items-center justify-between gap-2 border-t border-slate-700 py-2">
+        </View>
+        <View className="flex-row flex-wrap items-center justify-between gap-2 border-b border-slate-200 px-4 py-1">
             <SeloAoVivo />
             <View className="flex-row items-center gap-1">
             <Pressable
@@ -195,11 +196,11 @@ export default function AdminShell({
               accessibilityRole="button"
               accessibilityLabel="Voltar ao site"
               hitSlop={6}
-              className="min-h-11 flex-row items-center justify-center rounded-lg px-3 transition-colors active:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
+              className="min-h-11 flex-row items-center justify-center rounded-lg px-3 transition-colors active:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
             >
               <View className="flex-row items-center gap-1">
-                <IconeVoltar cor="#E2E8F0" tamanho={12} />
-                <Text className="text-xs font-semibold text-slate-200">Site</Text>
+                <IconeVoltar cor="#334155" tamanho={12} />
+                <Text className="text-xs font-semibold text-slate-700">Site</Text>
               </View>
             </Pressable>
             <Pressable
@@ -207,14 +208,13 @@ export default function AdminShell({
               accessibilityRole="button"
               accessibilityLabel="Encerrar sessão"
               hitSlop={6}
-              className="min-h-11 flex-row items-center justify-center rounded-lg px-3 transition-colors active:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-300"
+              className="min-h-11 flex-row items-center justify-center rounded-lg px-3 transition-colors active:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-300"
             >
-              <Text className="text-xs font-semibold text-red-200">Sair</Text>
+              <Text className="text-xs font-semibold text-red-700">Sair</Text>
             </Pressable>
             </View>
-          </View>
         </View>
-        <View className="flex-row flex-wrap gap-1 border-t border-slate-700 px-2">
+        <View className="flex-row flex-wrap px-2">
           {abas.map((item) => {
             const ativo = item.id === aba;
             return (
@@ -226,13 +226,14 @@ export default function AdminShell({
                 accessibilityHint={`Abre a seção ${item.label} do painel`}
                 accessibilityState={{ selected: ativo, disabled: false }}
                 hitSlop={6}
-                className={`min-h-11 flex-row items-center justify-center border-b-2 px-3.5 py-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 motion-reduce:transition-none ${
-                  ativo ? "border-blue-400" : "border-transparent hover:bg-slate-800 active:bg-slate-800"
+                style={{ flexBasis: "33.333333%" }}
+                className={`min-h-12 flex-row items-center justify-center border-b-2 px-1 py-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 motion-reduce:transition-none ${
+                  ativo ? "border-blue-600 bg-blue-50" : "border-transparent hover:bg-slate-50 active:bg-slate-100"
                 }`}
               >
                 <Text
-                  className={`text-xs font-semibold ${
-                    ativo ? "text-white" : "text-slate-300"
+                  className={`text-center text-xs font-semibold ${
+                    ativo ? "text-blue-700" : "text-slate-700"
                   }`}
                 >
                   {item.label}
