@@ -4,7 +4,7 @@ services:
     container_name: smartparking-nginx
     restart: always
     ports:
-      - "80:80"
+      - "8080:80"
     # Sem bind mount de config: a configuração é COPIADA no build (Dockerfile).
     # Editou src/nginx/*.conf? rebuild obrigatório: docker compose up -d --build
     depends_on:
