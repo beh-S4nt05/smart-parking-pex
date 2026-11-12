@@ -17,10 +17,12 @@ import Footer from "../components/Footer";
 import ShoppingList from "../components/ShoppingList";
 import { Botao } from "../components/ui";
 import { useEstacionamentos } from "../hooks/useEstacionamentos";
+import { useAuth } from "../hooks/useAuth";
 import { useAgora, desdeAte } from "../hooks/useAgora";
 
 export default function Explorar() {
   const router = useRouter();
+  const { isAuthenticated } = useAuth();
   const { estacionamentos, loading, erro, atualizadoEm, refresh } =
     useEstacionamentos({ pollingMs: 15000 });
   const [busca, setBusca] = useState("");
@@ -48,11 +50,10 @@ export default function Explorar() {
           <View className="mb-5 flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
             <View className="min-w-0 flex-1">
               <Text className="text-2xl font-extrabold text-slate-900 sm:text-3xl">
-                Vagas disponíveis agora
+                Escolha um shopping
               </Text>
               <Text className="mt-1 text-sm text-slate-600">
-                Visualização pública — atualizado {desdeAte(atualizadoEm, agora)} ·
-                entre para reservar.
+                Veja vagas livres por local e andar. Atualizado {desdeAte(atualizadoEm, agora)}.
               </Text>
             </View>
             <View className="self-start rounded-full border border-emerald-200 bg-emerald-50 sm:self-auto">
@@ -66,6 +67,7 @@ export default function Explorar() {
           </View>
 
           <TextInput
+            accessibilityLabel="Buscar shopping ou bairro"
             placeholder="Buscar por shopping ou bairro…"
             placeholderTextColor="#94A3B8"
             value={busca}
@@ -96,10 +98,10 @@ export default function Explorar() {
           )}
 
           {/* CTA de cadastro para reservar */}
-          <View className="mt-8 flex-col gap-4 rounded-2xl bg-slate-900 p-6 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+          {!isAuthenticated ? <View className="mt-8 flex-col gap-4 rounded-2xl bg-slate-900 p-5 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:p-6">
             <View className="min-w-0 sm:flex-1">
               <Text className="text-lg font-bold text-white">
-                Quer garantir sua vaga antes de sair de casa?
+                Quer reservar antes de chegar?
               </Text>
               <Text className="mt-1 text-sm text-slate-300">
                 Crie sua conta e reserve pelo app — é grátis.
@@ -110,7 +112,7 @@ export default function Explorar() {
               onPress={() => router.push("/cadastro")}
               className="w-full px-6 py-3 sm:w-auto"
             />
-          </View>
+          </View> : null}
         </View>
 
         <Footer />
