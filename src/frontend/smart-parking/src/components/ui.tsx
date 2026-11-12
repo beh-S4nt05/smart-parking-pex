@@ -566,6 +566,8 @@ export function Campo({
   onAlternarVisivel,
   ...inputProps
 }: CampoProps) {
+  const [visivelLocal, setVisivelLocal] = useState(false);
+  const senhaVisivel = visivel ?? visivelLocal;
   const descricao = erro ?? helper;
   const invalido = Boolean(erro);
   const desabilitado = inputProps.editable === false;
@@ -587,7 +589,7 @@ export function Campo({
           accessibilityHint={descricao}
           accessibilityState={{ disabled: desabilitado }}
           placeholderTextColor="#64748B"
-          secureTextEntry={senha && !visivel}
+          secureTextEntry={senha && !senhaVisivel}
           className={`min-w-0 flex-1 py-3 text-base ${
             erro ? "text-red-600" : "text-slate-900"
           }`}
@@ -601,17 +603,16 @@ export function Campo({
         />
         {senha ? (
           <Pressable
-            onPress={onAlternarVisivel}
-            disabled={!onAlternarVisivel}
+            onPress={onAlternarVisivel ?? (() => setVisivelLocal((v) => !v))}
             hitSlop={8}
             accessibilityRole="button"
-            accessibilityLabel={visivel ? "Ocultar senha" : "Mostrar senha"}
+            accessibilityLabel={senhaVisivel ? "Ocultar senha" : "Mostrar senha"}
             accessibilityHint="Alterna a visualização da senha digitada"
-            accessibilityState={{ disabled: !onAlternarVisivel }}
+            accessibilityState={{ disabled: false }}
             className="min-h-11 min-w-11 flex-row items-center justify-center rounded-md px-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
           >
             <Text className="text-xs font-semibold text-blue-600">
-              {visivel ? "Ocultar" : "Mostrar"}
+              {senhaVisivel ? "Ocultar" : "Mostrar"}
             </Text>
           </Pressable>
         ) : null}
@@ -619,13 +620,11 @@ export function Campo({
       {helper && !erro ? (
         <Text className="mt-1 text-[11px] text-slate-600">{helper}</Text>
       ) : null}
-      <Text
-        accessibilityRole={erro ? "alert" : undefined}
-        accessibilityLiveRegion={erro ? "polite" : undefined}
-        className="mt-1 min-h-[16px] text-xs text-red-600"
-      >
-        {erro ?? ""}
-      </Text>
+      {erro ? (
+        <Text accessibilityRole="alert" accessibilityLiveRegion="polite" className="mt-1 text-xs text-red-600">
+          {erro}
+        </Text>
+      ) : null}
     </View>
   );
 }
@@ -936,7 +935,7 @@ export function ModalForma({
               <Text className="mt-0.5 text-[13px] text-slate-600">{descricao}</Text>
             ) : null}
             <ScrollView
-              style={{ maxHeight: 420 }}
+              style={{ maxHeight: Math.max(120, Math.min(420, Math.round(height * 0.88) - 170)) }}
               className="mt-4"
               keyboardShouldPersistTaps="handled"
               contentContainerStyle={{ paddingBottom: 16 }}
