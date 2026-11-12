@@ -16,6 +16,10 @@ for (const viewport of [
         undefined,
         { timeout: 10_000 },
       );
+      if (nome === "simulador-qr") {
+        await page.getByText("Shopping QA Centro", { exact: true }).first().click();
+        await expect(page.getByText("1º andar")).toBeVisible();
+      }
       await page.screenshot({
         path: test.info().outputPath(`preview-${viewport.name}-${nome}.png`),
         fullPage: true,
