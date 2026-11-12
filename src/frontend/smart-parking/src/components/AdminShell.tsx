@@ -214,12 +214,7 @@ export default function AdminShell({
             </View>
           </View>
         </View>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          className="border-t border-slate-700 px-2"
-          contentContainerStyle={{ gap: 4 }}
-        >
+        <View className="flex-row flex-wrap gap-1 border-t border-slate-700 px-2">
           {abas.map((item) => {
             const ativo = item.id === aba;
             return (
@@ -245,7 +240,7 @@ export default function AdminShell({
               </Pressable>
             );
           })}
-        </ScrollView>
+        </View>
       </View>
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
         <View className="gap-4">
