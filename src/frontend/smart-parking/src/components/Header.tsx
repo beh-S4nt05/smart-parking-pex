@@ -29,7 +29,7 @@ const CLASSE_LINK =
 
 export default function Header({ rotaAtual = "/" }: { rotaAtual?: string }) {
   const router = useRouter();
-  const { isAuthenticated, canAccessPanel, signOut } = useAuth();
+  const { user, isAuthenticated, canAccessPanel, signOut } = useAuth();
 
   const abrirAjuda = () =>
     Alert.alert(
@@ -101,13 +101,16 @@ export default function Header({ rotaAtual = "/" }: { rotaAtual?: string }) {
         <View className="flex-row items-center gap-2">
           {isAuthenticated ? (
             <>
+              <Text numberOfLines={1} className="hidden max-w-32 text-sm font-semibold text-slate-700 lg:flex">
+                {user?.nome}
+              </Text>
               <Link
                 href={canAccessPanel ? "/dashboard" : "/reservas"}
                 accessibilityRole="link"
                 accessibilityLabel={canAccessPanel ? "Abrir painel administrativo" : "Minhas reservas"}
                 className="min-h-11 flex-row items-center justify-center rounded-lg bg-blue-600 px-4 transition-colors hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
               >
-                <Text className="text-sm font-semibold text-white">{canAccessPanel ? "Painel" : "Reservas"}</Text>
+                <Text className="text-sm font-semibold text-white">{canAccessPanel ? "Painel" : "Minhas reservas"}</Text>
               </Link>
               <Link
                 href="/perfil"
@@ -144,7 +147,7 @@ export default function Header({ rotaAtual = "/" }: { rotaAtual?: string }) {
                 href="/perfil"
                 accessibilityRole="link"
                 accessibilityLabel="Minha conta"
-                className="min-h-11 flex-row items-center justify-center rounded-lg px-2 transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                className="min-h-11 min-w-11 flex-row items-center justify-center rounded-lg px-2 transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
               >
                 <Text className="text-sm font-semibold text-slate-700">Conta</Text>
               </Link>
@@ -152,7 +155,7 @@ export default function Header({ rotaAtual = "/" }: { rotaAtual?: string }) {
                 onPress={() => signOut()}
                 accessibilityRole="button"
                 accessibilityLabel="Encerrar sessão"
-                className="min-h-11 flex-row items-center justify-center rounded-lg px-2 transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                className="min-h-11 min-w-11 flex-row items-center justify-center rounded-lg px-2 transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
               >
                 <Text className="text-sm font-medium text-slate-600">Sair</Text>
               </Pressable>
