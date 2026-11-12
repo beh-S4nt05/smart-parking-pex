@@ -82,23 +82,23 @@ export default function Header({ rotaAtual = "/" }: { rotaAtual?: string }) {
 
   return (
     <View className="border-b border-slate-200 bg-white">
-      <View className="mx-auto w-full max-w-7xl flex-row items-center justify-between gap-3 px-4 py-3 sm:px-6">
+      <View className="mx-auto w-full max-w-7xl flex-row items-center justify-between gap-2 px-4 py-3 sm:px-6">
         <Link
           href="/"
           accessibilityRole="link"
           accessibilityLabel="Ir para a página inicial"
           className="min-h-11 min-w-11 flex-row items-center justify-center"
         >
-          <View className="sm:hidden"><Logo size={40} /></View>
+          <View className="sm:hidden"><LogoBlox compact /></View>
           <View className="hidden sm:flex"><LogoBlox /></View>
         </Link>
 
-        <View className="hidden min-w-0 flex-1 flex-row items-center justify-center gap-1 lg:flex">
+        <View className="hidden min-w-0 flex-1 flex-row items-center justify-center gap-1 md:flex">
           {links()}
           {ajuda()}
         </View>
 
-        <View className="flex-row items-center gap-2">
+        <View className="flex-row items-center gap-1 sm:gap-2">
           {isAuthenticated ? (
             <>
               <Text numberOfLines={1} className="hidden max-w-32 text-sm font-semibold text-slate-700 lg:flex">
@@ -108,7 +108,7 @@ export default function Header({ rotaAtual = "/" }: { rotaAtual?: string }) {
                 href={canAccessPanel ? "/dashboard" : "/reservas"}
                 accessibilityRole="link"
                 accessibilityLabel={canAccessPanel ? "Abrir painel administrativo" : "Minhas reservas"}
-                className="min-h-11 flex-row items-center justify-center rounded-lg bg-blue-600 px-4 transition-colors hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                className="min-h-11 flex-row items-center justify-center rounded-lg bg-blue-600 px-3 transition-colors hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 sm:px-4"
               >
                 <Text className="text-sm font-semibold text-white">{canAccessPanel ? "Painel" : "Minhas reservas"}</Text>
               </Link>
@@ -116,15 +116,15 @@ export default function Header({ rotaAtual = "/" }: { rotaAtual?: string }) {
                 href="/perfil"
                 accessibilityRole="link"
                 accessibilityLabel="Minha conta"
-                className="hidden min-h-11 flex-row items-center justify-center rounded-lg px-3 transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 sm:flex"
+                className="min-h-11 flex-row items-center justify-center rounded-lg px-2 transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 sm:hidden md:flex lg:px-3"
               >
-                <Text className="text-sm font-semibold text-slate-700">Conta</Text>
+                <Text className="text-xs font-semibold text-slate-700 sm:text-sm">Conta</Text>
               </Link>
               <Pressable
                 onPress={() => signOut()}
                 accessibilityRole="button"
                 accessibilityLabel="Encerrar sessão"
-                className="hidden min-h-11 flex-row items-center justify-center rounded-lg px-3 transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 sm:flex"
+                className="hidden min-h-11 flex-row items-center justify-center rounded-lg px-3 transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 lg:flex"
               >
                 <Text className="text-sm font-medium text-slate-600">Sair</Text>
               </Pressable>
@@ -135,31 +135,21 @@ export default function Header({ rotaAtual = "/" }: { rotaAtual?: string }) {
         </View>
       </View>
 
-      <View className="border-t border-slate-100 px-2 sm:px-4 lg:hidden">
-        <View className="mx-auto w-full max-w-7xl flex-row flex-wrap items-center justify-between gap-x-2">
+      <View className="border-t border-slate-100 px-4 sm:px-6 md:hidden">
+        <View className="mx-auto w-full max-w-7xl flex-row items-center justify-between gap-2">
           <View className="flex-row items-center gap-1">
             {links()}
             {ajuda()}
           </View>
           {isAuthenticated ? (
-            <View className="flex-row items-center sm:hidden">
-              <Link
-                href="/perfil"
-                accessibilityRole="link"
-                accessibilityLabel="Minha conta"
-                className="min-h-11 min-w-11 flex-row items-center justify-center rounded-lg px-2 transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-              >
-                <Text className="text-sm font-semibold text-slate-700">Conta</Text>
-              </Link>
-              <Pressable
-                onPress={() => signOut()}
-                accessibilityRole="button"
-                accessibilityLabel="Encerrar sessão"
-                className="min-h-11 min-w-11 flex-row items-center justify-center rounded-lg px-2 transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-              >
-                <Text className="text-sm font-medium text-slate-600">Sair</Text>
-              </Pressable>
-            </View>
+            <Link
+              href="/perfil"
+              accessibilityRole="link"
+              accessibilityLabel="Minha conta"
+              className="hidden min-h-11 items-center justify-center rounded-lg px-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 sm:flex"
+            >
+              <Text className="text-sm font-semibold text-slate-700">Conta</Text>
+            </Link>
           ) : null}
         </View>
       </View>
