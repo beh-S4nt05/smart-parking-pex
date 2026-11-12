@@ -127,7 +127,7 @@ export default function Perfil() {
 
   return (
     <View className="flex-1 bg-slate-50">
-      <Header />
+      <Header rotaAtual="/perfil" />
       <ScrollView className="flex-1" contentContainerStyle={{ paddingVertical: 20 }}>
         <View className="mx-auto w-full max-w-3xl gap-4 px-4">
           <View className="flex-row flex-wrap items-center justify-between gap-3">
@@ -141,17 +141,14 @@ export default function Perfil() {
           <Card className="p-5">
             <Text className="mb-3 text-[15px] font-bold text-slate-800">Dados de cadastro</Text>
             <Campo label="Nome completo" value={f.nome} onChangeText={(v) => setF((p) => ({ ...p, nome: v }))} autoCapitalize="words" />
-            <Campo label="Telefone" keyboardType="phone-pad" placeholder="(92) 99999-0000" value={f.telefone} onChangeText={(v) => setF((p) => ({ ...p, telefone: v }))} />
-            <Campo label="Placa do veículo" autoCapitalize="characters" maxLength={8} placeholder="RRA1A23" value={f.placa} onChangeText={(v) => setF((p) => ({ ...p, placa: v }))} />
+            <Campo label="Telefone" opcional keyboardType="phone-pad" placeholder="(92) 99999-0000" value={f.telefone} onChangeText={(v) => setF((p) => ({ ...p, telefone: v }))} />
+            <Campo label="Placa do veículo" opcional helper="Use letras maiúsculas, sem hífen. A placa ajuda na leitura do portão." autoCapitalize="characters" maxLength={8} placeholder="RRA1A23" value={f.placa} onChangeText={(v) => setF((p) => ({ ...p, placa: v }))} />
             <Checkbox
               checked={f.pcd}
               onPress={() => setF((p) => ({ ...p, pcd: !p.pcd }))}
               label="Sou pessoa com deficiência (PCD)"
-              hint="Com a declaração, você ganha prioridade (e exclusividade) nas vagas PCD. Sem ela, o sistema sempre atribui vaga Comum."
+              hint="Declare esta opção para receber vagas PCD nas reservas."
             />
-            <Text className="mt-1 text-xs text-slate-600">
-              A placa entra na reserva para a leitura do portão — use maiúsculas sem hífen.
-            </Text>
             <Botao
               label="Salvar alterações"
               onPress={salvarCadastro}
@@ -163,7 +160,7 @@ export default function Perfil() {
           <Card className="p-5">
             <Text className="mb-1 text-[15px] font-bold text-slate-800">Segurança</Text>
             <Text className="mb-3 text-xs text-slate-600">
-              Trocar a senha encerra todas as outras sessões (celular, navegador). RF-13/14.
+              Ao trocar a senha, suas outras sessões serão encerradas.
             </Text>
             <Campo label="Senha atual" senha value={senha.atual} onChangeText={(v) => setSenha((p) => ({ ...p, atual: v }))} />
             <View className="flex-col gap-0 sm:flex-row sm:gap-3">
@@ -194,8 +191,7 @@ export default function Perfil() {
           </Card>
 
           <Text className="px-1 text-xs text-slate-600">
-            Esqueceu a senha? Peça ao administrador do estacionamento uma senha temporária
-            (balcão) — ele gera em Painel / Usuários / “Reset senha”.
+            Esqueceu a senha? Peça uma senha temporária ao administrador do estacionamento.
           </Text>
         </View>
         <Footer />
