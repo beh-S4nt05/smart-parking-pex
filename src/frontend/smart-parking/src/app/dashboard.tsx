@@ -157,7 +157,10 @@ function SeletorEstacionamento({
       {!travado ? (
         <Pressable
           onPress={() => onChange(null)}
-          className={`rounded-full border px-4 py-2 ${
+          accessibilityRole="button"
+          accessibilityLabel="Mostrar todos os shoppings"
+          accessibilityState={{ selected: valor === null }}
+          className={`min-h-11 justify-center rounded-full border px-4 py-2 ${
             valor === null ? "border-blue-600 bg-blue-600" : "border-slate-200 bg-white"
           }`}
         >
@@ -176,7 +179,10 @@ function SeletorEstacionamento({
           <Pressable
             key={e.id}
             onPress={() => onChange(e.id)}
-            className={`rounded-full border px-4 py-2 ${
+            accessibilityRole="button"
+            accessibilityLabel={`Mostrar ${e.nome}`}
+            accessibilityState={{ selected: ativo }}
+            className={`min-h-11 justify-center rounded-full border px-4 py-2 ${
               ativo ? "border-blue-600 bg-blue-600" : "border-slate-200 bg-white"
             }`}
           >
@@ -341,15 +347,34 @@ function AbaDashboard({
         </Text>
       ) : null}
 
-      <View className="flex-row flex-wrap gap-5">
+      <View className="flex-row flex-wrap items-start gap-5">
         {/* ocupação por andar */}
         <Card className="min-w-0 basis-[300px] flex-grow flex-shrink p-5">
           <Text className="mb-4 text-base font-bold text-slate-900">
-            Ocupação por andar
+            {estSel ? "Ocupação por andar" : "Ocupação por shopping"}
           </Text>
-          {andares.length === 0 ? (
+          {!estSel && estacionamentos.length > 0 ? (
+            <View className="gap-3.5">
+              {estacionamentos.map((e) => {
+                const total = e.total_vagas ?? 0;
+                const livres = e.vagas_disponiveis_total ?? 0;
+                const percentual = total ? Math.round(((total - livres) / total) * 100) : 0;
+                return (
+                  <View key={e.id}>
+                    <View className="mb-1.5 flex-row items-center justify-between gap-3">
+                      <Text className="min-w-0 flex-1 text-sm font-medium text-slate-700" numberOfLines={1}>
+                        {e.nome}
+                      </Text>
+                      <Text className="text-sm font-bold text-slate-900">{percentual}%</Text>
+                    </View>
+                    <BarraOcupacao percentual={percentual} />
+                  </View>
+                );
+              })}
+            </View>
+          ) : andares.length === 0 ? (
             <Text className="text-[13px] text-slate-600">
-              Selecione um shopping no topo para ver a divisão por andar.
+              {estSel ? "Ainda não há dados de ocupação por andar." : "Ainda não há shoppings cadastrados."}
             </Text>
           ) : (
             <View className="gap-3.5">
@@ -373,9 +398,9 @@ function AbaDashboard({
         {/* fluxo por hora (web) / fluxo hoje (mobile) */}
         <Card className="min-w-0 basis-[300px] flex-grow flex-shrink p-5">
           <Text className="mb-4 text-base font-bold text-slate-900">
-            Fluxo de veículos por hora
+            {compacto ? "Fluxo de veículos hoje" : "Fluxo de veículos por hora"}
           </Text>
-          <View className="h-36 flex-row items-end gap-1.5">
+          {!compacto && (fluxo?.total_entradas ?? 0) > 0 ? <View className="h-36 flex-row items-end gap-1.5">
             {horas.base.map((b) => {
               const h = Math.max(6, (b.n / horas.max) * 110);
               const ativoHora = b.hora === horas.agoraHora;
@@ -396,7 +421,9 @@ function AbaDashboard({
                 </View>
               );
             })}
-          </View>
+          </View> : !compacto ? (
+            <Text className="text-[13px] text-slate-600">Ainda não houve entradas hoje.</Text>
+          ) : null}
           <View className="mt-4 flex-row gap-3">
             <View className="flex-1 rounded-xl bg-slate-50 p-3">
               <Text className="text-[11px] font-medium text-slate-600">Entradas</Text>
