@@ -3,6 +3,7 @@ import { login, expect, test } from "./helpers";
 // Capturas reais para revisar o layout de cada rota no PR.
 for (const viewport of [
   { width: 390, height: 844, name: "celular" },
+  { width: 768, height: 900, name: "tablet" },
   { width: 1440, height: 900, name: "desktop" },
 ]) {
   test(`preview das telas em ${viewport.name}`, async ({ page }) => {
