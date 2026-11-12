@@ -160,7 +160,7 @@ export default function Header({ rotaAtual = "/" }: { rotaAtual?: string }) {
           href="/"
           accessibilityRole="link"
           accessibilityLabel="Ir para a página inicial"
-          className="min-h-11 min-w-0 flex-row items-center"
+          className="min-h-11 min-w-11 flex-row items-center justify-center"
         >
           <View className="sm:hidden"><Logo size={40} /></View>
           <View className="hidden sm:flex"><LogoBlox /></View>
