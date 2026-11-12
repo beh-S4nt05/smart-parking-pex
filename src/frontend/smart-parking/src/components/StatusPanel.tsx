@@ -1,6 +1,7 @@
 /**
- * Painel "STATUS DO ESTACIONAMENTO" da Home — 4 tiles com dados reais:
- * disponíveis, ocupação %, tempo médio (relatório de fluxo) e total.
+ * Painel "STATUS DO ESTACIONAMENTO" da Home — 4 indicadores com dados reais.
+ * Lei da proximidade: rótulo e número sempre juntos num mesmo bloco.
+ * Lei de Miller: quatro indicadores, nunca mais de sete por dobra.
  */
 import { Text, View } from "react-native";
 import { Card, StatTile, formatarMinutos } from "./ui";
@@ -17,14 +18,16 @@ export default function StatusPanel({ shopping, tempoMedioMin }: Props) {
   const ocupacao = total > 0 ? Math.round(((total - livres) / total) * 100) : 0;
 
   return (
-    <Card className="p-5 sm:p-6">
-      <View className="mb-4 min-w-0 flex-row items-start gap-2">
-        <View className="h-2 w-2 rounded-full bg-emerald-500" />
-        <Text className="min-w-0 flex-1 text-[11px] font-bold uppercase tracking-wider text-slate-600">
-          Status do estacionamento{shopping ? ` — ${shopping.nome}` : ""}
+    <Card className="p-5 sm:p-6 3xl:p-7">
+      <View className="sp-secao mb-5 min-w-0">
+        <Text className="text-[15px] font-extrabold text-slate-900">
+          Status do estacionamento
+        </Text>
+        <Text className="mt-0.5 text-[12px] font-medium text-slate-600">
+          {shopping ? shopping.nome : "Aguardando dados da API"} · atualizado em tempo real
         </Text>
       </View>
-      <View className="flex-row flex-wrap gap-3">
+      <View className="flex-row flex-wrap gap-3 3xl:gap-4">
         <View className="min-w-0 basis-[140px] flex-grow">
           <StatTile rotulo="Vagas Disponíveis" valor={String(livres)} tone="verde" />
         </View>

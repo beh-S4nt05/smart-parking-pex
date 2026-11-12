@@ -403,7 +403,7 @@ function SimuladorInterno({
   );
 
   return (
-    <View className="flex-1 bg-slate-50">
+    <View className="sp-page flex-1 bg-slate-50">
       {/* cabeçalho escuro do simulador (idêntico no web e no mobile) */}
       <View className="bg-slate-950 px-4 pb-5 pt-4">
         <View className="mx-auto flex w-full max-w-5xl flex-row flex-wrap items-center justify-between gap-3 3xl:gap-5">

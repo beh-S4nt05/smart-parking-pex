@@ -23,6 +23,18 @@ export type AbaPainel =
   | "relatorios"
   | "usuarios";
 
+/**
+ * Hick + Miller: seis destinos em duas categorias de até quatro itens.
+ * O usuário decide primeiro "operar" ou "gerir", e só depois escolhe a aba.
+ */
+const GRUPOS: { titulo: string; ids: AbaPainel[] }[] = [
+  {
+    titulo: "Operação",
+    ids: ["dashboard", "estacionamentos", "andares", "simulador-qr"],
+  },
+  { titulo: "Gestão", ids: ["relatorios", "usuarios"] },
+];
+
 const ABAS: { id: AbaPainel; label: string }[] = [
   { id: "dashboard", label: "Dashboard" },
   { id: "estacionamentos", label: "Estacionamentos" },
@@ -67,7 +79,7 @@ export default function AdminShell({
     return (
       <View className="flex-1 flex-row bg-slate-50">
         {/* sidebar escura */}
-        <View className="w-64 justify-between border-r border-slate-800 bg-slate-900 px-4 py-5">
+        <View className="sp-sidebar w-64 justify-between border-r border-slate-800 bg-slate-900 px-4 py-5">
           <View>
             <View className="mb-6 flex-row items-center gap-2.5 px-2">
               <Logo size={36} />
@@ -76,35 +88,48 @@ export default function AdminShell({
                 <Text className="text-[11px] text-slate-400">Painel Admin</Text>
               </View>
             </View>
-            <View className="gap-1">
-              {abas.map((item) => {
-                const ativo = item.id === aba;
+            <View className="gap-3">
+              {GRUPOS.map((grupo) => {
+                const itens = abas.filter((item) => grupo.ids.includes(item.id));
+                if (itens.length === 0) return null;
                 return (
-                  <Pressable
-                    key={item.id}
-                    onPress={() => trocar(item.id)}
-                    accessibilityRole="tab"
-                    accessibilityLabel={item.label}
-                    accessibilityHint={`Abre a seção ${item.label} do painel`}
-                    accessibilityState={{ selected: ativo, disabled: false }}
-                    hitSlop={6}
-                    className={`min-h-11 flex-row items-center gap-2.5 rounded-lg px-3.5 py-2.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 motion-reduce:transition-none ${
-                      ativo ? "bg-blue-600" : "hover:bg-slate-800 active:bg-slate-800"
-                    }`}
-                  >
-                    <View
-                      className={`h-1.5 w-1.5 rounded-full ${
-                        ativo ? "bg-white" : "bg-slate-500"
-                      }`}
-                    />
-                    <Text
-                      className={`text-sm font-semibold ${
-                        ativo ? "text-white" : "text-slate-300"
-                      }`}
-                    >
-                      {item.label}
+                  <View key={grupo.titulo} className="gap-1">
+                    <Text className="sp-grupo px-3.5 pt-1 text-[10px] font-bold uppercase text-slate-300">
+                      {grupo.titulo}
                     </Text>
-                  </Pressable>
+                    {itens.map((item) => {
+                      const ativo = item.id === aba;
+                      return (
+                        <Pressable
+                          key={item.id}
+                          onPress={() => trocar(item.id)}
+                          accessibilityRole="tab"
+                          accessibilityLabel={item.label}
+                          accessibilityHint={`Abre a seção ${item.label} do painel`}
+                          accessibilityState={{ selected: ativo, disabled: false }}
+                          hitSlop={6}
+                          className={`min-h-11 flex-row items-center gap-2.5 rounded-xl px-3.5 py-2.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 motion-reduce:transition-none ${
+                            ativo
+                              ? "bg-blue-600 shadow-lg shadow-blue-900/40"
+                              : "hover:bg-white/10 active:bg-white/10"
+                          }`}
+                        >
+                          <View
+                            className={`h-1.5 w-1.5 rounded-full ${
+                              ativo ? "bg-white" : "bg-slate-400"
+                            }`}
+                          />
+                          <Text
+                            className={`text-sm font-semibold ${
+                              ativo ? "text-white" : "text-slate-200"
+                            }`}
+                          >
+                            {item.label}
+                          </Text>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
                 );
               })}
             </View>

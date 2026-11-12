@@ -5,7 +5,7 @@
  * "auto" = grade responsiva no web e lista no mobile (Explorar).
  */
 import { Pressable, Text, View } from "react-native";
-import { AnimarEntrada, Card, Chip, Logo } from "./ui";
+import { AnimarEntrada, Card, Chip, IconeChevron, Logo } from "./ui";
 import type { Estacionamento } from "../types/api";
 import { useLarguraResponsiva } from "../hooks/useLarguraResponsiva";
 
@@ -126,6 +126,13 @@ export default function ShoppingList({
                     </View>
                   </View>
                 )}
+                {/* Ação explícita no fim do card (posição serial + Fitts). */}
+                <View className="mt-3 flex-row items-center justify-between border-t border-slate-100 pt-3">
+                  <Text className="text-[13px] font-bold text-blue-700">
+                    Ver mapa de vagas
+                  </Text>
+                  <IconeChevron cor="#1D4ED8" />
+                </View>
               </Card>
             </Pressable>
             </AnimarEntrada>

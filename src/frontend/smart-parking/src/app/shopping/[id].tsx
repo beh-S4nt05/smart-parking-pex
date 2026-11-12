@@ -503,7 +503,7 @@ export default function MapaVagas() {
   // -------- shell mobile (barra escura) --------
   if (!isWeb) {
     return (
-      <View className="flex-1 bg-slate-50">
+      <View className="sp-page flex-1 bg-slate-50">
         <BarraEscura
           titulo={titulo}
           subtitulo={subtitulo}
@@ -537,7 +537,7 @@ export default function MapaVagas() {
 
   // -------- shell web (header público + título) --------
   return (
-    <View className="flex-1 bg-slate-50">
+    <View className="sp-page flex-1 bg-slate-50">
       <Header rotaAtual="/" />
       <ScrollView
         contentContainerStyle={{ padding: 28, paddingBottom: 48 }}
