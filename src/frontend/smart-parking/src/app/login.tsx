@@ -241,7 +241,7 @@ export default function Login() {
             pré-render já nasce com o split, sem o "flash" do layout mobile
             que aparecia enquanto useLarguraResponsiva hidratava. */}
         <View className="hidden w-[45%] min-w-0 items-center justify-center bg-blue-600 px-12 lg:flex">
-          <View className="w-full max-w-sm gap-5">
+          <View className="w-full max-w-sm gap-5 3xl:max-w-md 3xl:gap-7">
             <Logo size={52} tone="white" />
             <Text accessibilityRole="header" className="text-4xl font-extrabold text-white">
               Smart Parking
@@ -261,7 +261,7 @@ export default function Login() {
             alignItems: "center",
           }}
         >
-          <View className="w-full max-w-[420px] px-6 py-8 sm:px-8">
+          <View className="w-full max-w-[420px] px-6 py-8 sm:px-8 3xl:max-w-[480px] 3xl:px-10 3xl:py-12">
             {/* botão de voltar vive no fluxo: edge-to-edge no Android não
                 deixa o toque cair na barra de status do sistema. */}
             <Pressable

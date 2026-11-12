@@ -135,7 +135,7 @@ export default function Cadastro() {
       className="flex-1 bg-slate-50"
     >
       <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: "center" }}>
-        <View className="w-full max-w-[440px] self-center px-5 py-10">
+        <View className="w-full max-w-[440px] self-center px-5 py-10 3xl:max-w-[520px] 3xl:py-14">
           <View className="mb-6 items-center">
             <Logo size={48} />
             <Text className="mt-3 text-2xl font-extrabold text-slate-900">

@@ -5,12 +5,15 @@
  * Este spec verifica a FORMA em que a UI chega ao usuário: nenhuma rota pode
  * estourar a viewport, ter elementos fora de posição, botões com menos de
  * 44px, texto com contraste abaixo do AA, botão sem transição ou animação
- * inline no primeiro frame. Roda em 7 viewports, de 360px a 1920px.
+ * inline no primeiro frame. Roda em 9 viewports, de 320px (celular 4") a
+ * 2560px (TV 23"+), e também mede sobreposição entre alvos, texto cortado e
+ * glifos de fonte ausentes (tofu).
  */
 import type { Page } from "@playwright/test";
 import { expect, login, test } from "./helpers";
 
 const VIEWPORTS = [
+  { width: 320, height: 700, nome: "mobile-320" },
   { width: 360, height: 740, nome: "mobile-360" },
   { width: 390, height: 844, nome: "mobile-390" },
   { width: 768, height: 1024, nome: "tablet-768" },
@@ -18,6 +21,7 @@ const VIEWPORTS = [
   { width: 1024, height: 768, nome: "desktop-1024" },
   { width: 1440, height: 900, nome: "desktop-1440" },
   { width: 1920, height: 1080, nome: "desktop-1920" },
+  { width: 2560, height: 1440, nome: "tv-2560" },
 ] as const;
 
 const AUDITORIA = () => {
@@ -110,6 +114,45 @@ const AUDITORIA = () => {
       fora.push({ nome, left: Math.round(r.left), right: Math.round(r.right) });
   }
 
+  // Sobreposição real entre alvos interativos (reflow/WCAG + lei da
+  // proximidade): dois botões não podem disputar o mesmo retângulo.
+  const caixas = interativos.map((el) => {
+    const r = el.getBoundingClientRect();
+    return { el, x: r.x, y: r.y, w: r.width, h: r.height };
+  });
+  const sobreposicoes: string[] = [];
+  for (let i = 0; i < caixas.length; i += 1) {
+    for (let j = i + 1; j < caixas.length; j += 1) {
+      const a = caixas[i];
+      const b = caixas[j];
+      if (a.el.contains(b.el) || b.el.contains(a.el)) continue;
+      const ix = Math.max(0, Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x));
+      const iy = Math.max(0, Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y));
+      const area = ix * iy;
+      if (area <= 0) continue;
+      if (area / Math.min(a.w * a.h, b.w * b.h) > 0.35) {
+        const nomeA = corte(a.el.getAttribute("aria-label") || a.el.textContent || "", 22);
+        const nomeB = corte(b.el.getAttribute("aria-label") || b.el.textContent || "", 22);
+        sobreposicoes.push(`${nomeA} × ${nomeB}`);
+      }
+    }
+  }
+
+  // Texto com largura insuficiente (ellipsis forçado) e glifos que viram
+  // "tofu" quando a fonte de símbolos não existe no aparelho/navegador.
+  const cortados: string[] = [];
+  for (const el of Array.from(document.querySelectorAll("*"))) {
+    if (!visivel(el) || el.children.length > 0) continue;
+    const cs = getComputedStyle(el);
+    if (!["hidden", "clip"].includes(cs.overflowX)) continue;
+    if (el.scrollWidth <= el.clientWidth + 2) continue;
+    const t = (el.textContent || "").trim();
+    if (t.length > 3) cortados.push(corte(t, 32));
+  }
+  const glifosEmoji = /[\u{1F000}-\u{1FAFF}\u2611\u2612\u26A0\u270E\uFF0B]/u.test(
+    document.body.innerText || "",
+  );
+
   const textos = Array.from(
     document.querySelectorAll("h1,h2,h3,h4,h5,h6,p,span,label,div,li,td,th"),
   ).filter(visivel);
@@ -141,6 +184,9 @@ const AUDITORIA = () => {
     contraste,
     semTransicao,
     invisiveis,
+    sobreposicoes,
+    cortados,
+    glifosEmoji,
     opacityZero,
     erroReact: /Something went wrong|Unexpected Application Error/i.test(corpo),
     corpoVazio: corpo.trim().length < 20,
@@ -174,6 +220,9 @@ async function auditar(page: Page, rota: string, viewport: string) {
   expect(d.contraste, `${ctx}: texto com contraste abaixo do AA`).toEqual([]);
   expect(d.semTransicao, `${ctx}: botões/links sem transição`).toEqual([]);
   expect(d.invisiveis, `${ctx}: botões invisíveis`).toEqual([]);
+  expect(d.sobreposicoes, `${ctx}: alivos interativos sobrepostos`).toEqual([]);
+  expect(d.cortados, `${ctx}: texto cortado por largura insuficiente`).toEqual([]);
+  expect(d.glifosEmoji, `${ctx}: glifo/emoji sem fonte (tofu) na tela`).toBe(false);
   expect(d.opacityZero, `${ctx}: animação inline no primeiro frame`).toBe(0);
   expect(d.erroReact, `${ctx}: tela de erro React`).toBe(false);
   expect(d.corpoVazio, `${ctx}: tela vazia`).toBe(false);

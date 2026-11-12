@@ -25,7 +25,7 @@ import { useMapaVagas } from "../hooks/useMapaVagas";
 import { useAgora, desdeAte } from "../hooks/useAgora";
 import { apiErrorMessage, parkingApi } from "../services/api";
 import VagaMapa from "../components/VagaMapa";
-import { Botao, Chip, IconeFechar, Logo } from "../components/ui";
+import { Botao, Chip, IconeEstado, IconeFechar, Logo } from "../components/ui";
 import type { SimSession } from "../types/api";
 
 export default function Simulador() {
@@ -103,7 +103,7 @@ export default function Simulador() {
     return (
       <View className="flex-1 items-center justify-center bg-slate-50 px-8">
         <View className="w-full max-w-sm items-center rounded-2xl border border-slate-200 bg-white p-8">
-          <Text className="text-4xl">🚫</Text>
+          <IconeEstado nome="ban-outline" tom="vermelho" />
           <Text className="mt-3 text-lg font-extrabold text-slate-900">
             QR inválido
           </Text>
@@ -124,7 +124,7 @@ export default function Simulador() {
     return (
       <View className="flex-1 items-center justify-center bg-slate-50 px-8">
         <View className="w-full max-w-sm items-center rounded-2xl border border-slate-200 bg-white p-8">
-          <Text className="text-4xl">🔒</Text>
+          <IconeEstado nome="lock-closed-outline" tom="azul" />
           <Text className="mt-3 text-lg font-extrabold text-slate-900">
             Acesso restrito
           </Text>
@@ -367,7 +367,7 @@ function SimuladorInterno({
                   modo === m ? "text-white" : "text-slate-600"
                 }`}
               >
-                {m === "alternar" ? "👆 Alternar" : "☑ Selecionar"}
+                {m === "alternar" ? "Alternar" : "Selecionar"}
               </Text>
             </Pressable>
           ))}
@@ -406,7 +406,7 @@ function SimuladorInterno({
     <View className="flex-1 bg-slate-50">
       {/* cabeçalho escuro do simulador (idêntico no web e no mobile) */}
       <View className="bg-slate-950 px-4 pb-5 pt-4">
-        <View className="mx-auto flex w-full max-w-5xl flex-row flex-wrap items-center justify-between gap-3">
+        <View className="mx-auto flex w-full max-w-5xl flex-row flex-wrap items-center justify-between gap-3 3xl:gap-5">
           <View className="min-w-0 flex-row flex-wrap items-center gap-2">
             <Logo size={26} tone="white" />
             <Text className="text-[15px] font-extrabold text-white">
@@ -439,7 +439,7 @@ function SimuladorInterno({
       {/* barra de lote (modo selecionar) */}
       {sel.size > 0 ? (
         <View className="border-t border-slate-200 bg-white px-4 py-3">
-          <View className="mx-auto flex w-full max-w-5xl flex-row flex-wrap items-center gap-2">
+          <View className="mx-auto flex w-full max-w-5xl flex-row flex-wrap items-center gap-2 3xl:gap-4">
             <Text className="flex-1 text-sm font-bold text-slate-800">
               {sel.size} selecionada{sel.size > 1 ? "s" : ""}
             </Text>

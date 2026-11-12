@@ -129,7 +129,7 @@ export default function Perfil() {
     <View className="flex-1 bg-slate-50">
       <Header />
       <ScrollView className="flex-1" contentContainerStyle={{ paddingVertical: 20 }}>
-        <View className="mx-auto w-full max-w-3xl gap-4 px-4">
+        <View className="mx-auto w-full max-w-3xl gap-4 px-4 sm:px-6 3xl:gap-6 3xl:px-8">
           <View className="flex-row flex-wrap items-center justify-between gap-3">
             <View className="min-w-0 flex-1">
               <Text className="text-2xl font-extrabold text-slate-900">Minha conta</Text>

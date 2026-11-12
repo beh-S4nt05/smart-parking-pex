@@ -65,19 +65,19 @@ export default function Reservas() {
       <Header rotaAtual="/" />
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 48 }}>
         <View className="mx-auto w-full max-w-3xl">
-          <Text className="text-2xl font-extrabold text-slate-900">
+          <Text className="text-2xl font-extrabold text-slate-900 3xl:text-3xl">
             Minhas reservas
           </Text>
           <Text className="mt-1 text-sm text-slate-600">
             Acompanhe e gerencie as vagas que você garantiu.
           </Text>
 
-          <View className="mt-6 gap-3">
+          <View className="mt-6 gap-3 3xl:gap-6">
             {authLoading || (!isAuthenticated && loading) ? (
               <BlocoCarregando />
             ) : !isAuthenticated ? (
               <BlocoVazio
-                emoji="🔐"
+                nomeIcone="lock-closed-outline"
                 titulo="Entre para ver suas reservas"
                 descricao="Faça login com sua conta de motorista para acompanhar suas vagas reservadas."
                 acaoLabel="Fazer login"
@@ -93,7 +93,7 @@ export default function Reservas() {
               />
             ) : reservas.length === 0 ? (
               <BlocoVazio
-                emoji="🅿️"
+                nomeIcone="car-outline"
                 titulo="Nenhuma reserva ainda"
                 descricao="Reserve uma vaga em segundos ao escolher um shopping — sem filas, sem procura."
                 acaoLabel="Ver vagas disponíveis"

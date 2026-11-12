@@ -680,7 +680,7 @@ function AbaEstacionamentos({
       {podeGerenciar ? (
         <View className="flex-row justify-end">
           <Botao
-            label="＋ Novo estacionamento"
+            label="Novo estacionamento"
             onPress={() => {
               setNovo({
                 nome: "",
@@ -733,7 +733,7 @@ function AbaEstacionamentos({
             {podeGerenciar ? (
               <View className="mt-3 flex-row flex-wrap gap-2 border-t border-slate-100 pt-3">
                 <Botao
-                  label="＋ Andar"
+                  label="Novo andar"
                   variant="contorno"
                   className="px-3.5 py-1.5"
                   onPress={() => {
@@ -756,7 +756,7 @@ function AbaEstacionamentos({
                   }}
                 />
                 <Botao
-                  label="✎ Editar"
+                  label="Editar"
                   variant="contorno"
                   className="px-3.5 py-1.5"
                   onPress={() => {
@@ -1064,7 +1064,7 @@ function AbaAndares({
               </Pressable>
             );
           })}
-          <Botao label="＋ Andar" variant="contorno" className="px-3.5 py-1.5" onPress={() => abrir("andarNovo")} />
+          <Botao label="Novo andar" variant="contorno" className="px-3.5 py-1.5" onPress={() => abrir("andarNovo")} />
           {loading && andares.length === 0 ? <ActivityIndicator color="#2563EB" /> : null}
         </View>
 
@@ -1075,9 +1075,9 @@ function AbaAndares({
                 {vagas.length} vaga(s) · capacidade {andarAtual.capacidade}
               </Text>
               <View className="flex-row flex-wrap gap-2">
-                <Botao label="✎ Andar" variant="contorno" className="px-3.5 py-1.5" onPress={() => abrir("andarEditar", andarAtual)} />
+                <Botao label="Editar andar" variant="contorno" className="px-3.5 py-1.5" onPress={() => abrir("andarEditar", andarAtual)} />
                 <Botao label="Excluir andar" variant="contorno" className="border-red-300 px-3.5 py-1.5" onPress={() => excluirAndar(andarAtual)} />
-                <Botao label="＋ Vaga" className="px-3.5 py-1.5" onPress={() => abrir("vagaNova")} />
+                <Botao label="Nova vaga" className="px-3.5 py-1.5" onPress={() => abrir("vagaNova")} />
               </View>
             </View>
             <VagaMapa vagas={vagas.slice(0, 96)} />
@@ -1107,8 +1107,8 @@ function AbaAndares({
                 <Chip label={v.tipo ?? "comum"} tone={v.tipo === "comum" ? "vaga" : "azul"} />
                 <StatusVagaChip status={v.status} />
                 <View className="ml-auto flex-row gap-2">
-                  <Botao label="✎" variant="contorno" className="px-3 py-1" onPress={() => abrir("vagaEditar", v)} />
-                  <Botao label="🗑" variant="contorno" className="border-red-300 px-3 py-1" onPress={() => excluirVaga(v)} />
+                  <Botao label="Editar" variant="contorno" className="px-3 py-1" onPress={() => abrir("vagaEditar", v)} />
+                  <Botao label="Excluir" variant="contorno" className="border-red-300 px-3 py-1" onPress={() => excluirVaga(v)} />
                 </View>
               </View>
             ))}
@@ -1563,7 +1563,7 @@ function AbaUsuarios({
         <Text className="text-sm text-slate-600">
           {usuarios.length} conta(s) · níveis controlam o que cada um vê no painel
         </Text>
-        <Botao label="＋ Novo usuário" onPress={() => setModal(true)} />
+        <Botao label="Novo usuário" onPress={() => setModal(true)} />
       </View>
 
       {erro ? (
@@ -1589,7 +1589,7 @@ function AbaUsuarios({
           />
           {u.placa_veiculo ? <Chip label={u.placa_veiculo} tone="vaga" /> : null}
           <Botao
-            label="✎ Editar"
+            label="Editar"
             variant="contorno"
             className="px-4 py-2"
             onPress={() => abrirEdicao(u)}
@@ -1639,9 +1639,9 @@ function AbaUsuarios({
           {(
             [
               ["usuario", "Motorista"],
-              ["gestor", "🏬 Gestor de shopping"],
-              ["financeiro", "💰 Financeiro"],
-              ["admin", "👑 Admin global"],
+              ["gestor", "Gestor de shopping"],
+              ["financeiro", "Financeiro"],
+              ["admin", "Admin global"],
             ] as const
           ).map(([role, label]) => {
             const ativo = f.role === role;

@@ -5,9 +5,9 @@ import { Logo } from "./ui";
 /** Rodapé escuro — fiel ao template Home (WEB/MOBILE) do Figma */
 export default function Footer() {
   return (
-    <View className="bg-slate-900 px-4 py-10 sm:px-6">
-      <View className="mx-auto w-full max-w-7xl">
-        <View className="flex-row flex-wrap justify-between gap-8">
+    <View className="bg-slate-900 px-4 py-10 sm:px-6 3xl:px-8 3xl:py-14">
+      <View className="mx-auto w-full max-w-7xl 3xl:max-w-8xl 4xl:max-w-9xl">
+        <View className="flex-row flex-wrap justify-between gap-8 3xl:gap-12">
           <View className="min-w-[220px] flex-1">
             <View className="flex-row items-center gap-2.5">
               <Logo size={34} />

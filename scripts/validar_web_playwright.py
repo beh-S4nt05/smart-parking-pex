@@ -379,7 +379,8 @@ def dropdown_hero(page, _api_urls: list[str]) -> None:
 
     lista = page.get_by_role("list", name="Lista de shoppings")
     expect(lista).to_be_visible()
-    assert lista.evaluate("el => getComputedStyle(el).position") == "absolute"
+    # A lista expande o conteúdo: nada de dropdown flutuante sobre os cards.
+    assert lista.evaluate("el => getComputedStyle(el).position") != "absolute"
     caixa_seletor = seletor.bounding_box()
     caixa_lista = lista.bounding_box()
     assert caixa_seletor and caixa_lista
@@ -542,7 +543,7 @@ def desempenho(page, _api_urls: list[str]) -> None:
 
 CENARIOS = [
     ("home, CTA e mapa público", home_e_mapa, None),
-    ("dropdown flutuante e Escape", dropdown_hero, None),
+    ("lista de shoppings em fluxo e Escape", dropdown_hero, None),
     ("explorar com filtro e vazio", explorar, None),
     ("login responsivo 390/900/1024", responsividade_login, None),
     ("formulário com ARIA e senha", formulario_acessivel, None),

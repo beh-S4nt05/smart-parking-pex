@@ -9,7 +9,19 @@ module.exports = {
   presets: [require("nativewind/preset")],
   darkMode: "class",
   theme: {
-    extend: {},
+    // Breakpoints extras para monitor grande / TV (23"). O app usa a mesma
+    // escala de 8px em todas as telas; em larguras extremas apenas o
+    // conteúdo e a tipografia ganham mais espaço, sem mudar a composição.
+    extend: {
+      screens: {
+        "3xl": "1920px",
+        "4xl": "2560px",
+      },
+      maxWidth: {
+        "8xl": "1440px",
+        "9xl": "1680px",
+      },
+    },
   },
   plugins: [],
 };

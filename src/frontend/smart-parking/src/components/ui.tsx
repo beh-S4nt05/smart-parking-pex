@@ -2,7 +2,7 @@
  * Kit de primitivas visuais do SmartParking (NativeWind + RN puro, sem HTML).
  * Todas as telas (mobile e web) montam os templates do Figma com estas peças.
  */
-import { ReactNode, useEffect, useRef, useState } from "react";
+import { ComponentProps, ReactNode, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Animated,
@@ -761,6 +761,43 @@ export function BlocoCarregando({ label = "Carregando…" }: { label?: string })
   );
 }
 
+/**
+ * Ícone de estado 100% vetorial (Ionicons + badge desenhado). Substitui os
+ * emojis/Unicode que viravam "tofu" (▯) quando a fonte de símbolos não
+ * existia no navegador/aparelho. Lei da similaridade: todos os estados
+ * vazios/erro usam o mesmo badge, mudando apenas cor e pictograma.
+ */
+export function IconeEstado({
+  nome = "car-outline",
+  tom = "azul",
+  tamanho = 48,
+}: {
+  nome?: ComponentProps<typeof Ionicons>["name"];
+  tom?: "azul" | "ambar" | "vermelho" | "neutro";
+  tamanho?: number;
+}) {
+  const paleta = {
+    azul: { bg: "#EFF6FF", borda: "#BFDBFE", fg: "#2563EB" },
+    ambar: { bg: "#FFFBEB", borda: "#FCD34D", fg: "#B45309" },
+    vermelho: { bg: "#FEF2F2", borda: "#FCA5A5", fg: "#B91C1C" },
+    neutro: { bg: "#F1F5F9", borda: "#CBD5E1", fg: "#475569" },
+  }[tom];
+  return (
+    <View
+      accessibilityRole="image"
+      className="items-center justify-center rounded-2xl border"
+      style={{
+        width: tamanho,
+        height: tamanho,
+        backgroundColor: paleta.bg,
+        borderColor: paleta.borda,
+      }}
+    >
+      <Ionicons name={nome} size={Math.round(tamanho * 0.5)} color={paleta.fg} />
+    </View>
+  );
+}
+
 export function BlocoErro({
   titulo = "Algo deu errado",
   descricao,
@@ -774,7 +811,7 @@ export function BlocoErro({
 }) {
   return (
     <Card className="items-center gap-3 p-8">
-      <Text className="text-3xl">🚧</Text>
+      <IconeEstado nome="warning-outline" tom="ambar" />
       <Text className="text-base font-bold text-slate-900">{titulo}</Text>
       {descricao ? (
         <Text className="text-center text-sm text-slate-600">{descricao}</Text>
@@ -785,13 +822,15 @@ export function BlocoErro({
 }
 
 export function BlocoVazio({
-  emoji = "🅿️",
+  nomeIcone = "car-outline",
+  tomIcone = "azul",
   titulo,
   descricao,
   acaoLabel,
   onAcao,
 }: {
-  emoji?: string;
+  nomeIcone?: ComponentProps<typeof Ionicons>["name"];
+  tomIcone?: "azul" | "ambar" | "vermelho" | "neutro";
   titulo: string;
   descricao?: string;
   acaoLabel?: string;
@@ -799,7 +838,7 @@ export function BlocoVazio({
 }) {
   return (
     <Card className="items-center gap-3 p-8">
-      <Text className="text-4xl">{emoji}</Text>
+      <IconeEstado nome={nomeIcone} tom={tomIcone} />
       <Text className="text-base font-bold text-slate-900">{titulo}</Text>
       {descricao ? (
         <Text className="text-center text-sm text-slate-600">{descricao}</Text>

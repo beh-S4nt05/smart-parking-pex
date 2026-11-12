@@ -19,6 +19,7 @@ import {
   Linking,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
 import Header, { BarraEscura } from "../../components/Header";
 import VagaMapa from "../../components/VagaMapa";
 import { useMapaVagas } from "../../hooks/useMapaVagas";
@@ -238,7 +239,7 @@ export default function MapaVagas() {
       setVagaSel(null);
       refresh();
       Alert.alert(
-        "Vaga reservada 🎉",
+        "Vaga reservada",
         `${v.codigo} reservada por 2 horas.\nConfira em "Minhas reservas".`,
         isWeb
           ? [
@@ -566,7 +567,8 @@ export default function MapaVagas() {
                 disabled={!shopping?.latitude && !shopping?.endereco}
                 className="flex-row items-center gap-1.5 rounded-full border border-blue-200 bg-blue-50 px-4 py-2 active:bg-blue-100"
               >
-                <Text className="text-[13px] font-bold text-blue-700">📍 Como chegar</Text>
+                <Ionicons name="location-outline" size={14} color="#1D4ED8" />
+                <Text className="text-[13px] font-bold text-blue-700">Como chegar</Text>
               </Pressable>
               <SeloAoVivo />
             </View>
