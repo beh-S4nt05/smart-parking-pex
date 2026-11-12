@@ -178,7 +178,7 @@ export default function AdminShell({
 
   // -------- mobile --------
   return (
-    <View className="flex-1 bg-slate-50">
+    <ScrollView className="flex-1 bg-slate-50" contentContainerStyle={{ flexGrow: 1 }}>
       <View className="border-b border-slate-200 bg-white">
         <View className="bg-slate-900 px-4 pb-4 pt-5">
           <View className="min-w-0">
@@ -243,13 +243,13 @@ export default function AdminShell({
           })}
         </View>
       </View>
-      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
+      <View style={{ padding: 16, paddingBottom: 40 }}>
         <View className="gap-4">
           {direita}
           {children}
         </View>
-      </ScrollView>
-    </View>
+      </View>
+    </ScrollView>
   );
 }
 
