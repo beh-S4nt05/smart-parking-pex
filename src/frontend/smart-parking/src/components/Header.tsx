@@ -112,11 +112,15 @@ export default function Header({ rotaAtual = "/" }: { rotaAtual?: string }) {
               </Text>
               <Link
                 href={canAccessPanel ? "/dashboard" : "/reservas"}
-                accessibilityRole="link"
-                accessibilityLabel={canAccessPanel ? "Abrir painel administrativo" : "Minhas reservas"}
-                className="min-h-11 flex-row items-center justify-center rounded-lg bg-blue-600 px-3 web:transition-colors hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300 sm:px-4"
+                asChild
               >
-                <Text className="text-sm font-semibold text-white">{canAccessPanel ? "Painel" : "Minhas reservas"}</Text>
+                <Pressable
+                  accessibilityRole="link"
+                  accessibilityLabel={canAccessPanel ? "Abrir painel administrativo" : "Minhas reservas"}
+                  className="min-h-11 min-w-[72px] flex-row items-center justify-center rounded-lg bg-blue-600 px-3 py-2 web:transition-colors hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300 sm:px-4"
+                >
+                  <Text className="text-center text-sm font-semibold text-white">{canAccessPanel ? "Painel" : "Minhas reservas"}</Text>
+                </Pressable>
               </Link>
               <Link
                 href="/perfil"
