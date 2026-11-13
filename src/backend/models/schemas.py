@@ -36,6 +36,8 @@ class UsuarioResponse(UsuarioBase):
     is_ativo: bool
     role: str
     estacionamento_id: str | None = None
+    """Todos os shoppings que este usuário pode ver (gestor: vários)."""
+    estacionamento_ids: list[str] = []
     criado_em: datetime
 
     model_config = {"from_attributes": True}
@@ -254,6 +256,8 @@ class HealthCheckResponse(BaseModel):
 class UsuarioAdminCreate(UsuarioCreate):
     role: str = "usuario"
     estacionamento_id: str | None = None
+    """Vínculos de um gestor (vários). Para financeiro deve ter no máximo 1."""
+    estacionamento_ids: list[str] | None = None
 
 
 class UsuarioAdminUpdate(BaseModel):
@@ -263,6 +267,7 @@ class UsuarioAdminUpdate(BaseModel):
     role: str | None = None
     is_ativo: bool | None = None
     estacionamento_id: str | None = None
+    estacionamento_ids: list[str] | None = None
 
 
 # --- Schemas de Finanças ---

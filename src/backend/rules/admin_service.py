@@ -3,6 +3,8 @@ from fastapi import HTTPException, status
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from sqlalchemy import delete as sql_delete
+
 from core.security import criar_hash_senha
 from models.db_models import (
     Andar,
@@ -18,6 +20,7 @@ from models.db_models import (
     TipoVaga,
     Usuario,
     Vaga,
+    usuario_estacionamentos,
 )
 from models.schemas import (
     AndarCreate,
@@ -71,20 +74,46 @@ def _purgar_operacional(db: Session, estacionamento_id: str | None = None,
         if sensores_ids:
             db.query(SensorEvento).filter(SensorEvento.sensor_id.in_(sensores_ids)).delete(synchronize_session=False)
             db.query(Sensor).filter(Sensor.id.in_(sensores_ids)).delete(synchronize_session=False)
-        # gestores/financeiros vinculados: ficam órfãos (SQLite) ou travam o
-        # DELETE (Postgres, FK RESTRICT) — a conta só existe PARA a filial.
-        vinculados = [
-            uid for (uid,) in db.query(Usuario.id).filter(
+        # Vínculos N:N: um gestor pode responder por VÁRIOS shoppings. Se o
+        # shopping excluído era apenas um deles, promovemos outro a principal
+        # em vez de apagar a conta (a conta não existe só para esta filial).
+        principais = (
+            db.query(Usuario)
+            .filter(
                 Usuario.estacionamento_id == estacionamento_id,
                 Usuario.role.in_([TipoUsuario.GESTOR.value, TipoUsuario.FINANCEIRO.value]),
             )
-        ]
-        if vinculados:
-            db.query(Reserva).filter(Reserva.usuario_id.in_(vinculados)).delete(synchronize_session=False)
-            db.query(Pagamento).filter(Pagamento.usuario_id.in_(vinculados)).update(
+            .all()
+        )
+        sem_saida: list[str] = []
+        for usuario in principais:
+            restantes = [
+                est_id for (est_id,) in db.query(
+                    usuario_estacionamentos.c.estacionamento_id
+                ).filter(
+                    usuario_estacionamentos.c.usuario_id == usuario.id,
+                    usuario_estacionamentos.c.estacionamento_id != estacionamento_id,
+                )
+            ]
+            if restantes:
+                usuario.estacionamento_id = restantes[0]
+            else:
+                sem_saida.append(usuario.id)
+
+        # Remove TODAS as linhas de vínculo desta filial (inclusive as de
+        # usuários que a tinham apenas como vínculo adicional).
+        db.execute(
+            sql_delete(usuario_estacionamentos).where(
+                usuario_estacionamentos.c.estacionamento_id == estacionamento_id
+            )
+        )
+
+        if sem_saida:
+            db.query(Reserva).filter(Reserva.usuario_id.in_(sem_saida)).delete(synchronize_session=False)
+            db.query(Pagamento).filter(Pagamento.usuario_id.in_(sem_saida)).update(
                 {Pagamento.usuario_id: None}, synchronize_session=False
             )
-            db.query(Usuario).filter(Usuario.id.in_(vinculados)).delete(synchronize_session=False)
+            db.query(Usuario).filter(Usuario.id.in_(sem_saida)).delete(synchronize_session=False)
         # sessões QR do simulador apontando para a filial morta (estado em
         # memória — revogar explicitamente, senão o QR vive sem dono)
         from rules import simulador_service
@@ -106,6 +135,95 @@ def _purgar_operacional(db: Session, estacionamento_id: str | None = None,
     db.flush()
 
 
+# --- Vínculos usuário ↔ shoppings ------------------------------------------
+def _normalizar_vinculos(
+    db: Session,
+    role: str,
+    principal: str | None,
+    adicionais: list[str] | None,
+    ignorar_usuario_id: str | None = None,
+) -> list[str]:
+    """Resolve e valida a lista FINAL de shoppings de um usuário.
+
+    Gestor: 1..N shoppings. Financeiro: exatamente 1 e ÚNICO por shopping.
+    Demais papéis: nenhum vínculo. Retorna ids com o principal na frente.
+    """
+    papeis_vinculaveis = (TipoUsuario.GESTOR.value, TipoUsuario.FINANCEIRO.value)
+    if role not in papeis_vinculaveis:
+        return []
+
+    brutos: list[str] = []
+    if adicionais is not None:
+        brutos = list(adicionais)
+        if principal and principal not in brutos:
+            brutos.insert(0, principal)
+    elif principal:
+        brutos = [principal]
+
+    # remove duplicatas preservando ordem
+    vistos: set[str] = set()
+    ids = [x for x in brutos if x and not (x in vistos or vistos.add(x))]
+
+    if not ids:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Gestores e usuários de finanças devem estar vinculados a um shopping",
+        )
+
+    existentes = {
+        e.id for e in db.query(Estacionamento).filter(Estacionamento.id.in_(ids)).all()
+    }
+    faltando = [x for x in ids if x not in existentes]
+    if faltando:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Shopping não encontrado",
+        )
+
+    if role == TipoUsuario.FINANCEIRO.value:
+        if len(ids) > 1:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Um financeiro só pode ter uma conta por shopping",
+            )
+        # Regra de negócio: no máximo UMA conta financeira POR shopping.
+        query = db.query(Usuario).filter(
+            Usuario.role == TipoUsuario.FINANCEIRO.value,
+            Usuario.estacionamento_id == ids[0],
+            Usuario.is_ativo.is_(True),
+        )
+        if ignorar_usuario_id:
+            query = query.filter(Usuario.id != ignorar_usuario_id)
+        if query.first():
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Este shopping já possui um usuário financeiro vinculado",
+            )
+    return ids
+
+
+def _aplicar_vinculos(db: Session, usuario: Usuario, ids: list[str]) -> None:
+    """Grava TODOS os vínculos na N:N; `estacionamento_id` guarda o principal.
+
+    Manter o principal também na tabela N:N deixa a exclusão de um shopping
+    determinística: basta remover a linha daquele shopping e promover outra.
+    A property `Usuario.estacionamento_ids` deduplica e põe o principal
+    primeiro, então nenhum consumidor vê duplicata.
+    """
+    usuario.estacionamento_id = ids[0] if ids else None
+    db.execute(
+        sql_delete(usuario_estacionamentos).where(
+            usuario_estacionamentos.c.usuario_id == usuario.id
+        )
+    )
+    for est_id in ids:
+        db.execute(
+            usuario_estacionamentos.insert().values(
+                usuario_id=usuario.id, estacionamento_id=est_id
+            )
+        )
+
+
 # --- Gerenciamento de Usuários ---
 def criar_usuario_admin(db: Session, dados: UsuarioAdminCreate) -> Usuario:
     """Cria um novo usuário com cargo específico (apenas admin global)"""
@@ -124,21 +242,11 @@ def criar_usuario_admin(db: Session, dados: UsuarioAdminCreate) -> Usuario:
             detail=f"Tipo de usuário inválido. Valores aceitos: {', '.join(roles_validos)}"
         )
 
-    # Se for gestor/financeiro, exige estacionamento vinculado
-    if dados.role in [TipoUsuario.GESTOR.value, TipoUsuario.FINANCEIRO.value] and not dados.estacionamento_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Gestores e usuários de finanças devem estar vinculados a um estacionamento"
-        )
-
-    # Verifica se estacionamento existe se for informado
-    if dados.estacionamento_id:
-        est = db.query(Estacionamento).filter(Estacionamento.id == dados.estacionamento_id).first()
-        if not est:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Estacionamento não encontrado"
-            )
+    # Resolve o conjunto FINAL de shoppings (gestor: vários; financeiro: um
+    # e único por shopping). Valida existência e unicidade antes de gravar.
+    ids = _normalizar_vinculos(
+        db, dados.role, dados.estacionamento_id, dados.estacionamento_ids
+    )
 
     novo_usuario = Usuario(
         nome=dados.nome,
@@ -147,11 +255,13 @@ def criar_usuario_admin(db: Session, dados: UsuarioAdminCreate) -> Usuario:
         placa_veiculo=dados.placa_veiculo,
         senha_hash=criar_hash_senha(dados.senha),
         role=dados.role,
-        estacionamento_id=dados.estacionamento_id,
+        estacionamento_id=ids[0] if ids else None,
         is_ativo=True
     )
 
     db.add(novo_usuario)
+    db.flush()  # precisa do id gerado para gravar os vínculos N:N
+    _aplicar_vinculos(db, novo_usuario, ids)
     db.commit()
     db.refresh(novo_usuario)
     return novo_usuario
@@ -199,32 +309,43 @@ def atualizar_usuario_admin(db: Session, usuario_id: str, dados: UsuarioAdminUpd
                 detail=f"Tipo de usuário inválido. Valores aceitos: {', '.join(roles_validos)}"
             )
 
-    # Valida o ESTADO FINAL, não apenas a transição: remover explicitamente o
-    # vínculo de um gestor já existente também o deixaria sem acesso ao painel.
+    # Valida o ESTADO FINAL, não apenas a transição. Quando o payload NÃO
+    # traz os vínculos, preserva o estado atual do usuário (edição de nome
+    # ou de role não deve apagar os shoppings de um gestor).
     role_final = dados_dict.get("role", usuario.role)
-    estacionamento_final = dados_dict.get(
-        "estacionamento_id", usuario.estacionamento_id
-    )
-    if (
-        role_final in [TipoUsuario.GESTOR.value, TipoUsuario.FINANCEIRO.value]
-        and not estacionamento_final
-    ):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Gestores e usuários de finanças devem estar vinculados a um estacionamento"
+    if "estacionamento_ids" in dados_dict or "estacionamento_id" in dados_dict:
+        principal = dados_dict.get("estacionamento_id", usuario.estacionamento_id)
+        if "estacionamento_ids" in dados_dict:
+            adicionais = dados_dict["estacionamento_ids"]
+        elif "estacionamento_id" in dados_dict and principal is None:
+            # Tentativa explícita de REMOVER o vínculo sem fornecer nova
+            # lista: gestor/financeiro ficariam sem escopo. Recusa (400).
+            adicionais = []
+        else:
+            # Troca só do principal em um gestor com vários vínculos:
+            # preserva os demais em vez de apagá-los silenciosamente.
+            adicionais = usuario.estacionamento_ids
+        ids = _normalizar_vinculos(
+            db, role_final, principal, adicionais, ignorar_usuario_id=usuario.id
         )
-
-    if dados_dict.get("estacionamento_id"):
-        est = db.query(Estacionamento).filter(Estacionamento.id == dados_dict["estacionamento_id"]).first()
-        if not est:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Estacionamento não encontrado"
+    else:
+        ids = usuario.estacionamento_ids if role_final in (
+            TipoUsuario.GESTOR.value, TipoUsuario.FINANCEIRO.value
+        ) else []
+        if ids:
+            ids = _normalizar_vinculos(
+                db, role_final, None, ids, ignorar_usuario_id=usuario.id
             )
 
+    # `estacionamento_id` e `estacionamento_ids` são tratados por
+    # _aplicar_vinculos; não podem passar pelo setattr genérico (o segundo
+    # não é coluna do modelo).
+    dados_dict.pop("estacionamento_id", None)
+    dados_dict.pop("estacionamento_ids", None)
     for campo, valor in dados_dict.items():
         setattr(usuario, campo, valor)
 
+    _aplicar_vinculos(db, usuario, ids)
     db.commit()
     db.refresh(usuario)
     return usuario
@@ -266,7 +387,7 @@ def promover_usuario_admin(db: Session, usuario_id: str) -> Usuario:
         )
 
     usuario.role = TipoUsuario.ADMIN.value
-    usuario.estacionamento_id = None
+    _aplicar_vinculos(db, usuario, [])  # admin global não tem vínculo restritivo
     db.commit()
     db.refresh(usuario)
     return usuario

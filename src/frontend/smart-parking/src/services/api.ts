@@ -293,6 +293,13 @@ export const parkingApi = {
     return data;
   },
 
+  /** Lista de shoppings do PAINEL: já vem filtrada pelo backend conforme o
+   *  papel (admin = todos; gestor = só os seus; financeiro = um). */
+  async listarEstacionamentosPainel(): Promise<Estacionamento[]> {
+    const { data } = await api.get<Estacionamento[]>("/api/admin/estacionamentos");
+    return data;
+  },
+
   async obterEstacionamento(id: string): Promise<Estacionamento> {
     const { data } = await api.get<Estacionamento>(
       `/api/estacionamentos/${id}`,
@@ -381,7 +388,7 @@ export const parkingApi = {
     return data;
   },
 
-  async dashboardGestor(): Promise<{
+  async dashboardGestor(estacionamentoId?: string): Promise<{
     estacionamento: { id: string; nome: string; endereco: string } | null;
     ocupacao: DashboardAdmin["ocupacao_atual"] & { total_vagas: number } | null;
     faturamento_hoje: number;
@@ -389,7 +396,9 @@ export const parkingApi = {
     total_pagamentos_hoje: number;
     mensagem?: string;
   }> {
-    const { data } = await api.get("/api/admin/gestor/dashboard");
+    const { data } = await api.get("/api/admin/gestor/dashboard", {
+      params: { ...(estacionamentoId ? { estacionamento_id: estacionamentoId } : {}) },
+    });
     return data;
   },
 
@@ -543,6 +552,7 @@ export const parkingApi = {
       role: "usuario" | "gestor" | "financeiro" | "admin" | "publico";
       is_ativo: boolean;
       estacionamento_id: string | null;
+      estacionamento_ids?: string[];
     }>,
   ): Promise<Usuario> {
     const { data } = await api.put<Usuario>(`/api/admin/usuarios/${id}`, payload);
@@ -579,6 +589,8 @@ export const parkingApi = {
     senha: string;
     role: "usuario" | "gestor" | "financeiro" | "admin" | "publico";
     estacionamento_id?: string;
+    /** Gestor: vários shoppings. Financeiro: exatamente um. */
+    estacionamento_ids?: string[];
     telefone?: string;
   }): Promise<Usuario> {
     const { data } = await api.post<Usuario>("/api/admin/usuarios", payload);

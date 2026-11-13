@@ -22,6 +22,7 @@ export const tituloExplorar = "text-balance text-xl font-extrabold text-slate-90
 export const tituloSecaoStatus = "text-[15px] font-extrabold text-slate-900";
 export const tituloCardShopping = "text-[15px] font-bold text-slate-900";
 export const textoApoio = "mt-1 text-sm text-slate-600";
+export const textoAuxiliar = "text-[12px] text-slate-600";
 export const textoApoioCentro = "text-center text-sm text-slate-600";
 export const subtituloHero = "mt-4 max-w-xl text-center text-sm leading-5 text-slate-600 sm:mt-5 sm:text-base sm:leading-6 3xl:max-w-2xl 3xl:text-lg";
 export const descricaoLogin = "mt-1.5 text-sm text-slate-600";

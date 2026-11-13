@@ -39,6 +39,7 @@ from models.db_models import (
     TipoVaga,
     Usuario,
     Vaga,
+    usuario_estacionamentos,
 )
 
 Base.metadata.create_all(bind=engine)
@@ -109,6 +110,21 @@ try:
                 telefone="92999990000",
             )
         )
+    db.flush()
+
+    # Vínculos N:N: o gestor responde por DOIS shoppings (regra de negócio),
+    # o financeiro por UM apenas. O principal também fica na tabela N:N.
+    def vinculo(email, *estacionamentos):
+        uid = db.query(Usuario.id).filter(Usuario.email == email).scalar()
+        for est in estacionamentos:
+            db.execute(
+                usuario_estacionamentos.insert().values(
+                    usuario_id=uid, estacionamento_id=est.id
+                )
+            )
+
+    vinculo("gestor@smartparking.com", centro, norte)
+    vinculo("financeiro@smartparking.com", centro)
 
     agora = utc_agora()
     db.add(

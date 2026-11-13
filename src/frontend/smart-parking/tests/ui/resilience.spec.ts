@@ -1,9 +1,10 @@
+import { CHAVE_CACHE_ANONIMO } from "../../src/services/cacheChaves";
 import { expect, gotoLogin, test } from "./helpers";
 
 test("cache corrompido não impede boot nem substitui a resposta real", async ({ page }) => {
-  await page.addInitScript(() => {
-    localStorage.setItem("sp:cache:estacionamentos", "{json-incompleto");
-  });
+  await page.addInitScript((chave) => {
+    localStorage.setItem(chave, "{json-incompleto");
+  }, CHAVE_CACHE_ANONIMO);
   await page.goto("/");
   await expect(page.getByText("Shopping QA Centro").first()).toBeVisible();
   await expect(page.getByText("Shopping QA Norte").first()).toBeVisible();

@@ -16,7 +16,7 @@ from core.deps import (
 )
 from core.rate_limiter import LIMITS, limiter
 from models.database import get_db
-from models.db_models import Andar, TipoUsuario, Usuario, Vaga
+from models.db_models import Usuario
 from models.schemas import (
     EstacionamentoDetalhadoResponse,
     FluxoPublicoResponse,
@@ -84,17 +84,39 @@ async def status():
 
 # --- Rotas de Estacionamentos ---
 @router.get("/estacionamentos", response_model=list[EstacionamentoDetalhadoResponse])
-async def listar_estacionamentos(db: Session = Depends(get_db)):
-    """Lista todos os estacionamentos com contagem de vagas por andar"""
-    return estacionamento_service.listar_todos_estacionamentos(db)
+async def listar_estacionamentos(
+    db: Session = Depends(get_db),
+    usuario: Usuario | None = Depends(get_usuario_logado_opcional),
+):
+    """Vitrine pública: anônimo/motorista/admin veem todos os shoppings.
+
+    Gestor/financeiro AUTENTICADOS recebem somente os seus vínculos — a
+    restrição não é cosmética: a própria API deixa de entregar os outros.
+    """
+    from core.escopo import PAPEIS_PAINEL
+
+    apenas = None
+    if usuario is not None and usuario.role in PAPEIS_PAINEL:
+        from core.escopo import ids_permitidos
+
+        apenas = ids_permitidos(usuario)
+    return estacionamento_service.listar_todos_estacionamentos(db, apenas)
 
 
 @router.get("/estacionamentos/{id}/vagas", response_model=MapaVagasResponse)
-async def mapa_vagas(id: str, db: Session = Depends(get_db)):
+async def mapa_vagas(
+    id: str,
+    db: Session = Depends(get_db),
+    usuario: Usuario | None = Depends(get_usuario_logado_opcional),
+):
     """
     Retorna o mapa completo de vagas detalhado de um estacionamento específico,
-    organizado por andares
+    organizado por andares. Público para visitantes; gestor/financeiro logado
+    só acessa os shoppings vinculados à sua conta.
     """
+    from core.escopo import garantir_leitura_publica_no_escopo
+
+    garantir_leitura_publica_no_escopo(usuario, id)
     estacionamento = estacionamento_service.buscar_estacionamento_por_id(db, id)
     if not estacionamento:
         raise HTTPException(status_code=404, detail="Estacionamento não encontrado")
@@ -123,6 +145,9 @@ async def proxima_vaga(
     RF-47: aceita token OPCIONAL — logado sem declaração PCD nunca recebe
     vaga PCD; declarado PCD tem prioridade na especial. Anônimo = comum.
     """
+    from core.escopo import garantir_leitura_publica_no_escopo
+
+    garantir_leitura_publica_no_escopo(usuario, id)
     estacionamento = estacionamento_service.buscar_estacionamento_por_id(db, id)
     if not estacionamento:
         raise HTTPException(status_code=404, detail="Estacionamento não encontrado")
@@ -198,42 +223,21 @@ async def listar_vagas(
 
 
 def garantir_vagas_no_escopo(db: Session, usuario: Usuario, vaga_ids: list[str]) -> None:
-    """
-    Admin opera em qualquer vaga do sistema. Gestor só pode alterar status de
-    vagas do estacionamento ao qual está vinculado (vaga -> andar ->
-    estacionamento) — nada de "retornar vazio" que parece bug: 403 na cara.
-    """
-    if usuario.role == TipoUsuario.ADMIN.value:
-        return
-    fora_do_escopo = (
-        db.query(Vaga.id)
-        .join(Andar, Vaga.andar_id == Andar.id)
-        .filter(Vaga.id.in_(vaga_ids), Andar.estacionamento_id != usuario.estacionamento_id)
-        .count()
-    )
-    if fora_do_escopo:
-        raise HTTPException(
-            status_code=403,
-            detail="Uma ou mais vagas não pertencem ao seu estacionamento.",
-        )
+    """Delega ao módulo único: aceita vagas de QUALQUER shopping vinculado."""
+    from core.escopo import garantir_vagas_no_escopo as _garantir
+
+    _garantir(db, usuario, vaga_ids)
 
 
 def garantir_escopo_relatorio(
     usuario: Usuario, estacionamento_id: str | None
 ) -> str | None:
-    """
-    Admin vê o todo (ou o estacionamento que filtrar). Gestor/financeiro:
-    forçado ao próprio estacionamento; pedir o dos outros é 403, não dados
-    vazios que confundem na demo.
-    """
-    if usuario.role == TipoUsuario.ADMIN.value:
-        return estacionamento_id
-    if estacionamento_id and estacionamento_id != usuario.estacionamento_id:
-        raise HTTPException(
-            status_code=403,
-            detail="Você só pode visualizar relatórios do seu estacionamento.",
-        )
-    return usuario.estacionamento_id
+    """Mesma regra de `core/escopo` usada por todo o painel (sem duplicação)."""
+    from core.escopo import garantir_escopo_estacionamento
+
+    return garantir_escopo_estacionamento(
+        usuario, estacionamento_id, "visualizar relatórios"
+    )
 
 
 # ATENÇÃO: a rota fixa /vagas/lote/status precisa ser declarada ANTES da
@@ -298,11 +302,21 @@ async def relatorio_fluxo_publico(
     periodo: str = Query("diario", description="Período: diario, semanal, mensal"),
     estacionamento_id: str | None = Query(None),
     db: Session = Depends(get_db),
+    usuario: Usuario | None = Depends(get_usuario_logado_opcional),
 ):
     """
     Agregados seguros (entradas/saídas/tempo médio) para a Home pública.
     NÃO expõe `registros`: nem placa, nem valor — nada de cliente alheio.
+    Gestor/financeiro logado não consulta agregado de shopping alheio.
     """
+    from core.escopo import PAPEIS_PAINEL, garantir_escopo_estacionamento
+
+    # Papel de painel nunca recebe o agregado global (id=None) nem o de
+    # shopping alheio: sem seleção cai no próprio principal.
+    if usuario is not None and usuario.role in PAPEIS_PAINEL:
+        estacionamento_id = garantir_escopo_estacionamento(
+            usuario, estacionamento_id, "ver o fluxo"
+        )
     dados = relatorio_service.gerar_relatorio_fluxo(db, periodo, estacionamento_id)
     return {
         chave: dados[chave]

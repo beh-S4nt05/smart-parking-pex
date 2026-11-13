@@ -94,9 +94,17 @@ def obter_resumo_financeiro(
     """
     data_inicio, data_fim = _calcular_periodo(periodo)
 
-    # Se for gestor/financeiro, só pode ver o próprio estacionamento
-    if usuario_logado.role in [TipoUsuario.FINANCEIRO.value, TipoUsuario.GESTOR.value]:
-        estacionamento_id = usuario_logado.estacionamento_id
+    # Gestor/financeiro: usa o shopping SELECIONADO apenas se ele pertence ao
+    # escopo da conta; caso contrário cai no principal (nunca no sistema todo).
+    # Gestor pode ter VÁRIOS vínculos, então não basta comparar com um único id.
+    if usuario_logado and usuario_logado.role in [
+        TipoUsuario.FINANCEIRO.value, TipoUsuario.GESTOR.value
+    ]:
+        from core.escopo import ids_permitidos
+
+        permitidos = ids_permitidos(usuario_logado)
+        if not estacionamento_id or estacionamento_id not in permitidos:
+            estacionamento_id = usuario_logado.estacionamento_id or sorted(permitidos)[0]
 
     query = db.query(Pagamento).filter(
         Pagamento.data_pagamento >= data_inicio,

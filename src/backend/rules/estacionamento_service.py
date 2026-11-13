@@ -5,9 +5,18 @@ from models.db_models import Andar, Estacionamento, StatusVaga, TipoVaga, Usuari
 from models.schemas import AndarCreate, EstacionamentoCreate
 
 
-def listar_todos_estacionamentos(db: Session) -> list[Estacionamento]:
-    """Retorna todos os estacionamentos com contagem de vagas disponíveis"""
-    estacionamentos = db.query(Estacionamento).all()
+def listar_todos_estacionamentos(
+    db: Session, apenas_ids: list[str] | set[str] | None = None
+) -> list[Estacionamento]:
+    """Retorna estacionamentos com contagem de vagas disponíveis.
+
+    `apenas_ids` restringe a lista ao escopo de um gestor/financeiro; `None`
+    mantém a vitrine pública completa (anônimo, motorista ou admin global).
+    """
+    query = db.query(Estacionamento)
+    if apenas_ids is not None:
+        query = query.filter(Estacionamento.id.in_(list(apenas_ids)))
+    estacionamentos = query.order_by(Estacionamento.nome).all()
 
     for est in estacionamentos:
         total_vagas = db.query(Vaga).join(Andar).filter(
