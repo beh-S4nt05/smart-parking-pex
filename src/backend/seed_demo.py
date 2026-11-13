@@ -22,7 +22,7 @@ from datetime import datetime, timedelta
 
 from sqlalchemy.orm import Session
 
-from core.security import criar_hash_senha
+from core.security import criar_hash_senha, verificar_senha
 from models.database import Base, SessionLocal, engine
 from models.db_models import (
     Andar,
@@ -34,6 +34,7 @@ from models.db_models import (
     TipoVaga,
     Usuario,
     Vaga,
+    usuario_estacionamentos,
 )
 
 random.seed(2026)  # demo reproduzível
@@ -148,6 +149,10 @@ SHOPPINGS = [
     },
 ]
 
+# Shoppings que já têm o gestor clássico (gestor@) — os demais ganham um
+# gestor próprio (gestor<i>) na hora do seed.
+SHOPPING_COM_GESTOR_CLASICO = {"Amazonas Shopping", "Millennium Shopping"}
+
 USUARIOS_DEMO = [
     {
         "nome": "Administrador",
@@ -156,22 +161,25 @@ USUARIOS_DEMO = [
         "role": TipoUsuario.ADMIN.value,
         "telefone": "92999110000",
         "estacionamento": None,
+        "vinculos": [],
     },
     {
-        "nome": "Gestor Amazonas",
+        "nome": "Gestor Amazonas e Millennium",
         "email": "gestor@smartparking.com",
         "senha": "gestor123",
         "role": TipoUsuario.GESTOR.value,
         "telefone": "92999220000",
         "estacionamento": "Amazonas Shopping",
+        "vinculos": ["Millennium Shopping"],
     },
     {
-        "nome": "Financeiro Central",
+        "nome": "Gestor Amazonas",
         "email": "financeiro@smartparking.com",
-        "senha": "financ123",
-        "role": TipoUsuario.FINANCEIRO.value,
+        "senha": "gestor123",
+        "role": TipoUsuario.GESTOR.value,
         "telefone": "92999330000",
-        "estacionamento": "Manauara Shopping",
+        "estacionamento": "Amazonas Shopping",
+        "vinculos": [],
     },
     {
         "nome": "Motorista Demo",
@@ -180,9 +188,39 @@ USUARIOS_DEMO = [
         "role": TipoUsuario.USUARIO.value,
         "telefone": "92999440000",
         "estacionamento": None,
+        "vinculos": [],
         "placa": "AMA1B23",
     },
 ]
+
+# Um financeiro por shopping: o `$` do pedido vira número sequencial
+# (financeiro1, financeiro2 ...) até a quantidade de shoppings cadastrados.
+# Os shoppings sem gestor clássico ganham também um gestor próprio (gestor<i>).
+for _i, _shopping in enumerate(SHOPPINGS, start=1):
+    _nome = _shopping["nome"]
+    USUARIOS_DEMO.append(
+        {
+            "nome": f"Financeiro {_nome}",
+            "email": f"financeiro{_i}@smartparking.com",
+            "senha": "financ123",
+            "role": TipoUsuario.FINANCEIRO.value,
+            "telefone": f"92999{60000 + _i}",
+            "estacionamento": _nome,
+            "vinculos": [],
+        }
+    )
+    if _nome not in SHOPPING_COM_GESTOR_CLASICO:
+        USUARIOS_DEMO.append(
+            {
+                "nome": f"Gestor {_nome}",
+                "email": f"gestor{_i}@smartparking.com",
+                "senha": "gestor123",
+                "role": TipoUsuario.GESTOR.value,
+                "telefone": f"92999{70000 + _i}",
+                "estacionamento": _nome,
+                "vinculos": [],
+            }
+        )
 
 
 
@@ -200,6 +238,72 @@ def _tipo_para_indice(i: int, total: int) -> str:
     return TipoVaga.COMUM.value
 
 
+def _sincronizar_vinculos(db: Session, usuario: Usuario, estacionamento_ids: list[str]) -> None:
+    """Garante exatamente os vínculos N:N esperados (idempotente)."""
+    atual = {v.id for v in usuario.estacionamentos_vinculados}
+    esperados = set(estacionamento_ids)
+    for est_id in esperados - atual:
+        db.execute(
+            usuario_estacionamentos.insert().values(
+                usuario_id=usuario.id, estacionamento_id=est_id
+            )
+        )
+    stale = atual - esperados
+    if stale:
+        db.execute(
+            usuario_estacionamentos.delete().where(
+                usuario_estacionamentos.c.usuario_id == usuario.id,
+                usuario_estacionamentos.c.estacionamento_id.in_(stale),
+            )
+        )
+
+
+def _garantir_usuario_demo(
+    db: Session, spec: dict, por_nome: dict, resumo: dict
+) -> None:
+    """Cria/atualiza um usuário de demo com papél, principal e vínculos N:N.
+
+    Idempotente e autorreparante: `python seed_demo.py` sobre uma base antiga
+    aplica a atribuição atual do spec (papél, vínculo principal e vínculos) —
+    assim a estrutura pedida (gestor com vários shoppings, financeiro por
+    shopping, admin global) é garantida em qualquer estado anterior.
+    """
+    nome_est = spec.get("estacionamento")
+    principal_id = por_nome[nome_est].id if nome_est in por_nome else None
+    vinculo_ids = [
+        por_nome[n].id for n in spec.get("vinculos", []) if n in por_nome
+    ]
+
+    existente = db.query(Usuario).filter(Usuario.email == spec["email"]).first()
+    if existente:
+        existente.role = spec["role"]
+        if not existente.telefone and spec.get("telefone"):
+            existente.telefone = spec["telefone"]
+        existente.estacionamento_id = principal_id
+        # Senhas padrões: só reinicia a hash quando a atual não confere —
+        # evita travar um usuário que alterou a senha intencionalmente.
+        if not verificar_senha(spec["senha"], existente.senha_hash):
+            existente.senha_hash = criar_hash_senha(spec["senha"])
+        _sincronizar_vinculos(db, existente, vinculo_ids)
+        db.commit()
+        return
+
+    usuario = Usuario(
+        nome=spec["nome"],
+        email=spec["email"],
+        telefone=spec.get("telefone"),
+        placa_veiculo=spec.get("placa"),
+        senha_hash=criar_hash_senha(spec["senha"]),
+        role=spec["role"],
+        estacionamento_id=principal_id,
+        is_ativo=True,
+    )
+    db.add(usuario)
+    db.flush()
+    _sincronizar_vinculos(db, usuario, vinculo_ids)
+    resumo["usuarios"] += 1
+
+
 def popular_database(db: Session) -> dict:
     """Cria estacionamentos, andares, vagas, usuários e histórico de demonstração."""
     resumo = {"estacionamentos": 0, "andares": 0, "vagas": 0, "usuarios": 0, "historicos": 0}
@@ -207,36 +311,9 @@ def popular_database(db: Session) -> dict:
     # Idempotência: se já existe estrutura demo, apenas garante os usuários
     if db.query(Estacionamento).count() > 0:
         print("ℹ️  Estacionamentos já existem — pulando criação de estrutura (use --reset para recriar).")
-        existentes = {e.nome for e in db.query(Estacionamento).all()}
         by_nome = {e.nome: e for e in db.query(Estacionamento).all()}
         for spec in USUARIOS_DEMO:
-            usuario = db.query(Usuario).filter(Usuario.email == spec["email"]).first()
-            vinculo = (
-                by_nome[spec["estacionamento"]].id
-                if spec.get("estacionamento") in existentes
-                else None
-            )
-            if usuario:
-                if not usuario.telefone and spec.get("telefone"):
-                    usuario.telefone = spec["telefone"]
-                if spec["role"] == TipoUsuario.ADMIN.value:
-                    usuario.role = TipoUsuario.ADMIN.value
-                if vinculo and not usuario.estacionamento_id:
-                    usuario.estacionamento_id = vinculo
-            elif spec["email"] != "admin@smartparking.com":
-                db.add(
-                    Usuario(
-                        nome=spec["nome"],
-                        email=spec["email"],
-                        telefone=spec.get("telefone"),
-                        placa_veiculo=spec.get("placa"),
-                        senha_hash=criar_hash_senha(spec["senha"]),
-                        role=spec["role"],
-                        estacionamento_id=vinculo,
-                        is_ativo=True,
-                    )
-                )
-                resumo["usuarios"] += 1
+            _garantir_usuario_demo(db, spec, by_nome, resumo)
         db.commit()
         return resumo
 
@@ -353,35 +430,7 @@ def popular_database(db: Session) -> dict:
 
     # -------- Usuários de demonstração --------
     for spec in USUARIOS_DEMO:
-        vinculo = (
-            estacionamento_por_nome[spec["estacionamento"]].id
-            if spec.get("estacionamento")
-            else None
-        )
-        existente = db.query(Usuario).filter(Usuario.email == spec["email"]).first()
-        if existente:
-            # completa campos de demo que possam faltar (ex.: admin criado
-            # no boot antes do seed não tem telefone) sem sobrescrever nada
-            if not existente.telefone and spec.get("telefone"):
-                existente.telefone = spec["telefone"]
-            if spec["role"] == TipoUsuario.ADMIN.value:
-                existente.role = TipoUsuario.ADMIN.value
-            if vinculo and not existente.estacionamento_id:
-                existente.estacionamento_id = vinculo
-            db.commit()
-            continue
-        usuario = Usuario(
-            nome=spec["nome"],
-            email=spec["email"],
-            telefone=spec.get("telefone"),
-            placa_veiculo=spec.get("placa"),
-            senha_hash=criar_hash_senha(spec["senha"]),
-            role=spec["role"],
-            estacionamento_id=vinculo,
-            is_ativo=True,
-        )
-        db.add(usuario)
-        resumo["usuarios"] += 1
+        _garantir_usuario_demo(db, spec, estacionamento_por_nome, resumo)
 
     # -------- Tarifas base por estacionamento (ConfiguracaoPreco) --------
     from models.db_models import ConfiguracaoPreco
@@ -425,6 +474,19 @@ def resetar_dados_demo(db: Session) -> None:
     db.query(Historico).delete()
     db.query(Estacionamento).delete()
     emails = [u["email"] for u in USUARIOS_DEMO]
+    ids = [
+        uid
+        for (uid,) in db.query(Usuario.id)
+        .filter(Usuario.email.in_(emails))
+        .all()
+    ]
+    if ids:
+        # SQLite não ativa FK por default: limpa os vínculos N:N manualmente.
+        db.execute(
+            usuario_estacionamentos.delete().where(
+                usuario_estacionamentos.c.usuario_id.in_(ids)
+            )
+        )
     db.query(Usuario).filter(Usuario.email.in_(emails)).delete(synchronize_session=False)
     db.commit()
 
