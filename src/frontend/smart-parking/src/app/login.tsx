@@ -1,3 +1,4 @@
+import { descricaoLogin, minW0Flex1, rotulo, textoApoio } from "../styles/recipes";
 /**
  * Login — template "Login (MOBILE/WEB)" do Figma:
  * - mobile: tela branca com logo P azul + formulário central
@@ -200,7 +201,7 @@ export default function Login() {
             hitSlop={4}
             className="flex-row items-center justify-between rounded-lg border border-slate-200 bg-white px-3 py-2 active:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
           >
-            <Text className="text-[13px] font-semibold text-slate-700">
+            <Text className={rotulo}>
               Motorista
             </Text>
             <Text className="text-[11px] text-slate-600">
@@ -218,7 +219,7 @@ export default function Login() {
             hitSlop={4}
             className="flex-row items-center justify-between rounded-lg border border-slate-200 bg-white px-3 py-2 active:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
           >
-            <Text className="text-[13px] font-semibold text-slate-700">
+            <Text className={rotulo}>
               Administrador
             </Text>
             <Text className="text-[11px] text-slate-600">
@@ -254,7 +255,7 @@ export default function Login() {
         </View>
 
         <ScrollView
-          className="min-w-0 flex-1"
+          className={minW0Flex1}
           contentContainerStyle={{
             flexGrow: 1,
             justifyContent: "center",
@@ -279,7 +280,7 @@ export default function Login() {
               <Text accessibilityRole="header" className="text-3xl font-extrabold text-slate-900">
                 Entrar
               </Text>
-              <Text className="mt-1.5 text-sm text-slate-600">
+              <Text className={descricaoLogin}>
                 Acesse sua conta para continuar
               </Text>
             </View>
@@ -289,7 +290,7 @@ export default function Login() {
               <Text accessibilityRole="header" className="mt-4 text-[22px] font-extrabold text-slate-900">
                 Bem-vindo ao Smart Parking
               </Text>
-              <Text className="mt-1 text-sm text-slate-600">
+              <Text className={textoApoio}>
                 Entre para acessar sua conta
               </Text>
             </View>

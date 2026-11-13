@@ -1,3 +1,4 @@
+import { meta, minW0Flex1, pagina, tituloCardShopping } from "../styles/recipes";
 /**
  * Minha conta (RF-15) — motorista e papel de painel usam a mesma tela.
  * Backend: PUT /auth/me + PUT /auth/senha (troca derruba as outras sessões e
@@ -130,14 +131,14 @@ export default function Perfil() {
   }
 
   return (
-    <View className="sp-page flex-1 bg-slate-50">
+    <View className={pagina}>
       <Header />
       <ScrollView className="flex-1" contentContainerStyle={{ paddingVertical: 20 }}>
         <View className="mx-auto w-full max-w-3xl gap-4 px-4 sm:px-6 3xl:gap-6 3xl:px-8">
           <View className="flex-row flex-wrap items-center justify-between gap-3">
-            <View className="min-w-0 flex-1">
+            <View className={minW0Flex1}>
               <Text className="text-2xl font-extrabold text-slate-900">Minha conta</Text>
-              <Text className="mt-0.5 text-[13px] text-slate-600">{user.email}</Text>
+              <Text className={meta}>{user.email}</Text>
             </View>
             <Chip label={ROLE_LABEL[user.role] ?? user.role} tone="azul" />
           </View>
@@ -149,8 +150,8 @@ export default function Perfil() {
               <View className="mt-0.5 h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-600">
                 <Text className="text-base font-bold text-white">!</Text>
               </View>
-              <View className="min-w-0 flex-1">
-                <Text className="text-[15px] font-bold text-slate-900">
+              <View className={minW0Flex1}>
+                <Text className={tituloCardShopping}>
                   Complete seu cadastro
                 </Text>
                 <Text className="mt-1 text-[13px] leading-5 text-slate-600">

@@ -1,3 +1,4 @@
+import { minW0Flex1, subtituloHero } from "../styles/recipes";
 /**
  * Hero da Home — "Encontre Vagas de Estacionamento!" com busca em destaque.
  *
@@ -58,7 +59,7 @@ export default function Hero({ shoppings, selecionadoId, onSelect, onBuscar }: P
         <Text className="text-balance text-center text-[30px] font-extrabold leading-[1.08] tracking-tight text-slate-900 sm:text-5xl lg:text-[56px] 3xl:text-[68px]">
           Encontre Vagas de{"\n"}Estacionamento!
         </Text>
-        <Text className="mt-4 max-w-xl text-center text-sm leading-5 text-slate-600 sm:mt-5 sm:text-base sm:leading-6 3xl:max-w-2xl 3xl:text-lg">
+        <Text className={subtituloHero}>
           Veja vagas livres por shopping e andar em Manaus, com atualização em tempo real.
         </Text>
 
@@ -71,7 +72,7 @@ export default function Hero({ shoppings, selecionadoId, onSelect, onBuscar }: P
             </Text>
           </View>
           <View className="flex w-full min-w-0 flex-col gap-3 md:flex-row md:items-start md:gap-3">
-            <View className="min-w-0 flex-1">
+            <View className={minW0Flex1}>
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel={`Selecionar shopping: ${nomeSelecionado} — Manaus, AM`}

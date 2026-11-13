@@ -1,3 +1,4 @@
+import { pagina, textoApoio, textoApoioCentro, tituloCard, tituloSecao } from "../styles/recipes";
 /**
  * Home pública — template "Home (MOBILE/WEB)" do Figma, consumindo a API:
  * Hero com seletor de shopping, StatusPanel com números reais + tempo médio
@@ -55,7 +56,7 @@ export default function Index() {
   const abrirMapa = (id: string) => router.push(`/shopping/${id}` as never);
 
   return (
-    <View className="sp-page flex-1 bg-slate-50">
+    <View className={pagina}>
       <Header rotaAtual="/" />
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -82,20 +83,20 @@ export default function Index() {
               <Text className="text-[11px] font-bold uppercase tracking-wider text-blue-600">
                 Rede credenciada
               </Text>
-              <Text className="text-balance text-center text-2xl font-extrabold text-slate-900 sm:text-3xl 3xl:text-4xl">
+              <Text className={tituloSecao}>
                 Shoppings Parceiros
               </Text>
-              <Text className="text-center text-sm text-slate-600">
+              <Text className={textoApoioCentro}>
                 Escolha um shopping para ver o mapa de vagas em tempo real.
               </Text>
             </View>
 
             {!loading && estacionamentos.length === 0 ? (
               <View className="items-center rounded-2xl border border-slate-200 bg-white p-8">
-                <Text className="text-base font-bold text-slate-900">
+                <Text className={tituloCard}>
                   Nenhum estacionamento cadastrado ainda
                 </Text>
-                <Text className="mt-1 text-sm text-slate-600">
+                <Text className={textoApoio}>
                   Rode o backend — o seed de demonstração popula os shoppings de
                   Manaus automaticamente.
                 </Text>

@@ -1,3 +1,4 @@
+import { linhaAcoes, minW0Flex1, pagina, rotulo, tituloCard, tituloSecaoStatus } from "../styles/recipes";
 /**
  * Admin — Simulador QR — template "Admin - Simulador (QR)" do Figma.
  * Passo 1: escolher local · Passo 2: escanear com o celular (QR + URL
@@ -134,7 +135,7 @@ export default function SimuladorQR() {
   }
 
   return (
-    <View className="sp-page flex-1 bg-slate-50">
+    <View className={pagina}>
       {/* topo (mobile) / faixa (web) */}
       <View className="flex-row flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 py-3">
         <View className="min-w-0 flex-row items-center gap-2.5">
@@ -146,8 +147,8 @@ export default function SimuladorQR() {
             <IconeVoltar cor="#475569" tamanho={16} />
           </Pressable>
           <Logo size={30} />
-          <View className="min-w-0 flex-1">
-            <Text className="text-[15px] font-extrabold text-slate-900">
+          <View className={minW0Flex1}>
+            <Text className={tituloSecaoStatus}>
               Simulador de Sensores
             </Text>
             <Text className="text-[11px] text-slate-600">Gerador de QR · Admin</Text>
@@ -164,7 +165,7 @@ export default function SimuladorQR() {
               <Passo numero="1" titulo="Escolha o local" />
               <View className="mt-4 gap-4">
                 <CampoRotulo rotulo="Estacionamento">
-                  <View className="flex-row flex-wrap gap-2">
+                  <View className={linhaAcoes}>
                     {estacionamentos.map((e) => {
                       const ativo = e.id === estId;
                       return (
@@ -191,7 +192,7 @@ export default function SimuladorQR() {
                 </CampoRotulo>
 
                 <CampoRotulo rotulo="Andar">
-                  <View className="flex-row flex-wrap gap-2">
+                  <View className={linhaAcoes}>
                     {(est?.andares ?? [])
                       .slice()
                       .sort((a, b) => a.numero_andar - b.numero_andar)
@@ -221,7 +222,7 @@ export default function SimuladorQR() {
                 </CampoRotulo>
 
                 <CampoRotulo rotulo="Validade da sessão">
-                  <View className="flex-row flex-wrap gap-2">
+                  <View className={linhaAcoes}>
                     {[1, 4, 8, 12, 24].map((h) => (
                       <Pressable
                         key={h}
@@ -327,7 +328,7 @@ export default function SimuladorQR() {
           {/* lateral */}
           <View className="min-w-0 flex-1 gap-5" style={{ flexBasis: 300 }}>
             <Card className="p-5">
-              <Text className="text-base font-bold text-slate-900">Como funciona</Text>
+              <Text className={tituloCard}>Como funciona</Text>
               <View className="mt-3 gap-3">
                 {[
                   "O QR aponta para /simulador no app (mesma URL deste ambiente).",
@@ -346,7 +347,7 @@ export default function SimuladorQR() {
             </Card>
 
             <Card className="p-5">
-              <Text className="text-base font-bold text-slate-900">Sessões ativas</Text>
+              <Text className={tituloCard}>Sessões ativas</Text>
               {sessoes.length === 0 ? (
                 <Text className="mt-2 text-[13px] text-slate-600">
                   Nenhuma sessão pendente.
@@ -358,8 +359,8 @@ export default function SimuladorQR() {
                       key={s.token}
                       className="flex-row items-center justify-between rounded-xl border border-slate-100 bg-slate-50 px-3 py-2"
                     >
-                      <View className="min-w-0 flex-1">
-                        <Text className="text-[13px] font-semibold text-slate-700" numberOfLines={1}>
+                      <View className={minW0Flex1}>
+                        <Text className={rotulo} numberOfLines={1}>
                           {s.estacionamento_nome} · {s.andar_numero}º
                         </Text>
                         <Text className="text-[11px] text-slate-600">

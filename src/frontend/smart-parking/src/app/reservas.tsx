@@ -1,3 +1,4 @@
+import { meta, minW0Flex1, pagina, textoApoio, tituloCardShopping } from "../styles/recipes";
 /**
  * Minhas reservas — integração real: GET /api/reservas/minhas e
  * DELETE /api/reservas/{id} (a vaga volta a "livre" no mesmo instante).
@@ -61,14 +62,14 @@ export default function Reservas() {
   }
 
   return (
-    <View className="sp-page flex-1 bg-slate-50">
+    <View className={pagina}>
       <Header rotaAtual="/" />
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 48 }}>
         <View className="mx-auto w-full max-w-3xl">
           <Text className="text-2xl font-extrabold text-slate-900 3xl:text-3xl">
             Minhas reservas
           </Text>
-          <Text className="mt-1 text-sm text-slate-600">
+          <Text className={textoApoio}>
             Acompanhe e gerencie as vagas que você garantiu.
           </Text>
 
@@ -78,11 +79,11 @@ export default function Reservas() {
               <View className="h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-600">
                 <Text className="text-[13px] font-bold text-white">OK</Text>
               </View>
-              <View className="min-w-0 flex-1">
-                <Text className="text-[15px] font-bold text-slate-900">
+              <View className={minW0Flex1}>
+                <Text className={tituloCardShopping}>
                   {reservas.length} {reservas.length === 1 ? "reserva ativa" : "reservas ativas"}
                 </Text>
-                <Text className="mt-0.5 text-[13px] text-slate-600">
+                <Text className={meta}>
                   Suas vagas estão garantidas. Cancele aqui quando não precisar mais.
                 </Text>
               </View>
@@ -129,7 +130,7 @@ export default function Reservas() {
                           {codigo.split("-")[1] ?? codigo}
                         </Text>
                       </View>
-                      <View className="min-w-0 flex-1">
+                      <View className={minW0Flex1}>
                         <View className="min-w-0 flex-row flex-wrap items-center gap-2">
                           <Text className="min-w-0 text-base font-bold text-slate-900">
                             Vaga {codigo}
@@ -146,7 +147,7 @@ export default function Reservas() {
                             }
                           />
                         </View>
-                        <Text className="mt-0.5 text-[13px] text-slate-600">
+                        <Text className={meta}>
                           {formatarDataHora(r.horario_inicio)} até{" "}
                           {formatarDataHora(r.horario_fim)}
                           {r.observacoes ? ` · ${r.observacoes}` : ""}

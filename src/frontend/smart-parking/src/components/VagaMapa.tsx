@@ -110,7 +110,7 @@ function VagaMapa({
             <Text className="text-[13px] font-extrabold" style={{ color: tom.text }}>
               {vaga.codigo}
             </Text>
-            <Text className="mt-0.5 text-[10px] font-medium capitalize text-slate-600">
+            <Text className="mt-0.5 text-[11px] font-medium capitalize text-slate-600">
               {rotulo}
             </Text>
           </Pressable>

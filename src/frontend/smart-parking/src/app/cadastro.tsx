@@ -1,3 +1,4 @@
+import { pagina } from "../styles/recipes";
 /**
  * Cadastro em 2 etapas (dados pessoais + veículo opcional), agora integrado:
  * POST /auth/registrar → auto-login via /auth/login → redireciona por papel.
@@ -132,7 +133,7 @@ export default function Cadastro() {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : undefined}
-      className="sp-page flex-1 bg-slate-50"
+      className={pagina}
     >
       <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: "center" }}>
         <View className="w-full max-w-[440px] self-center px-5 py-10 3xl:max-w-[520px] 3xl:py-14">

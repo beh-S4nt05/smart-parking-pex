@@ -30,6 +30,8 @@ button:disabled {
    pela especificidade, então o <Botao> mantém o comportamento calibrado. */
 button,
 a,
+input,
+textarea,
 [role="button"],
 [role="link"] {
   transition: background-color 150ms ease-out, color 150ms ease-out,
@@ -338,4 +340,9 @@ button.sp-btn:focus-visible,
 .sp-alerta {
   background-color: #eff6ff;
   border-color: #bfdbfe;
+}
+
+/* Em 320px o padding de 16px deixava o rótulo do KPI maior que a caixa. */
+@media (max-width: 360px) {
+  .sp-kpi { padding: 12px; }
 }

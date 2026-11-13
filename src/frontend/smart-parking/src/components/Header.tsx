@@ -1,3 +1,4 @@
+import { linkNav, minW0Flex1 } from "../styles/recipes";
 import { Alert, Linking, Platform, Pressable, Text, View } from "react-native";
 import { Link, useRouter } from "expo-router";
 import { useAuth } from "../hooks/useAuth";
@@ -25,8 +26,7 @@ const LINKS = [
   { label: "Explorar shoppings", href: "/explorar" },
 ] as const;
 
-const CLASSE_LINK =
-  "min-h-11 min-w-0 flex-row items-center content-center rounded-lg px-2 text-slate-100 transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300 motion-reduce:transition-none sm:px-3";
+const CLASSE_LINK = linkNav;
 
 export default function Header({ rotaAtual = "/" }: { rotaAtual?: string }) {
   const router = useRouter();
@@ -191,7 +191,7 @@ export function BarraEscura({
     <View className="sp-barra px-4 py-4 sm:px-6 3xl:py-5">
       <View className="mx-auto flex w-full max-w-7xl flex-row items-center gap-3">
         {voltar}
-        <View className="min-w-0 flex-1">
+        <View className={minW0Flex1}>
           <Text className="text-lg font-bold text-white">{titulo}</Text>
           {subtitulo ? (
             <Text className="mt-0.5 text-xs text-slate-300">{subtitulo}</Text>
