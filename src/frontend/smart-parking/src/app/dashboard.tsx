@@ -1666,7 +1666,7 @@ function AbaUsuarios({
                         };
                       })
                     }
-                    className={`min-h-11 flex-row items-center gap-3 rounded-xl border px-3 py-2 transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
+                    className={`min-h-11 flex-row items-center gap-3 rounded-xl border px-3 py-2 web:transition-colors web:motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
                       ativo ? "border-blue-300 bg-blue-50" : "border-slate-200 bg-white"
                     }`}
                   >

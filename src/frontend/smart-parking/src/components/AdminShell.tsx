@@ -109,7 +109,7 @@ export default function AdminShell({
                           accessibilityHint={`Abre a seção ${item.label} do painel`}
                           accessibilityState={{ selected: ativo, disabled: false }}
                           hitSlop={6}
-                          className={`min-h-11 flex-row items-center gap-2.5 rounded-xl px-3.5 py-2.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 motion-reduce:transition-none ${
+                          className={`min-h-11 flex-row items-center gap-2.5 rounded-xl px-3.5 py-2.5 web:transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 web:motion-reduce:transition-none ${
                             ativo
                               ? "bg-blue-600 shadow-lg shadow-blue-900/40"
                               : "hover:bg-white/10 active:bg-white/10"
@@ -222,7 +222,7 @@ export default function AdminShell({
               accessibilityRole="button"
               accessibilityLabel="Voltar ao site"
               hitSlop={6}
-              className="min-h-11 flex-row items-center justify-center rounded-lg px-3 transition-colors active:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
+              className="min-h-11 flex-row items-center justify-center rounded-lg px-3 web:transition-colors active:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
             >
               <View className="flex-row items-center gap-1">
                 <IconeVoltar cor="#334155" tamanho={12} />
@@ -234,7 +234,7 @@ export default function AdminShell({
               accessibilityRole="button"
               accessibilityLabel="Encerrar sessão"
               hitSlop={6}
-              className="min-h-11 flex-row items-center justify-center rounded-lg px-3 transition-colors active:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-300"
+              className="min-h-11 flex-row items-center justify-center rounded-lg px-3 web:transition-colors active:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-300"
             >
               <Text className="text-xs font-semibold text-red-700">Sair</Text>
             </Pressable>
@@ -253,7 +253,7 @@ export default function AdminShell({
                 accessibilityState={{ selected: ativo, disabled: false }}
                 hitSlop={6}
                 style={{ flexBasis: "33.333333%", minWidth: 0 }}
-                className={`min-h-12 flex-row items-center justify-center border-b-2 px-1 py-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 motion-reduce:transition-none ${
+                className={`min-h-12 flex-row items-center justify-center border-b-2 px-1 py-2 web:transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 web:motion-reduce:transition-none ${
                   ativo ? "border-blue-600 bg-blue-50" : "border-transparent hover:bg-slate-50 active:bg-slate-100"
                 }`}
               >
