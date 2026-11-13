@@ -124,19 +124,23 @@ export default function Header({ rotaAtual = "/" }: { rotaAtual?: string }) {
               </Link>
               <Link
                 href="/perfil"
-                accessibilityRole="link"
-                accessibilityLabel="Minha conta"
-                className="hidden min-h-11 flex-row items-center justify-center rounded-lg px-3 text-slate-100 web:transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300 sm:flex"
+                asChild
               >
-                <Text className="text-sm font-semibold text-slate-100">Conta</Text>
+                <Pressable
+                  accessibilityRole="link"
+                  accessibilityLabel="Minha conta"
+                  className="min-h-11 min-w-11 flex-row items-center justify-center rounded-lg px-1 text-slate-100 web:transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300 sm:px-3"
+                >
+                  <Text className="text-center text-sm font-semibold text-slate-100">Conta</Text>
+                </Pressable>
               </Link>
               <Pressable
                 onPress={() => signOut()}
                 accessibilityRole="button"
                 accessibilityLabel="Encerrar sessão"
-                className="hidden min-h-11 flex-row items-center justify-center rounded-lg px-3 text-slate-100 web:transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300 sm:flex"
+                className="min-h-11 min-w-11 flex-row items-center justify-center rounded-lg px-1 text-slate-100 web:transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300 sm:px-3"
               >
-                <Text className="text-sm font-medium text-slate-200">Sair</Text>
+                <Text className="text-center text-sm font-medium text-slate-200">Sair</Text>
               </Pressable>
             </>
           ) : (
@@ -151,26 +155,6 @@ export default function Header({ rotaAtual = "/" }: { rotaAtual?: string }) {
             {links()}
             {ajuda()}
           </View>
-          {isAuthenticated ? (
-            <View className="flex-row items-center sm:hidden">
-              <Link
-                href="/perfil"
-                accessibilityRole="link"
-                accessibilityLabel="Minha conta"
-                className="min-h-11 min-w-11 flex-row items-center justify-center rounded-lg px-2 text-slate-100 web:transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300"
-              >
-                <Text className="text-sm font-semibold text-slate-100">Conta</Text>
-              </Link>
-              <Pressable
-                onPress={() => signOut()}
-                accessibilityRole="button"
-                accessibilityLabel="Encerrar sessão"
-                className="min-h-11 min-w-11 flex-row items-center justify-center rounded-lg px-2 text-slate-100 web:transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300"
-              >
-                <Text className="text-sm font-medium text-slate-200">Sair</Text>
-              </Pressable>
-            </View>
-          ) : null}
         </View>
       </View>
     </View>
