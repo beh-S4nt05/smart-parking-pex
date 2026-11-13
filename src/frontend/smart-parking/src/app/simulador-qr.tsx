@@ -174,7 +174,7 @@ export default function SimuladorQR() {
                           onPress={() => setEstId(e.id)}
                           accessibilityRole="button"
                           accessibilityState={{ selected: ativo }}
-                          className={`min-h-11 flex-row items-center rounded-lg border px-4 py-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
+                          className={`min-h-11 flex-row items-center rounded-lg border px-4 py-2 web:transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
                             ativo ? "border-blue-600 bg-blue-50" : "border-slate-200 bg-white"
                           }`}
                         >
@@ -204,7 +204,7 @@ export default function SimuladorQR() {
                             onPress={() => setAndar(a.numero_andar)}
                             accessibilityRole="button"
                             accessibilityState={{ selected: ativo }}
-                            className={`min-h-11 flex-row items-center rounded-lg border px-4 py-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
+                            className={`min-h-11 flex-row items-center rounded-lg border px-4 py-2 web:transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
                               ativo ? "border-blue-600 bg-blue-50" : "border-slate-200 bg-white"
                             }`}
                           >
@@ -229,7 +229,7 @@ export default function SimuladorQR() {
                         onPress={() => setDuracao(h)}
                         accessibilityRole="button"
                         accessibilityState={{ selected: duracao === h }}
-                        className={`min-h-11 flex-row items-center rounded-lg border px-4 py-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
+                        className={`min-h-11 flex-row items-center rounded-lg border px-4 py-2 web:transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
                           duracao === h
                             ? "border-blue-600 bg-blue-50"
                             : "border-slate-200 bg-white"

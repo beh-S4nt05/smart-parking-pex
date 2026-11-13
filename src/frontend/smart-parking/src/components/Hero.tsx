@@ -82,7 +82,7 @@ export default function Hero({ shoppings, selecionadoId, onSelect, onBuscar }: P
                 disabled={vazio}
                 hitSlop={4}
                 onPress={() => setListaAberta((v) => !v)}
-                className={`min-h-12 flex-row items-center justify-between rounded-xl border border-slate-200 bg-white px-3 py-2.5 transition-colors hover:border-blue-300 active:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 motion-reduce:transition-none sm:px-4 sm:py-3 ${
+                className={`min-h-12 flex-row items-center justify-between rounded-xl border border-slate-200 bg-white px-3 py-2.5 web:transition-colors hover:border-blue-300 active:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 web:motion-reduce:transition-none sm:px-4 sm:py-3 ${
                   vazio ? "opacity-60" : ""
                 }`}
               >

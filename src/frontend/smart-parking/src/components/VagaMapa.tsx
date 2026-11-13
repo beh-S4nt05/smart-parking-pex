@@ -102,7 +102,7 @@ function VagaMapa({
             {...(Platform.OS === "web" ? { "aria-pressed": marcada } : {})}
             className={`items-center justify-center rounded-xl border py-2.5 ${
               Platform.OS === "web"
-                ? "transition-all duration-200 ease-out hover:scale-[1.02] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 motion-reduce:transform-none motion-reduce:transition-none motion-reduce:hover:transform-none motion-reduce:active:transform-none"
+                ? "web:transition-all web:duration-200 web:ease-out hover:scale-[1.02] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 web:motion-reduce:transform-none web:motion-reduce:transition-none web:motion-reduce:hover:transform-none web:motion-reduce:active:transform-none"
                 : ""
             }`}
             style={estilo}

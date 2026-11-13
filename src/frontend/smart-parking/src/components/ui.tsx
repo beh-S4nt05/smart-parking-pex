@@ -357,7 +357,7 @@ export function Botao({
       className={`${base} ${variants[variant]} ${
         disabled ? "opacity-40" : ""
       } ${ehWeb
-        ? "transition-all duration-150 ease-out active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 motion-reduce:transform-none motion-reduce:transition-none motion-reduce:hover:transform-none motion-reduce:active:transform-none"
+        ? "web:transition-all web:duration-150 web:ease-out active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 web:motion-reduce:transform-none web:motion-reduce:transition-none web:motion-reduce:hover:transform-none web:motion-reduce:active:transform-none"
         : ""} ${className}`}
       style={ehWeb || reduzido ? style : [style, { transform: [{ scale: escala }] }]}
     >
@@ -367,7 +367,7 @@ export function Botao({
         {icon}
         <Text
           className={`text-[15px] font-semibold ${labelColor[variant]} ${
-            ehWeb ? "transition-colors duration-150 ease-out motion-reduce:transition-none" : ""
+            ehWeb ? "web:transition-colors web:duration-150 web:ease-out web:motion-reduce:transition-none" : ""
           }`}
           style={labelEmDestaque ? { color: colors.primaryDark } : undefined}
         >
@@ -678,7 +678,7 @@ export function Checkbox({
         accessibilityHint={hint}
         hitSlop={4}
         {...(Platform.OS === "web" ? { "aria-checked": checked } : {})}
-        className={`flex-row items-center rounded-xl border-2 px-3.5 py-3 transition-colors active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 motion-reduce:transform-none motion-reduce:transition-none ${
+        className={`flex-row items-center rounded-xl border-2 px-3.5 py-3 web:transition-colors active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 web:motion-reduce:transform-none web:motion-reduce:transition-none ${
           checked ? "border-blue-500 bg-blue-50" : "border-slate-200 bg-slate-50"
         }`}
       >
@@ -726,7 +726,7 @@ export function PillsAndares({
             accessibilityState={{ selected: ativo, disabled: false }}
             hitSlop={6}
             {...(Platform.OS === "web" ? { "aria-pressed": ativo } : {})}
-            className={`rounded-full border px-4 py-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 motion-reduce:transition-none ${
+            className={`rounded-full border px-4 py-2 web:transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 web:motion-reduce:transition-none ${
               ativo
                 ? "border-blue-600 bg-blue-600"
                 : "border-slate-200 bg-white hover:bg-blue-50 active:bg-blue-100"

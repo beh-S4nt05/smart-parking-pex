@@ -69,7 +69,7 @@ export default function ShoppingList({
               accessibilityHint="Abre o mapa de vagas deste shopping"
               accessibilityState={{ selected: selecionado }}
               hitSlop={4}
-              className="rounded-2xl transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 motion-reduce:transition-none"
+              className="rounded-2xl web:transition-colors web:duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 web:motion-reduce:transition-none"
             >
               <Card
                 className="p-4 3xl:p-5"
