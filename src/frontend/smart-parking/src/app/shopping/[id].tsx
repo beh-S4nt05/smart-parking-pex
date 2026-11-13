@@ -1,3 +1,4 @@
+import { minW0Flex1, pagina, rotulo, textoApoio, tituloCard } from "../../styles/recipes";
 /**
  * Mapa de vagas — templates "Mapa de Vagas (MOBILE/WEB)" do Figma.
  * - mobile: barra escura com nome do shopping + selo ao vivo; pills de andar;
@@ -378,7 +379,7 @@ export default function MapaVagas() {
       {/* seleção no mobile → barra de ação */}
       {vagaSel && !isWeb ? (
         <View className="mt-4 rounded-2xl border border-blue-200 bg-blue-50 p-4">
-          <Text className="text-[13px] font-semibold text-slate-700">
+          <Text className={rotulo}>
             Vaga {vagaSel.codigo} ·{" "}
             {vagaSel.status === "livre" ? "disponível" : vagaSel.status}
           </Text>
@@ -410,17 +411,17 @@ export default function MapaVagas() {
     <View className="gap-5">
       {!isWeb ? (
         <View className="flex-row gap-2.5">
-          <View className="flex-1">
+          <View className={minW0Flex1}>
             <StatTile rotulo="Livres" valor={String(resumoAndar.livres)} tone="verde" />
           </View>
-          <View className="flex-1">
+          <View className={minW0Flex1}>
             <StatTile
               rotulo="Ocupadas"
               valor={String(resumoAndar.ocupadas)}
               tone="vermelho"
             />
           </View>
-          <View className="flex-1">
+          <View className={minW0Flex1}>
             <StatTile
               rotulo="Reservadas"
               valor={String(resumoAndar.reservadas)}
@@ -436,7 +437,7 @@ export default function MapaVagas() {
           <View className="flex-1 gap-5" style={{ minWidth: 280 }}>
             {painelSugerida}
             <Card className="p-5">
-              <Text className="text-base font-bold text-slate-900">
+              <Text className={tituloCard}>
                 {andarSel}º andar — resumo
               </Text>
               <View className="mt-3 gap-2.5">
@@ -446,7 +447,7 @@ export default function MapaVagas() {
               </View>
             </Card>
             <Card className="p-5">
-              <Text className="text-base font-bold text-slate-900">
+              <Text className={tituloCard}>
                 Filtrar por tipo
               </Text>
               <View className="mt-3 flex-row flex-wrap gap-2">
@@ -462,7 +463,7 @@ export default function MapaVagas() {
             </Card>
             {vagaSel ? (
               <Card className="border-blue-200 bg-blue-50 p-5">
-                <Text className="text-base font-bold text-slate-900">
+                <Text className={tituloCard}>
                   Vaga {vagaSel.codigo} · {vagaSel.status}
                 </Text>
                 <Text className="mt-1 text-[13px] text-slate-600">
@@ -503,7 +504,7 @@ export default function MapaVagas() {
   // -------- shell mobile (barra escura) --------
   if (!isWeb) {
     return (
-      <View className="sp-page flex-1 bg-slate-50">
+      <View className={pagina}>
         <BarraEscura
           titulo={titulo}
           subtitulo={subtitulo}
@@ -537,7 +538,7 @@ export default function MapaVagas() {
 
   // -------- shell web (header público + título) --------
   return (
-    <View className="sp-page flex-1 bg-slate-50">
+    <View className={pagina}>
       <Header rotaAtual="/" />
       <ScrollView
         contentContainerStyle={{ padding: 28, paddingBottom: 48 }}
@@ -549,7 +550,7 @@ export default function MapaVagas() {
           <View className="mb-6 flex-row flex-wrap items-end justify-between">
             <View>
               <Text className="text-3xl font-extrabold text-slate-900">{titulo}</Text>
-              <Text className="mt-1 text-sm text-slate-600">{subtitulo}</Text>
+              <Text className={textoApoio}>{subtitulo}</Text>
             </View>
             <View className="flex-row items-center gap-2">
               <Pressable
@@ -625,7 +626,7 @@ function LinhaResumo({
     <View className="flex-row items-center justify-between">
       <View className="flex-row items-center gap-2">
         <View className="h-2 w-2 rounded-full" style={{ backgroundColor: cor }} />
-        <Text className="text-sm text-slate-600">{rotulo}</Text>
+        <Text className="min-w-0 max-w-full text-sm text-slate-600">{rotulo}</Text>
       </View>
       <Text className="text-sm font-extrabold text-slate-900">{valor}</Text>
     </View>

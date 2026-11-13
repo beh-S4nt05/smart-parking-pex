@@ -1,3 +1,4 @@
+import { meta, minW0Flex1, tituloCard, tituloCardShopping } from "../styles/recipes";
 /**
  * "REDE CREDENCIADA — Shoppings Parceiros": cards por shopping com dados da
  * API (andares, total de vagas, badge de disponíveis colorida como no Figma).
@@ -88,10 +89,10 @@ export default function ShoppingList({
                       />
                     </View>
                     <View>
-                      <Text numberOfLines={2} className="text-base font-bold text-slate-900">
+                      <Text numberOfLines={2} className={tituloCard}>
                         {est.nome}
                       </Text>
-                      <Text numberOfLines={1} className="mt-0.5 text-[13px] text-slate-600">
+                      <Text numberOfLines={1} className={meta}>
                         {bairroDe(est.endereco)}
                       </Text>
                       <Text className="mt-0.5 text-xs text-slate-600">
@@ -106,8 +107,8 @@ export default function ShoppingList({
                   <View className="gap-3">
                     <View className="min-w-0 flex-row items-center gap-3">
                       <Logo size={40} />
-                      <View className="min-w-0 flex-1">
-                        <Text numberOfLines={2} className="text-[15px] font-bold text-slate-900">
+                      <View className={minW0Flex1}>
+                        <Text numberOfLines={2} className={tituloCardShopping}>
                           {est.nome}
                         </Text>
                         <Text numberOfLines={1} className="mt-0.5 text-xs text-slate-600">

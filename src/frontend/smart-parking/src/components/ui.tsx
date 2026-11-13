@@ -1,3 +1,4 @@
+import { botao, campo, cartao, linhaAcoes, meta, secao, textoApoioCentro, tituloCard } from "../styles/recipes";
 /**
  * Kit de primitivas visuais do SmartParking (NativeWind + RN puro, sem HTML).
  * Todas as telas (mobile e web) montam os templates do Figma com estas peças.
@@ -314,8 +315,7 @@ export function Botao({
     }).start();
   };
 
-  const base =
-    "sp-btn relative min-h-11 flex-row select-none items-center justify-center gap-2 rounded-xl px-5 py-3.5";
+  const base = botao;
   const variants: Record<string, string> = {
     primario: "bg-blue-600 hover:bg-blue-700 active:bg-blue-800",
     contorno: "border border-blue-600 bg-white hover:bg-blue-50 active:bg-blue-100",
@@ -398,7 +398,7 @@ export function Card({
 }) {
   return (
     <View
-      className={`sp-card rounded-2xl border border-slate-200 bg-white ${className}`}
+      className={`${cartao} ${className}`}
       style={style}
     >
       {children}
@@ -419,7 +419,7 @@ export function TituloSecao({
 }) {
   return (
     <View className="mb-4 flex-row items-end justify-between">
-      <View className="sp-secao">
+      <View className={secao}>
         <Text className="text-xl font-bold text-slate-900">{titulo}</Text>
         {subtitulo ? (
           <Text className="mt-0.5 text-sm text-slate-600">{subtitulo}</Text>
@@ -597,7 +597,7 @@ export function Campo({
         ) : null}
       </Text>
       <View
-        className={`sp-field min-w-0 flex-row items-center rounded-xl border-2 bg-slate-50 px-3.5 ${
+        className={`${campo} ${
           erro ? "sp-field--erro border-red-300 bg-red-50" : "border-slate-200"
         }`}
       >
@@ -713,7 +713,7 @@ export function PillsAndares({
   onSelect: (andar: number) => void;
 }) {
   return (
-    <View className="flex-row flex-wrap gap-2">
+    <View className={linhaAcoes}>
       {andares.map((andar) => {
         const ativo = selecionado === andar;
         return (
@@ -832,9 +832,9 @@ export function BlocoErro({
   return (
     <Card className="items-center gap-3 p-8">
       <IconeEstado nome="warning-outline" tom="ambar" />
-      <Text className="text-base font-bold text-slate-900">{titulo}</Text>
+      <Text className={tituloCard}>{titulo}</Text>
       {descricao ? (
-        <Text className="text-center text-sm text-slate-600">{descricao}</Text>
+        <Text className={textoApoioCentro}>{descricao}</Text>
       ) : null}
       {onAcao ? <Botao label={acaoLabel} onPress={onAcao} variant="contorno" /> : null}
     </Card>
@@ -859,9 +859,9 @@ export function BlocoVazio({
   return (
     <Card className="items-center gap-3 p-8">
       <IconeEstado nome={nomeIcone} tom={tomIcone} />
-      <Text className="text-base font-bold text-slate-900">{titulo}</Text>
+      <Text className={tituloCard}>{titulo}</Text>
       {descricao ? (
-        <Text className="text-center text-sm text-slate-600">{descricao}</Text>
+        <Text className={textoApoioCentro}>{descricao}</Text>
       ) : null}
       {acaoLabel && onAcao ? (
         <Botao label={acaoLabel} onPress={onAcao} className="mt-1" />
@@ -992,7 +992,7 @@ export function ModalForma({
           <Card className="min-w-0 overflow-hidden p-5">
             <Text className="text-lg font-extrabold text-slate-900">{titulo}</Text>
             {descricao ? (
-              <Text className="mt-0.5 text-[13px] text-slate-600">{descricao}</Text>
+              <Text className={meta}>{descricao}</Text>
             ) : null}
             <ScrollView
               style={{ maxHeight: 420 }}

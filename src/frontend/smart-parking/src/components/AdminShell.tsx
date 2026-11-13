@@ -1,3 +1,4 @@
+import { minW0Flex1, textoApoio } from "../styles/recipes";
 /**
  * Casca do painel administrativo: sidebar escura no web, lista de navegação
  * horizontal no mobile — mesma árvore de rotas, dois "modos de acesso" como
@@ -94,7 +95,7 @@ export default function AdminShell({
                 if (itens.length === 0) return null;
                 return (
                   <View key={grupo.titulo} className="gap-1">
-                    <Text className="sp-grupo px-3.5 pt-1 text-[10px] font-bold uppercase text-slate-300">
+                    <Text className="sp-grupo px-3.5 pt-1 text-[11px] font-bold uppercase text-slate-300">
                       {grupo.titulo}
                     </Text>
                     {itens.map((item) => {
@@ -178,15 +179,15 @@ export default function AdminShell({
         </View>
 
         {/* conteúdo */}
-        <ScrollView className="min-w-0 flex-1" contentContainerStyle={{ padding: 28 }}>
+        <ScrollView className={minW0Flex1} contentContainerStyle={{ padding: 28 }}>
           <View className="mx-auto w-full min-w-0 max-w-6xl">
             <View className="mb-6 flex-row flex-wrap items-end justify-between gap-3">
-              <View className="min-w-0 flex-1">
+              <View className={minW0Flex1}>
                 <Text className="text-3xl font-extrabold text-slate-900">
                   {titulo}
                 </Text>
                 {subtitulo ? (
-                  <Text className="mt-1 text-sm text-slate-600">{subtitulo}</Text>
+                  <Text className={textoApoio}>{subtitulo}</Text>
                 ) : null}
               </View>
               <View className="flex-row flex-wrap items-center gap-3">
@@ -251,13 +252,13 @@ export default function AdminShell({
                 accessibilityHint={`Abre a seção ${item.label} do painel`}
                 accessibilityState={{ selected: ativo, disabled: false }}
                 hitSlop={6}
-                style={{ flexBasis: "33.333333%" }}
+                style={{ flexBasis: "33.333333%", minWidth: 0 }}
                 className={`min-h-12 flex-row items-center justify-center border-b-2 px-1 py-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 motion-reduce:transition-none ${
                   ativo ? "border-blue-600 bg-blue-50" : "border-transparent hover:bg-slate-50 active:bg-slate-100"
                 }`}
               >
                 <Text
-                  className={`text-center text-xs font-semibold ${
+                  className={`min-w-0 text-center text-xs font-semibold ${
                     ativo ? "text-blue-700" : "text-slate-700"
                   }`}
                 >

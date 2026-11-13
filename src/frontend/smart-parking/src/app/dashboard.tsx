@@ -1,3 +1,4 @@
+import { linhaAcoes, meta, minW0Flex1, textoApoioCentro, tituloCard } from "../styles/recipes";
 /**
  * Painel administrativo — templates "Admin - Dashboard (MOBILE/WEB)" do Figma.
  * Abas: Dashboard, Estacionamentos, Andares e Vagas, Relatórios, Usuários
@@ -526,11 +527,11 @@ function AbaDashboard({
 
       {/* atalho para o simulador */}
       <Card className="flex-row flex-wrap items-center justify-between gap-3 border-blue-200 bg-blue-50 p-5">
-        <View>
-          <Text className="text-base font-bold text-slate-900">
+        <View className={minW0Flex1}>
+          <Text className={tituloCard}>
             Simular entrada/saída de veículos
           </Text>
-          <Text className="mt-0.5 text-[13px] text-slate-600">
+          <Text className={meta}>
             Gere o QR do simulador e toque nas vagas pelo celular.
           </Text>
         </View>
@@ -706,8 +707,8 @@ function AbaEstacionamentos({
           <Card key={e.id} className="p-4">
             <View className="flex-row flex-wrap items-center justify-between gap-3">
               <View className="flex-1" style={{ minWidth: 220 }}>
-                <Text className="text-base font-bold text-slate-900" numberOfLines={1}>{e.nome}</Text>
-                <Text className="mt-0.5 text-[13px] text-slate-600" numberOfLines={1}>{e.endereco}</Text>
+                <Text className={tituloCard} numberOfLines={1}>{e.nome}</Text>
+                <Text className={meta} numberOfLines={1}>{e.endereco}</Text>
                 <Text className="mt-0.5 text-xs text-slate-600">
                   {e.total_andares} andares · {e.total_vagas} vagas ·{" "}
                   {e.hora_abertura}–{e.hora_fechamento} · {formatarMoedaBR(e.taxa_hora)}/h
@@ -877,7 +878,7 @@ function AbaEstacionamentos({
               </View>
             </View>
             <Text className="mb-1.5 mt-1 text-xs font-semibold text-slate-600">Tipo das vagas do lote (ACH-17)</Text>
-            <View className="flex-row flex-wrap gap-2">
+            <View className={linhaAcoes}>
               {(
                 [
                   ["comum", "Comum"],
@@ -931,7 +932,7 @@ function AbaAndares({
   if (!est) {
     return (
       <Card className="p-8">
-        <Text className="text-center text-sm text-slate-600">
+        <Text className={textoApoioCentro}>
           Selecione um estacionamento no topo para inspecionar andares e vagas.
         </Text>
       </Card>
@@ -1074,7 +1075,7 @@ function AbaAndares({
               <Text className="text-[13px] text-slate-600">
                 {vagas.length} vaga(s) · capacidade {andarAtual.capacidade}
               </Text>
-              <View className="flex-row flex-wrap gap-2">
+              <View className={linhaAcoes}>
                 <Botao label="Editar andar" variant="contorno" className="px-3.5 py-1.5" onPress={() => abrir("andarEditar", andarAtual)} />
                 <Botao label="Excluir andar" variant="contorno" className="border-red-300 px-3.5 py-1.5" onPress={() => excluirAndar(andarAtual)} />
                 <Botao label="Nova vaga" className="px-3.5 py-1.5" onPress={() => abrir("vagaNova")} />
@@ -1152,7 +1153,7 @@ function AbaAndares({
           <>
             <Campo label="Código" placeholder="Ex.: A21" autoCapitalize="characters" value={f.codigo} onChangeText={(v) => setF((p) => ({ ...p, codigo: v }))} />
             <Text className="mb-1.5 mt-1 text-xs font-semibold text-slate-600">Tipo</Text>
-            <View className="flex-row flex-wrap gap-2">
+            <View className={linhaAcoes}>
               {TIPS_VAGA.map(([tipo, label]) => {
                 const ativo = f.tipo === tipo;
                 return (
@@ -1261,7 +1262,7 @@ function AbaRelatorios({ estSel }: { estSel: string | null }) {
             </Pressable>
           ))}
         </View>
-        <View className="flex-row flex-wrap gap-2">
+        <View className={linhaAcoes}>
           <Botao label="CSV fluxo" variant="contorno" className="px-4 py-2" loading={baixando === "fluxo"} onPress={() => exportar("fluxo")} />
           <Botao label="CSV financeiro" variant="contorno" className="px-4 py-2" loading={baixando === "financeiro"} onPress={() => exportar("financeiro")} />
         </View>
@@ -1456,7 +1457,7 @@ function AbaUsuarios({
   if (!isAdmin) {
     return (
       <Card className="p-8">
-        <Text className="text-center text-sm text-slate-600">
+        <Text className={textoApoioCentro}>
           Gestão de usuários é exclusiva do administrador global.
         </Text>
       </Card>

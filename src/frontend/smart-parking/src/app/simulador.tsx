@@ -1,3 +1,4 @@
+import { linhaAcoes, pagina } from "../styles/recipes";
 /**
  * Simulador de Sensores (rota aberta via QR) — funciona no celular (câmera →
  * /simulador?sessao=…) e no computador (botão "Abrir simulador" gera a mesma
@@ -306,7 +307,7 @@ function SimuladorInterno({
       ) : null}
 
       {andares.length > 1 ? (
-        <View className="flex-row flex-wrap gap-2">
+        <View className={linhaAcoes}>
           {andares.map((a) => {
             const ativo = a.numero_andar === andar;
             return (
@@ -374,7 +375,7 @@ function SimuladorInterno({
         </View>
       </View>
 
-      <View className="flex-row flex-wrap gap-2">
+      <View className={linhaAcoes}>
         <BotaoLote label="Fechar andar" onPress={() => acaoRapida("fechar")} />
         <BotaoLote label="Abrir andar" onPress={() => acaoRapida("abrir")} />
         <BotaoLote label="Sortear 12" onPress={() => acaoRapida("sortear")} />
@@ -403,7 +404,7 @@ function SimuladorInterno({
   );
 
   return (
-    <View className="sp-page flex-1 bg-slate-50">
+    <View className={pagina}>
       {/* cabeçalho escuro do simulador (idêntico no web e no mobile) */}
       <View className="bg-slate-950 px-4 pb-5 pt-4">
         <View className="mx-auto flex w-full max-w-5xl flex-row flex-wrap items-center justify-between gap-3 3xl:gap-5">

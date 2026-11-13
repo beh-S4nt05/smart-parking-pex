@@ -1,3 +1,4 @@
+import { minW0Flex1, pagina, textoApoio, tituloExplorar } from "../styles/recipes";
 /**
  * "Lista de Shoppings" / "Reservar Vaga" — navegação do app: lista completa
  * dos shoppings credenciados com busca, ocupação real da API e atualização
@@ -37,7 +38,7 @@ export default function Explorar() {
   }, [estacionamentos, busca]);
 
   return (
-    <View className="sp-page flex-1 bg-slate-50">
+    <View className={pagina}>
       <Header rotaAtual="/explorar" />
       <ScrollView
         refreshControl={
@@ -46,11 +47,11 @@ export default function Explorar() {
       >
         <View className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-8 3xl:px-8">
           <View className="mb-5 flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
-            <View className="min-w-0 flex-1">
-              <Text className="text-balance text-xl font-extrabold text-slate-900 sm:text-3xl 3xl:text-4xl">
+            <View className={minW0Flex1}>
+              <Text className={tituloExplorar}>
                 Vagas disponíveis agora
               </Text>
-              <Text className="mt-1 text-sm text-slate-600">
+              <Text className={textoApoio}>
                 Visualização pública — atualizado {desdeAte(atualizadoEm, agora)} ·
                 entre para reservar.
               </Text>
@@ -95,7 +96,7 @@ export default function Explorar() {
               <Text className="mt-2 text-base font-bold text-slate-900">
                 Nenhum shopping encontrado
               </Text>
-              <Text className="mt-1 text-sm text-slate-600">
+              <Text className={textoApoio}>
                 Ajuste a busca ou verifique se a API está no ar.
               </Text>
             </View>

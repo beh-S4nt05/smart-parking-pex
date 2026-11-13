@@ -1,3 +1,4 @@
+import { tituloSecaoStatus } from "../styles/recipes";
 /**
  * Painel "STATUS DO ESTACIONAMENTO" da Home — 4 indicadores com dados reais.
  * Lei da proximidade: rótulo e número sempre juntos num mesmo bloco.
@@ -20,7 +21,7 @@ export default function StatusPanel({ shopping, tempoMedioMin }: Props) {
   return (
     <Card className="p-5 sm:p-6 3xl:p-7">
       <View className="sp-secao mb-5 min-w-0">
-        <Text className="text-[15px] font-extrabold text-slate-900">
+        <Text className={tituloSecaoStatus}>
           Status do estacionamento
         </Text>
         <Text className="mt-0.5 text-[12px] font-medium text-slate-600">

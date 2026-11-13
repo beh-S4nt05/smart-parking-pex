@@ -1,3 +1,4 @@
+import { pagina } from "../styles/recipes";
 /**
  * Tela 404 própria — substitui a "Unmatched Route" padrão do Expo Router.
  *
@@ -14,7 +15,7 @@ export default function NaoEncontrado() {
   const router = useRouter();
 
   return (
-    <View className="sp-page flex-1 bg-slate-50">
+    <View className={pagina}>
       <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: "center" }}>
         <View className="mx-auto w-full max-w-lg items-center gap-4 px-6 py-14">
           <Logo size={56} />

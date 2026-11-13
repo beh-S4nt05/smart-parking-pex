@@ -1,50 +1,11 @@
 /**
  * Tokens de design do SmartParking — extraídos dos templates do Figma
  * (Home, Login, Mapa de Vagas, Painel Admin, Simulador QR/Sensores).
- * Qualquer re-skin futuro toca só este arquivo + as classes mapeadas.
+ * A tabela vive em src/styles/tokens.ts (fonte única de tokens).
  */
+import { tokens } from "./styles/tokens";
 
-export const colors = {
-  // marca — azul royal dos templates
-  primary: "#2563EB",
-  primaryDark: "#1D4ED8",
-  primarySoft: "#EFF6FF",
-  navy: "#0F172A",
-  navySoft: "#1E293B",
-
-  // neutros
-  bg: "#F8FAFC",
-  surface: "#FFFFFF",
-  text: "#0F172A",
-  textBody: "#475569",
-  textMuted: "#64748B",
-  textFaint: "#94A3B8",
-  border: "#E2E8F0",
-
-  // feedback
-  success: "#047857",
-  successSoft: "#ECFDF5",
-  danger: "#B91C1C",
-  dangerSoft: "#FEF2F2",
-  warning: "#D97706",
-  warningSoft: "#FFFBEB",
-  info: "#2563EB",
-  accentPurple: "#4F46E5",
-
-  // status de vaga (mapa do app e do simulador)
-  vagaLivre: "#047857",
-  vagaLivreBg: "#ECFDF5",
-  vagaLivreBorder: "#6EE7B7",
-  vagaOcupada: "#B91C1C",
-  vagaOcupadaBg: "#FEF2F2",
-  vagaOcupadaBorder: "#FCA5A5",
-  vagaReservada: "#2563EB", // código azul sobre borda âmbar, como no Figma
-  vagaReservadaBg: "#FFFBEB",
-  vagaReservadaBorder: "#FCD34D",
-  vagaInativa: "#94A3B8",
-  vagaInativaBg: "#F8FAFC",
-  vagaInativaBorder: "#E2E8F0",
-} as const;
+export const colors = tokens.cor;
 
 export type VagaTone = {
   text: string;

@@ -1,3 +1,4 @@
+import { rodapeCopyright } from "../styles/recipes";
 import { Link } from "expo-router";
 import { Pressable, Text, View } from "react-native";
 import { Logo } from "./ui";
@@ -7,10 +8,10 @@ export default function Footer() {
   return (
     <View className="sp-footer bg-slate-900 px-4 py-10 sm:px-6 3xl:px-8 3xl:py-14">
       <View className="mx-auto w-full max-w-7xl 3xl:max-w-8xl 4xl:max-w-9xl">
-        <View className="flex-row flex-wrap justify-between gap-8 3xl:gap-12">
+        <View className="flex-row flex-wrap justify-between gap-5 sm:gap-8 3xl:gap-12">
           {/* Barra de marca: o rodapé agora "fecha" a experiência com a
               mesma identidade do cabeçalho (regra do pico-fim). */}
-          <View className="min-w-[220px] flex-1">
+          <View className="min-w-0 flex-1 basis-full sm:basis-[220px]">
             <View className="flex-row items-center gap-2.5">
               <Logo size={34} />
               <Text className="text-base font-bold text-white">Smart Parking</Text>
@@ -21,7 +22,7 @@ export default function Footer() {
             </Text>
           </View>
 
-          <View>
+          <View className="w-full min-w-0 sm:w-auto">
             <Text className="text-[11px] font-bold uppercase tracking-wider text-slate-300">
               Integração
             </Text>
@@ -44,12 +45,12 @@ export default function Footer() {
             </View>
           </View>
 
-          <View>
+          <View className="w-full min-w-0 sm:w-auto">
             <Text className="text-[11px] font-bold uppercase tracking-wider text-slate-300">
               Contato
             </Text>
             <View className="mt-3 gap-2">
-              <Text className="text-sm text-slate-400">
+              <Text className="max-w-full text-sm text-slate-400">
                 behsolutionsandautomations@gmail.com
               </Text>
               <Text className="text-sm text-slate-400">Manaus, AM</Text>
@@ -58,7 +59,7 @@ export default function Footer() {
         </View>
 
         <View className="mt-8 border-t border-slate-800 pt-5">
-          <Text className="text-xs text-slate-400">
+          <Text className={rodapeCopyright}>
             © 2026 Smart Parking Shoppings. Todos os direitos reservados.
           </Text>
         </View>
