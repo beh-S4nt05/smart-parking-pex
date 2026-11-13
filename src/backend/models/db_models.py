@@ -9,6 +9,7 @@ from sqlalchemy import (
     ForeignKey,
     Integer,
     String,
+    Table,
     Text,
     UniqueConstraint,
     false,
@@ -21,6 +22,27 @@ from .database import Base
 
 def generate_uuid():
     return str(uuid.uuid4())
+
+
+# ---------------------------------------------------------------------------
+# Vínculo N:N de gestores ↔ shoppings.
+# Um gestor pode responder por VÁRIOS estacionamentos. `usuarios.estacionamento_id`
+# continua existindo como vínculo PRINCIPAL/legado (usado por financeiros e por
+# todo o código de escopo já existente); esta tabela guarda os ADICIONAIS.
+# Financeiro permanece 1:1 — e há validação de "no máximo 1 financeiro por
+# shopping" em rules/admin_service.py.
+# ---------------------------------------------------------------------------
+usuario_estacionamentos = Table(
+    "usuario_estacionamentos",
+    Base.metadata,
+    Column("usuario_id", String, ForeignKey("usuarios.id", ondelete="CASCADE"), primary_key=True),
+    Column(
+        "estacionamento_id",
+        String,
+        ForeignKey("estacionamentos.id", ondelete="CASCADE"),
+        primary_key=True,
+    ),
+)
 
 
 class StatusVaga(str, enum.Enum):
@@ -101,8 +123,32 @@ class Usuario(Base):
     reservas = relationship("Reserva", back_populates="usuario", cascade="all, delete-orphan")
     historicos = relationship("Historico", back_populates="usuario", foreign_keys="Historico.usuario_id")
     estacionamento_gerenciado = relationship("Estacionamento")
+    # Vínculos ADICIONAIS de um gestor (N:N). `estacionamento_id` continua sendo
+    # o vínculo principal/legado, usado por financeiros (1:1) e por todo o
+    # código de escopo que espera um único id.
+    estacionamentos_vinculados = relationship(
+        "Estacionamento",
+        secondary=usuario_estacionamentos,
+        lazy="selectin",
+        overlaps="estacionamento_gerenciado",
+    )
     fechamentos_caixa_abertos = relationship("FechamentoCaixa", back_populates="usuario_abertura", foreign_keys="FechamentoCaixa.usuario_abertura_id")
     fechamentos_caixa = relationship("FechamentoCaixa", back_populates="usuario_fechamento", foreign_keys="FechamentoCaixa.usuario_fechamento_id")
+
+    @property
+    def estacionamento_ids(self) -> list[str]:
+        """Todos os shoppings que este usuário pode ver no painel.
+
+        Lido por `UsuarioMeResponse`/`UsuarioResponse` via `from_attributes`.
+        O principal vem primeiro; os adicionais vêm da tabela N:N.
+        """
+        ids: list[str] = []
+        if self.estacionamento_id:
+            ids.append(self.estacionamento_id)
+        for est in self.estacionamentos_vinculados:
+            if est.id not in ids:
+                ids.append(est.id)
+        return ids
 
 
 class Estacionamento(Base):

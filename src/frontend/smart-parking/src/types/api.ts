@@ -18,6 +18,8 @@ export interface Usuario {
   is_ativo: boolean;
   role: "publico" | "usuario" | "financeiro" | "gestor" | "admin";
   estacionamento_id?: string | null;
+  /** Todos os shoppings que a conta pode ver (gestor: vários; financeiro: 1) */
+  estacionamento_ids?: string[] | null;
   /** presente em /auth/me para quem tem estacionamento vinculado */
   estacionamento_nome?: string | null;
   criado_em?: string;

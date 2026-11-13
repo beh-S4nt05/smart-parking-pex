@@ -1,18 +1,29 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { API_URL, parkingApi } from "../services/api";
+import { useAuth } from "./useAuth";
+import { chaveCacheVitrine } from "../services/cacheChaves";
 import type { Estacionamento } from "../types/api";
 
-const CHAVE_CACHE = "sp:cache:estacionamentos";
 const AVISO_STALE = "Sem conexão com a API — mostrando a última leitura.";
 
 interface Options {
   /** Revalida a cada N ms; 0 desliga o polling. */
   pollingMs?: number;
+  /** true = lista do PAINEL (filtrada pelo papel no backend). */
+  escopoPainel?: boolean;
 }
 
-/** Lista real com cache offline, recuperação automática e polling sem sobreposição. */
-export function useEstacionamentos({ pollingMs = 0 }: Options = {}) {
+/** Lista real com cache offline, recuperação automática e polling sem sobreposição.
+
+ * Segurança de escopo: o cache da VITRINE é por conta (`...:<userId>`), para
+ * que um gestor nunca herde a lista completa gravada por um admin no mesmo
+ * navegador. A lista do PAINEL **não é cacheada**: ela é a fonte de verdade
+ * do isolamento e deve ser sempre revalidada com o token da sessão atual.
+ */
+export function useEstacionamentos({ pollingMs = 0, escopoPainel = false }: Options = {}) {
+  const { user } = useAuth();
+  const chaveCache = escopoPainel ? null : chaveCacheVitrine(user?.id);
   const [estacionamentos, setEstacionamentos] = useState<Estacionamento[]>([]);
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
@@ -35,7 +46,9 @@ export function useEstacionamentos({ pollingMs = 0 }: Options = {}) {
     if (emCurso.current) return;
     emCurso.current = true;
     try {
-      const dados = await parkingApi.listarEstacionamentos();
+      const dados = escopoPainel
+        ? await parkingApi.listarEstacionamentosPainel()
+        : await parkingApi.listarEstacionamentos();
       if (!mounted.current) return;
       dadosRef.current = dados;
       revalidou.current = true;
@@ -44,7 +57,9 @@ export function useEstacionamentos({ pollingMs = 0 }: Options = {}) {
       const agora = Date.now();
       setAtualizadoEm(agora);
       atualizadoRef.current = agora;
-      AsyncStorage.setItem(CHAVE_CACHE, JSON.stringify({ ts: agora, dados })).catch(() => {});
+      if (chaveCache) {
+        AsyncStorage.setItem(chaveCache, JSON.stringify({ ts: agora, dados })).catch(() => {});
+      }
     } catch {
       if (!mounted.current) return;
       // Usa o estado atual, não a closure vazia da primeira renderização.
@@ -57,14 +72,15 @@ export function useEstacionamentos({ pollingMs = 0 }: Options = {}) {
       emCurso.current = false;
       if (mounted.current) setLoading(false);
     }
-  }, []);
+  }, [escopoPainel, chaveCache]);
 
   // O cache não sobrescreve uma resposta real que já chegou — nem mesmo uma
   // lista vazia válida. Se a rede falhou, os dados cacheados viram stale.
   useEffect(() => {
+    if (!chaveCache) return;
     (async () => {
       try {
-        const bruto = await AsyncStorage.getItem(CHAVE_CACHE);
+        const bruto = await AsyncStorage.getItem(chaveCache);
         if (!bruto || !mounted.current || revalidou.current) return;
         const { ts, dados } = JSON.parse(bruto) as { ts: number; dados: Estacionamento[] };
         if (!Array.isArray(dados) || !Number.isFinite(ts)) return;
@@ -80,7 +96,7 @@ export function useEstacionamentos({ pollingMs = 0 }: Options = {}) {
         // Cache corrompido é ignorado; a próxima leitura válida o substitui.
       }
     })();
-  }, []);
+  }, [chaveCache]);
 
   useEffect(() => {
     void refresh();

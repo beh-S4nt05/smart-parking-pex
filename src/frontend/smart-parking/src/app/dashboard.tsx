@@ -16,6 +16,7 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import AdminShell, { type AbaPainel } from "../components/AdminShell";
+import ListaShoppings from "../components/ListaShoppings";
 import VagaMapa from "../components/VagaMapa";
 import { useAuth } from "../hooks/useAuth";
 import { useLarguraResponsiva } from "../hooks/useLarguraResponsiva";
@@ -29,6 +30,7 @@ import {
   Campo,
   Chip,
   FadeTroca,
+  IconeCheck,
   ModalForma,
   StatTile,
   StatusVagaChip,
@@ -62,7 +64,7 @@ export default function Dashboard() {
   const [estSel, setEstSel] = useState<string | null>(null); // null = todos (admin)
 
   const { estacionamentos, loading: estLoading, refresh: recarregarEstacionamentos } =
-    useEstacionamentos({ pollingMs: 30000 });
+    useEstacionamentos({ pollingMs: 30000, escopoPainel: true });
 
   useEffect(() => {
     if (!authLoading && (!isAuthenticated || !canAccessPanel)) {
@@ -70,10 +72,18 @@ export default function Dashboard() {
     }
   }, [authLoading, isAuthenticated, canAccessPanel, router]);
 
-  // gestor/financeiro: trava no estacionamento vinculado
+  // Gestor/financeiro: a seleção nunca pode ser "todos" (null). Se o id
+  // atual não pertence à lista devolvida pelo backend, corrige para o próprio.
   useEffect(() => {
-    if (user?.estacionamento_id) setEstSel(user.estacionamento_id);
-  }, [user]);
+    if (isAdmin) return;
+    const permitidos = estacionamentos.map((e) => e.id);
+    if (permitidos.length === 0) return;
+    if (!estSel || !permitidos.includes(estSel)) {
+      setEstSel(user?.estacionamento_id && permitidos.includes(user.estacionamento_id)
+        ? user.estacionamento_id
+        : permitidos[0]);
+    }
+  }, [isAdmin, user, estacionamentos, estSel]);
 
   const bloqueado = authLoading || !isAuthenticated || !canAccessPanel;
   if (bloqueado) {
@@ -84,12 +94,16 @@ export default function Dashboard() {
     );
   }
 
-  const seletor = (
-    <SeletorEstacionamento
-      estacionamentos={estacionamentos}
-      valor={estSel}
+  // Lista organizada: só o admin pode alterar vínculos/selecionar "Todos";
+  // gestor alterna apenas entre os SEUS shoppings; financeiro fica travado.
+  const listaShoppings = (
+    <ListaShoppings
+      shoppings={estacionamentos}
+      selecionado={estSel}
       onChange={setEstSel}
-      travado={!!user?.estacionamento_id}
+      podeEditar={isAdmin}
+      travado={user?.role === "financeiro" || estacionamentos.length <= 1}
+      carregando={estLoading}
     />
   );
 
@@ -115,8 +129,9 @@ export default function Dashboard() {
             ? "Fluxo e ocupação por período"
             : undefined
       }
-      direita={seletor}
     >
+      {listaShoppings}
+
       <FadeTroca chave={aba}>
       {aba === "dashboard" && (
         <AbaDashboard estacionamentos={estacionamentos} estSel={estSel} isAdmin={isAdmin} />
@@ -136,66 +151,6 @@ export default function Dashboard() {
       )}
       </FadeTroca>
     </AdminShell>
-  );
-}
-
-// ==================================================== seletor de shopping
-function SeletorEstacionamento({
-  estacionamentos,
-  valor,
-  onChange,
-  travado,
-}: {
-  estacionamentos: Estacionamento[];
-  valor: string | null;
-  onChange: (id: string | null) => void;
-  travado: boolean;
-}) {
-  // sem ScrollView: no web a roda do mouse não rola horizontal e no Android o
-  // scroll vertical pai "come" o gesto — wrap resolve nas duas plataformas
-  return (
-    <View style={{ maxWidth: 560, flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-      {!travado ? (
-        <Pressable
-          onPress={() => onChange(null)}
-          accessibilityRole="button"
-          accessibilityLabel="Mostrar todos os shoppings"
-          accessibilityState={{ selected: valor === null }}
-          className={`min-h-11 justify-center rounded-full border px-4 py-2 ${
-            valor === null ? "border-blue-600 bg-blue-600" : "border-slate-200 bg-white"
-          }`}
-        >
-          <Text
-            className={`text-[13px] font-semibold ${
-              valor === null ? "text-white" : "text-slate-600"
-            }`}
-          >
-            Todos
-          </Text>
-        </Pressable>
-      ) : null}
-      {estacionamentos.map((e) => {
-        const ativo = e.id === valor;
-        return (
-          <Pressable
-            key={e.id}
-            onPress={() => onChange(e.id)}
-            accessibilityRole="button"
-            accessibilityLabel={`Mostrar ${e.nome}`}
-            accessibilityState={{ selected: ativo }}
-            className={`min-h-11 justify-center rounded-full border px-4 py-2 ${
-              ativo ? "border-blue-600 bg-blue-600" : "border-slate-200 bg-white"
-            }`}
-          >
-            <Text
-              className={`text-[13px] font-semibold ${ativo ? "text-white" : "text-slate-600"}`}
-            >
-              {e.nome}
-            </Text>
-          </Pressable>
-        );
-      })}
-    </View>
   );
 }
 
@@ -234,7 +189,7 @@ function AbaDashboard({
         const d = await parkingApi.dashboardAdmin();
         setAdmin(d);
       } else {
-        const d = await parkingApi.dashboardGestor().catch(() => null);
+        const d = await parkingApi.dashboardGestor(estSel ?? undefined).catch(() => null);
         if (d) setGestor(d as never);
       }
       const f = await parkingApi.fluxoHoje(estSel ?? undefined);
@@ -1436,6 +1391,7 @@ function AbaUsuarios({
     senha: "",
     role: "usuario" as "usuario" | "gestor" | "financeiro" | "admin",
     estacionamento_id: null as string | null,
+    estacionamento_ids: [] as string[],
   });
 
   const carregar = useCallback(async () => {
@@ -1471,8 +1427,12 @@ function AbaUsuarios({
       Alert.alert("Confira os campos", "Nome (mín. 2), e-mail válido e senha com 6+ caracteres.");
       return;
     }
-    if (exigeVinculo && !f.estacionamento_id) {
-      Alert.alert("Vínculo obrigatório", "gestor e financeiro precisam estar ligados a um estacionamento.");
+    if (exigeVinculo && f.estacionamento_ids.length === 0) {
+      Alert.alert("Vínculo obrigatório", "gestor e financeiro precisam estar ligados a um shopping.");
+      return;
+    }
+    if (f.role === "financeiro" && f.estacionamento_ids.length > 1) {
+      Alert.alert("Vínculo inválido", "Um financeiro só pode ter uma conta por shopping.");
       return;
     }
     setOcupado(true);
@@ -1483,10 +1443,11 @@ function AbaUsuarios({
         senha: f.senha,
         role: f.role,
         estacionamento_id: exigeVinculo ? (f.estacionamento_id ?? undefined) : undefined,
+        ...(exigeVinculo ? { estacionamento_ids: f.estacionamento_ids } : {}),
       });
       setUsuarios((prev) => [novo, ...prev]);
       setModal(false);
-      setF({ nome: "", email: "", senha: "", role: "usuario", estacionamento_id: null });
+      setF({ nome: "", email: "", senha: "", role: "usuario", estacionamento_id: null, estacionamento_ids: [] });
       Alert.alert("Usuário criado", `${novo.nome} já pode entrar com a senha cadastrada.`);
     } catch (e) {
       Alert.alert("Não foi possível criar", apiErrorMessage(e));
@@ -1503,6 +1464,8 @@ function AbaUsuarios({
       senha: "",
       role: (u.role === "gestor" || u.role === "financeiro" || u.role === "admin" ? u.role : "usuario") as typeof f.role,
       estacionamento_id: u.estacionamento_id ?? null,
+      estacionamento_ids:
+        u.estacionamento_ids?.length ? u.estacionamento_ids : (u.estacionamento_id ? [u.estacionamento_id] : []),
     });
     setModal(true);
   }
@@ -1516,6 +1479,7 @@ function AbaUsuarios({
         role: f.role,
         estacionamento_id:
           f.role === "gestor" || f.role === "financeiro" ? f.estacionamento_id : null,
+        ...(exigeVinculo ? { estacionamento_ids: f.estacionamento_ids } : { estacionamento_ids: [] }),
       });
       setUsuarios((prev) => prev.map((x) => (x.id === novo.id ? novo : x)));
       setModal(false);
@@ -1589,6 +1553,15 @@ function AbaUsuarios({
             tone={u.role === "admin" ? "vermelho" : u.role === "usuario" ? "neutro" : "azul"}
           />
           {u.placa_veiculo ? <Chip label={u.placa_veiculo} tone="vaga" /> : null}
+          {u.role === "gestor" || u.role === "financeiro" ? (
+            <Text className="w-full text-[12px] text-slate-600">
+              {u.estacionamento_ids?.length
+                ? `${u.estacionamento_ids.length} shopping(s): ${u.estacionamento_ids
+                    .map((id) => estacionamentos.find((e) => e.id === id)?.nome ?? "—")
+                    .join(", ")}`
+                : "Sem shopping vinculado"}
+            </Text>
+          ) : null}
           <Botao
             label="Editar"
             variant="contorno"
@@ -1662,23 +1635,59 @@ function AbaUsuarios({
         {exigeVinculo ? (
           <>
             <Text className="mb-1.5 text-xs font-semibold text-slate-600">
-              Estacionamento vinculado * (painel limitado a ele)
+              Shoppings vinculados * ({f.role === "financeiro" ? "apenas um" : "um ou mais"})
             </Text>
-            <View className="mb-2 flex-row flex-wrap gap-2">
+            {f.role === "financeiro" ? (
+              <Text className="mb-2 text-xs text-slate-600">
+                Regra: no máximo uma conta financeira por shopping.
+              </Text>
+            ) : null}
+            <View className="mb-2 gap-2">
               {estacionamentos.map((e) => {
-                const ativo = e.id === f.estacionamento_id;
+                const ativo = f.estacionamento_ids.includes(e.id);
                 return (
                   <Pressable
                     key={e.id}
-                    onPress={() => setF((p) => ({ ...p, estacionamento_id: e.id }))}
-                    className={`rounded-full border px-3.5 py-1.5 ${ativo ? "border-blue-600 bg-blue-50" : "border-slate-200 bg-white"}`}
+                    accessibilityRole="checkbox"
+                    accessibilityLabel={`Vincular ${e.nome}`}
+                    accessibilityState={{ checked: ativo }}
+                    onPress={() =>
+                      setF((p) => {
+                        // Financeiro: seleção única. Gestor: múltipla.
+                        const ids = p.role === "financeiro"
+                          ? [e.id]
+                          : ativo
+                            ? p.estacionamento_ids.filter((id) => id !== e.id)
+                            : [...p.estacionamento_ids, e.id];
+                        return {
+                          ...p,
+                          estacionamento_ids: ids,
+                          estacionamento_id: ids[0] ?? null,
+                        };
+                      })
+                    }
+                    className={`min-h-11 flex-row items-center gap-3 rounded-xl border px-3 py-2 transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
+                      ativo ? "border-blue-300 bg-blue-50" : "border-slate-200 bg-white"
+                    }`}
                   >
-                    <Text className={`text-[12px] font-semibold ${ativo ? "text-blue-700" : "text-slate-600"}`}>
-                      {e.nome}
-                    </Text>
+                    <View
+                      className={`h-5 w-5 shrink-0 items-center justify-center rounded border-2 ${
+                        ativo ? "border-blue-600 bg-blue-600" : "border-slate-300 bg-white"
+                      }`}
+                    >
+                      {ativo ? <IconeCheck cor="#FFFFFF" tamanho={9} /> : null}
+                    </View>
+                    <View className="min-w-0 flex-1">
+                      <Text className="text-[13px] font-semibold text-slate-800">
+                        {e.nome}
+                      </Text>
+                    </View>
                   </Pressable>
                 );
               })}
+              {estacionamentos.length === 0 ? (
+                <Text className="text-xs text-slate-600">Nenhum shopping cadastrado.</Text>
+              ) : null}
             </View>
           </>
         ) : null}

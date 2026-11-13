@@ -6,6 +6,7 @@ import React, {
   useState,
   ReactNode,
 } from "react";
+import { limparCacheEstacionamentos } from "../services/cacheEstacionamentos";
 import { parkingApi } from "../services/api";
 import { storage } from "../services/storage";
 import { erroRevogaSessao, ROLES_PAINEL } from "../services/authFlow";
@@ -138,6 +139,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     } catch (error) {
       console.warn("[smart-parking] Não foi possível limpar toda a sessão local", error);
     } finally {
+      // A lista é filtrada POR CONTA: apagar o cache impede que o próximo
+      // usuário (ex.: financeiro após admin) herde shoppings alheios.
+      void limparCacheEstacionamentos();
       setUser(null);
     }
   }, []);

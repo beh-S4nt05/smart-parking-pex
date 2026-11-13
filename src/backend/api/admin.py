@@ -12,6 +12,7 @@ from core.deps import (
     get_usuario_autenticado,
     get_usuario_financeiro,
     get_usuario_gestor,
+    get_usuario_painel,
 )
 from models.database import get_db
 from models.db_models import (
@@ -73,6 +74,24 @@ class LoteVagasCreate(BaseModel):
 # ======================================================================
 # ROTAS DE ESTACIONAMENTOS (admin)
 # ======================================================================
+@router.get("/estacionamentos", response_model=list[EstacionamentoResponse])
+async def listar_estacionamentos_do_painel(
+    db: Session = Depends(get_db),
+    usuario: Usuario = Depends(get_usuario_painel),
+):
+    """Shoppings que ESTE usuário pode ver no painel.
+
+    Admin global: todos. Gestor: somente os vinculados (um ou vários).
+    Financeiro: exatamente um. É a lista usada pelo seletor do painel —
+    nunca a vitrine pública completa.
+    """
+    from core.escopo import ids_permitidos
+    from rules import estacionamento_service
+
+    apenas = ids_permitidos(usuario)  # None = admin global (todos)
+    return estacionamento_service.listar_todos_estacionamentos(db, apenas)
+
+
 @router.post("/estacionamentos", response_model=EstacionamentoResponse, status_code=201)
 async def criar_estacionamento(
     dados: EstacionamentoCreate,
@@ -525,22 +544,29 @@ async def resumo_financeiro(
     - Ticket médio
     - Quantidade e valor por método de pagamento
     - Faturamento por dia
-    Acesso: Admin, Gestor e Financeiro
+    Acesso: Admin, Gestor e Financeiro. Gestor/financeiro: pedir shopping
+    alheio é 403 (não dados vazios), e sem filtro cai no principal.
     """
+    estacionamento_id = garantir_escopo_estacionamento(
+        usuario, estacionamento_id, "ver o resumo financeiro"
+    )
     return financeiro_service.obter_resumo_financeiro(db, periodo, estacionamento_id, usuario)
 
 
 @router.get("/gestor/dashboard")
 async def dashboard_gestor(
+    estacionamento_id: str | None = None,
     db: Session = Depends(get_db),
-    usuario: Usuario = Depends(get_usuario_gestor)
+    usuario: Usuario = Depends(get_usuario_gestor),
 ):
     """
-    Dashboard para gestores e financeiro, mostra dados APENAS do estacionamento que eles gerenciam.
-    Se for Admin sem estacionamento vinculado, retorna erro orientando a selecionar um estacionamento.
-    Acesso: Gestor e Financeiro
+    Dashboard do shopping selecionado. Gestor pode ter VÁRIOS vínculos: o id
+    pedido é validado contra o escopo (alheio = 403). Admin sem filtro recebe
+    o aviso de "selecione um shopping".
     """
-    est_id = usuario.estacionamento_id
+    est_id = garantir_escopo_estacionamento(
+        usuario, estacionamento_id, "ver o painel"
+    )
     if not est_id and usuario.role == TipoUsuario.ADMIN.value:
         return {
             "mensagem": "Selecione um estacionamento para ver o dashboard",

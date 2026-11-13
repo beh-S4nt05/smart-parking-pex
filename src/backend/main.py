@@ -22,7 +22,12 @@ from core.security import criar_hash_senha
 from core.security_middleware import SecurityHeadersMiddleware
 from core.trusted_host import TrustedHostLANMiddleware
 from models.database import Base, SessionLocal, engine
-from models.db_models import Estacionamento, TipoUsuario, Usuario
+from models.db_models import (
+    Estacionamento,
+    TipoUsuario,
+    Usuario,
+    usuario_estacionamentos,
+)
 
 # Cria todas as tabelas no banco de dados automaticamente
 with contextlib.suppress(ProgrammingError, IntegrityError):
@@ -71,6 +76,40 @@ def reparar_esquema_antigo(eng=None) -> None:
                 "(volume antigo; equivale à revisão correspondente em "
                 "migrations/ — rode `alembic upgrade head` quando houver alembic)"
             )
+    # Tabela N:N de vínculos (revisão c4e8b1d2f9a0). `create_all` cria em
+    # banco NOVO; em volume antigo sem alembic precisamos criar aqui e fazer
+    # o backfill do vínculo principal — sem isto o `lazy=selectin` de
+    # Usuario.estacionamentos_vinculados derruba o boot (no such table).
+    if (
+        usuario_estacionamentos.name not in tabelas
+        or "estacionamentos" not in tabelas
+    ):
+        try:
+            # `create_all(checkfirst=True)` é idempotente: em volume real só
+            # cria a N:N; em bases esparsas cria também `estacionamentos`.
+            Base.metadata.create_all(
+                bind=eng,
+                tables=[
+                    Base.metadata.tables["estacionamentos"],
+                    usuario_estacionamentos,
+                ],
+                checkfirst=True,
+            )
+            with eng.begin() as conn:
+                # Portável (SQLite + Postgres): só insere vínculos ainda
+                # ausentes, para o reparo poder rodar mais de uma vez.
+                conn.execute(sa.text(
+                    "INSERT INTO usuario_estacionamentos "
+                    "(usuario_id, estacionamento_id) "
+                    "SELECT u.id, u.estacionamento_id FROM usuarios u "
+                    "WHERE u.estacionamento_id IS NOT NULL "
+                    "AND NOT EXISTS ("
+                    "SELECT 1 FROM usuario_estacionamentos v "
+                    "WHERE v.usuario_id = u.id "
+                    "AND v.estacionamento_id = u.estacionamento_id)"
+                ))
+        except Exception as exc:  # reparo nunca pode derrubar o boot
+            print(f"⚠️ reparar_esquema_antigo: não criou vínculos N:N: {exc}")
 
 
 reparar_esquema_antigo()

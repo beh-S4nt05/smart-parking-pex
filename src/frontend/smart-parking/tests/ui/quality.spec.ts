@@ -1,4 +1,5 @@
 import type { Locator } from "@playwright/test";
+import { CHAVE_CACHE_ANONIMO } from "../../src/services/cacheChaves";
 import { expect, gotoLogin, test } from "./helpers";
 
 async function estilo(botao: Locator) {
@@ -173,7 +174,11 @@ test("mapa reflete mudança externa em até 8 segundos sem reload", async ({ pag
 test("queda da API preserva cache, informa stale data e recupera sem reload", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByText("Shopping QA Centro").first()).toBeVisible();
-  await expect.poll(() => page.evaluate(() => localStorage.getItem("sp:cache:estacionamentos"))).not.toBeNull();
+  await expect
+    .poll(() =>
+      page.evaluate((chave) => localStorage.getItem(chave), CHAVE_CACHE_ANONIMO),
+    )
+    .not.toBeNull();
 
   await page.route("**/api/estacionamentos", (route) => route.abort("failed"));
   await page.reload();
