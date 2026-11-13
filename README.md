@@ -492,12 +492,26 @@ O workflow [`expo-sdk-update.yml`](.github/workflows/expo-sdk-update.yml) consul
 
 ### 7.3 Usuários de demonstração
 
+**Administrador (acesso total, gerencia todos os shoppings):**
+
 | Papel | E-mail | Senha | Pode |
 |---|---|---|---|
 | Administrador | `admin@smartparking.com` | `admin123` | Tudo, inclusive gerar QR e emitir chave de sensor. |
-| Gestor | `gestor@smartparking.com` | `gestor123` | Gerenciar apenas o estacionamento vinculado. |
-| Financeiro | `financeiro@smartparking.com` | `financ123` | Pagamentos e relatórios apenas da filial vinculada. |
 | Motorista | `motorista@smartparking.com` | `motor123` | Usar o app e as próprias reservas. |
+
+**Gestores (um ou mais shoppings por conta):**
+
+| E-mail | Senha | Shoppings |
+|---|---|---|
+| `gestor@smartparking.com` | `gestor123` | Amazonas Shopping + Millennium Shopping |
+| `financeiro@smartparking.com` | `gestor123` | Amazonas Shopping |
+| `gestor2@…` até `gestor8@smartparking.com` | `gestor123` | Cada um, um shopping (os demais) |
+
+**Financeiros (exatamente um shopping por conta):**
+
+| E-mail | Senha | Shopping |
+|---|---|---|
+| `financeiro1@smartparking.com` … `financeiro8@smartparking.com` | `financ123` | Um por shopping (números sequenciais até a quantidade de shoppings cadastrados) |
 
 > 🔒 Estas credenciais são **fixtures de desenvolvimento**. Com `ENVIRONMENT=production`, o admin padrão e o seed demo não são criados automaticamente; troque todas as chaves e credenciais antes de qualquer exposição real.
 
