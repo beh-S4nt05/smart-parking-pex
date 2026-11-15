@@ -12,7 +12,7 @@ from core.deps import (
     get_usuario_logado_opcional,
     get_usuario_financeiro,
     get_usuario_gestor,
-    get_usuario_logado,
+    get_usuario_motorista,
 )
 from core.rate_limiter import LIMITS, limiter
 from models.database import get_db
@@ -179,7 +179,7 @@ async def criar_reserva(
     request: Request,
     dados: ReservaCreate,
     db: Session = Depends(get_db),
-    usuario: Usuario = Depends(get_usuario_logado),
+    usuario: Usuario = Depends(get_usuario_motorista),
 ):
     """Cria uma nova reserva vinculada ao usuário logado"""
     return reserva_service.criar_reserva(db, dados, usuario)
@@ -189,7 +189,7 @@ async def criar_reserva(
 async def cancelar_reserva(
     id: str,
     db: Session = Depends(get_db),
-    usuario: Usuario = Depends(get_usuario_logado),
+    usuario: Usuario = Depends(get_usuario_motorista),
 ):
     """Cancela uma reserva e libera a vaga imediatamente"""
     return reserva_service.cancelar_reserva(db, id, usuario)
@@ -197,7 +197,7 @@ async def cancelar_reserva(
 
 @router.get("/reservas/minhas", response_model=list[ReservaResponse])
 async def listar_minhas_reservas(
-    db: Session = Depends(get_db), usuario: Usuario = Depends(get_usuario_logado)
+    db: Session = Depends(get_db), usuario: Usuario = Depends(get_usuario_motorista)
 ):
     """Lista todas as reservas do usuário logado"""
     return reserva_service.listar_reservas_usuario(db, usuario.id)
