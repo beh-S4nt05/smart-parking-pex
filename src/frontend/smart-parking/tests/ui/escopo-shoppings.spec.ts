@@ -23,6 +23,7 @@ async function nomesDasLinhas(page: Page) {
 test("admin vê todos os shoppings e a opção 'Todos'", async ({ page }) => {
   await login(page, "admin@smartparking.com", "admin123");
   await expect(page).toHaveURL(/\/dashboard$/);
+  await page.reload();
 
   await expect(page.getByRole("button", { name: "Selecionar Todos os shoppings" })).toBeVisible();
   await expect(page.getByText("Somente o administrador altera esta lista")).toBeVisible();
@@ -39,6 +40,7 @@ test("admin vê todos os shoppings e a opção 'Todos'", async ({ page }) => {
 test("gestor vê SOMENTE os 2 shoppings vinculados — nunca 'Todos'", async ({ page }) => {
   await login(page, "gestor@smartparking.com", "gestor123");
   await expect(page).toHaveURL(/\/dashboard$/);
+  await page.reload();
 
   await expect(page.getByRole("button", { name: "Selecionar Todos os shoppings" })).toHaveCount(0);
   const nomes = await nomesDasLinhas(page);
@@ -54,6 +56,7 @@ test("gestor vê SOMENTE os 2 shoppings vinculados — nunca 'Todos'", async ({ 
 test("financeiro vê UM shopping, travado, sem 'Todos'", async ({ page }) => {
   await login(page, "financeiro@smartparking.com", "financ123");
   await expect(page).toHaveURL(/\/dashboard$/);
+  await page.reload();
 
   await expect(page.getByRole("button", { name: "Selecionar Todos os shoppings" })).toHaveCount(0);
   const nomes = await nomesDasLinhas(page);
