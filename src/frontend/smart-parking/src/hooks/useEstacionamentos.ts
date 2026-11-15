@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { API_URL, parkingApi } from "../services/api";
+import { API_URL, apiErrorMessage, parkingApi } from "../services/api";
 import { useAuth } from "./useAuth";
 import { chaveCacheVitrine } from "../services/cacheChaves";
 import type { Estacionamento } from "../types/api";
@@ -22,7 +22,7 @@ interface Options {
  * do isolamento e deve ser sempre revalidada com o token da sessão atual.
  */
 export function useEstacionamentos({ pollingMs = 0, escopoPainel = false }: Options = {}) {
-  const { user } = useAuth();
+  const { user, loading: authLoading, canAccessPanel } = useAuth();
   const chaveCache = escopoPainel ? null : chaveCacheVitrine(user?.id);
   const [estacionamentos, setEstacionamentos] = useState<Estacionamento[]>([]);
   const [loading, setLoading] = useState(true);
@@ -42,6 +42,9 @@ export function useEstacionamentos({ pollingMs = 0, escopoPainel = false }: Opti
   }, []);
 
   const refresh = useCallback(async () => {
+    // No painel, aguarde a restauração da sessão antes da primeira chamada.
+    // Uma resposta 401 durante o boot deixava a lista vazia até o polling.
+    if (escopoPainel && (authLoading || !user || !canAccessPanel)) return;
     // Uma API lenta não pode acumular chamadas idênticas a cada intervalo.
     if (emCurso.current) return;
     emCurso.current = true;
@@ -60,19 +63,21 @@ export function useEstacionamentos({ pollingMs = 0, escopoPainel = false }: Opti
       if (chaveCache) {
         AsyncStorage.setItem(chaveCache, JSON.stringify({ ts: agora, dados })).catch(() => {});
       }
-    } catch {
+    } catch (error) {
       if (!mounted.current) return;
       // Usa o estado atual, não a closure vazia da primeira renderização.
       setErro(
         dadosRef.current.length > 0
           ? AVISO_STALE
-          : `API indisponível em ${API_URL} — verifique se o backend está nessa porta.`,
+          : escopoPainel
+            ? apiErrorMessage(error, "Não foi possível carregar os shoppings do painel.")
+            : `API indisponível em ${API_URL} — verifique se o backend está nessa porta.`,
       );
     } finally {
       emCurso.current = false;
       if (mounted.current) setLoading(false);
     }
-  }, [escopoPainel, chaveCache]);
+  }, [escopoPainel, chaveCache, authLoading, user?.id, canAccessPanel]);
 
   // O cache não sobrescreve uma resposta real que já chegou — nem mesmo uma
   // lista vazia válida. Se a rede falhou, os dados cacheados viram stale.

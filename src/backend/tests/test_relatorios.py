@@ -81,7 +81,9 @@ def test_rotacao_giro_tempo_medio(db, fab):
     andar = fab.andar(est, capacidade=2)
     v1 = fab.vaga(andar)
     v2 = fab.vaga(andar)
-    agora = utc_agora()
+    # Todas as entradas ficam no mesmo dia de Manaus, independente do
+    # horário em que a CI executa este cenário.
+    agora = inicio_dia_manaus() + timedelta(hours=6)
     for vaga, mins in ((v1, 60), (v2, 30), (v1, 90)):
         db.add(
             Historico(

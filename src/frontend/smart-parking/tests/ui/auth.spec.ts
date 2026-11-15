@@ -5,6 +5,13 @@ import {
   test,
 } from "./helpers";
 
+test("cadastro permite voltar ao início antes de criar conta", async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 700 });
+  await page.goto("/cadastro");
+  await page.getByRole("button", { name: "Voltar ao início sem criar conta" }).click();
+  await expect(page).toHaveURL(/\/$/);
+});
+
 
 test("login valida campos, contém SQL injection e motorista não entra no painel", async ({ page }) => {
   await gotoLogin(page);

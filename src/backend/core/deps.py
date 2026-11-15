@@ -131,7 +131,7 @@ def permissao_necessaria(*cargos_permitidos):
         # Se for gestor/financeiro, garante que tem um estacionamento vinculado
         if (
             usuario.role in [TipoUsuario.GESTOR.value, TipoUsuario.FINANCEIRO.value]
-            and not usuario.estacionamento_id
+            and not usuario.estacionamento_ids
         ):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
