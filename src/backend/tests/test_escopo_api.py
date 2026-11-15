@@ -3,7 +3,7 @@
 from datetime import timedelta
 
 from core.timeutils import utc_agora
-from models.db_models import TipoUsuario, Usuario
+from models.db_models import TipoUsuario, Usuario, usuario_estacionamentos
 
 
 def _tokens(db, fab):
@@ -33,6 +33,16 @@ def test_bola_financeiro_gestor_so_no_proprio_estacionamento(client, db, fab):
     assert client.get("/api/admin/eventos", params={"estacionamento_id": est_b.id}, headers=hg).status_code == 403
     # admin global passeia nos dois
     assert client.get(f"/api/admin/financeiro/precos/{est_b.id}", headers=ha).status_code == 200
+
+
+def test_gestor_com_vinculo_adicional_sem_principal_ve_seu_shopping(client, db, fab):
+    est = fab.est(nome="QA Vínculo Adicional")
+    gestor = fab.usuario(role=TipoUsuario.GESTOR)
+    db.execute(usuario_estacionamentos.insert().values(usuario_id=gestor.id, estacionamento_id=est.id))
+    db.commit()
+    resposta = client.get("/api/admin/estacionamentos", headers=fab.token(gestor))
+    assert resposta.status_code == 200, resposta.text
+    assert [item["id"] for item in resposta.json()] == [est.id]
 
 
 def test_csv_exigira_autenticacao_e_escopo(client, db, fab):
