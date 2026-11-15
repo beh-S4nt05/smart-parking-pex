@@ -11,6 +11,7 @@ from core.deps import (
     get_usuario_admin,
     get_usuario_autenticado,
     get_usuario_financeiro,
+    get_usuario_preco,
     get_usuario_gestor,
     get_usuario_painel,
 )
@@ -48,6 +49,20 @@ from rules import (
 )
 
 router = APIRouter(prefix="/api/admin", tags=["Painel Administrativo"])
+
+
+def _shopping_do_andar(db: Session, andar_id: str) -> str:
+    andar = db.get(Andar, andar_id)
+    if andar is None:
+        raise HTTPException(status_code=404, detail="Andar não encontrado")
+    return andar.estacionamento_id
+
+
+def _shopping_da_vaga(db: Session, vaga_id: str) -> str:
+    vaga = db.get(Vaga, vaga_id)
+    if vaga is None:
+        raise HTTPException(status_code=404, detail="Vaga não encontrada")
+    return _shopping_do_andar(db, vaga.andar_id)
 
 
 # Schemas para atualizações do admin
@@ -107,10 +122,14 @@ async def atualizar_estacionamento(
     id: str,
     dados: EstacionamentoUpdate,
     db: Session = Depends(get_db),
-    admin: Usuario = Depends(get_usuario_admin)
+    usuario: Usuario = Depends(get_usuario_gestor)
 ):
-    """Atualiza dados de um estacionamento (apenas admin)"""
-    return admin_service.atualizar_estacionamento(db, id, dados.model_dump(exclude_unset=True))
+    """Admin edita qualquer shopping; gestor edita somente os vinculados."""
+    garantir_escopo_estacionamento(usuario, id, "editar este shopping")
+    alteracoes = dados.model_dump(exclude_unset=True)
+    if usuario.role == TipoUsuario.GESTOR.value and "taxa_hora" in alteracoes:
+        raise HTTPException(status_code=403, detail="Preços são gerenciados pelo financeiro ou admin")
+    return admin_service.atualizar_estacionamento(db, id, alteracoes)
 
 
 @router.delete("/estacionamentos/{id}")
@@ -130,9 +149,9 @@ async def deletar_estacionamento(
 async def criar_andar(
     dados: AndarCreate,
     db: Session = Depends(get_db),
-    admin: Usuario = Depends(get_usuario_admin)
+    usuario: Usuario = Depends(get_usuario_gestor)
 ):
-    """Adiciona um novo andar a um estacionamento (apenas admin)"""
+    garantir_escopo_estacionamento(usuario, dados.estacionamento_id, "criar andares neste shopping")
     return admin_service.criar_andar(db, dados)
 
 
@@ -159,9 +178,10 @@ async def atualizar_andar(
     id: str,
     dados: AndarUpdate,
     db: Session = Depends(get_db),
-    admin: Usuario = Depends(get_usuario_admin),
+    usuario: Usuario = Depends(get_usuario_gestor),
 ):
     """RF-32: editar número/capacidade de um andar (admin)."""
+    garantir_escopo_estacionamento(usuario, _shopping_do_andar(db, id), "editar este andar")
     return admin_service.atualizar_andar(db, id, dados.model_dump(exclude_unset=True))
 
 
@@ -177,9 +197,10 @@ async def atualizar_vaga_admin(
     id: str,
     dados: VagaAdminUpdate,
     db: Session = Depends(get_db),
-    admin: Usuario = Depends(get_usuario_admin),
+    usuario: Usuario = Depends(get_usuario_gestor),
 ):
     """RF-33: editar código/tipo/posição de uma vaga sem tocar no status."""
+    garantir_escopo_estacionamento(usuario, _shopping_da_vaga(db, id), "editar esta vaga")
     return admin_service.atualizar_vaga(db, id, dados.model_dump(exclude_unset=True))
 
 
@@ -264,9 +285,9 @@ async def revogar_sensor(
 async def criar_vaga(
     dados: VagaCreate,
     db: Session = Depends(get_db),
-    admin: Usuario = Depends(get_usuario_admin)
+    usuario: Usuario = Depends(get_usuario_gestor)
 ):
-    """Cria uma nova vaga individual (apenas admin)"""
+    garantir_escopo_estacionamento(usuario, _shopping_do_andar(db, dados.andar_id), "criar vagas neste shopping")
     return admin_service.criar_vaga(db, dados)
 
 
@@ -274,12 +295,13 @@ async def criar_vaga(
 async def criar_vagas_em_lote(
     dados: LoteVagasCreate,
     db: Session = Depends(get_db),
-    admin: Usuario = Depends(get_usuario_admin)
+    usuario: Usuario = Depends(get_usuario_gestor)
 ):
     """
     Cria várias vagas de uma vez em um andar (cadastro rápido):
     Gera automaticamente códigos sequenciais: A01, A02, A03...
     """
+    garantir_escopo_estacionamento(usuario, _shopping_do_andar(db, dados.andar_id), "criar vagas neste shopping")
     return admin_service.criar_vagas_em_lote(
         db,
         andar_id=dados.andar_id,
@@ -455,7 +477,7 @@ async def eventos_recentes(
     estacionamento_id: str | None = None,
     limite: int = 8,
     db: Session = Depends(get_db),
-    usuario: Usuario = Depends(get_usuario_gestor),
+    usuario: Usuario = Depends(get_usuario_financeiro),
 ):
     """Últimas movimentações de vagas com origem (sensor/simulador/app)."""
     # ACH-16/ADR-07: gestor/financeiro veem SÓ o próprio estacionamento
@@ -467,7 +489,7 @@ async def eventos_recentes(
 async def ocupacao_por_andar(
     estacionamento_id: str,
     db: Session = Depends(get_db),
-    usuario: Usuario = Depends(get_usuario_gestor),
+    usuario: Usuario = Depends(get_usuario_financeiro),
 ):
     """Percentual de ocupação por andar — barras do dashboard."""
     garantir_escopo_estacionamento(usuario, estacionamento_id, "ver ocupação deste estacionamento")
@@ -481,11 +503,11 @@ async def ocupacao_por_andar(
 async def configurar_preco_vaga(
     dados: ConfiguracaoPrecoCreate,
     db: Session = Depends(get_db),
-    usuario: Usuario = Depends(get_usuario_gestor)
+    usuario: Usuario = Depends(get_usuario_preco)
 ):
     """
     Configura/atualiza preço por tipo de vaga em um estacionamento.
-    Acesso: Admin e Gestor (gestor só no SEU estacionamento — ADR-07)
+    Acesso: Admin e Financeiro (somente no shopping vinculado).
     """
     dados.estacionamento_id = garantir_escopo_estacionamento(
         usuario, dados.estacionamento_id, "configurar preços deste estacionamento"
@@ -635,7 +657,7 @@ async def calcular_tarifa(
     historico_id: str,
     dados: CalcularTarifaRequest,
     db: Session = Depends(get_db),
-    usuario: Usuario = Depends(get_usuario_financeiro)
+    usuario: Usuario = Depends(get_usuario_preco)
 ):
     """Calcula valor da tarifa de estadia, aplicando cupom se fornecido.
     O consumo do cupom (RF: limite de usos) acontece SÓ no registrar (ACH-07)."""
@@ -650,7 +672,7 @@ async def calcular_tarifa(
 async def registrar_pagamento_presencial(
     dados: PagamentoRequest,
     db: Session = Depends(get_db),
-    usuario: Usuario = Depends(get_usuario_financeiro)
+    usuario: Usuario = Depends(get_usuario_preco)
 ):
     """Registra pagamento presencial em dinheiro ou cartão no caixa"""
     hist = db.query(Historico).filter(Historico.id == dados.historico_id).first()
@@ -680,8 +702,10 @@ async def gerar_qr_pix(
         raise HTTPException(status_code=404, detail="Estadia não encontrada")
     if usuario.role == TipoUsuario.ADMIN.value:
         pass
-    elif usuario.role in (TipoUsuario.GESTOR.value, TipoUsuario.FINANCEIRO.value):
+    elif usuario.role == TipoUsuario.FINANCEIRO.value:
         garantir_escopo_estacionamento(usuario, hist.estacionamento_id, "cobrar esta estadia")
+    elif usuario.role == TipoUsuario.GESTOR.value:
+        raise HTTPException(status_code=403, detail="Cobranças são gerenciadas pelo financeiro ou admin")
     elif hist.usuario_id != usuario.id:
         raise HTTPException(status_code=403, detail="Esta estadia não pertence a você")
     pagamento = pagamento_service.gerar_pagamento_pix(db, historico_id)
@@ -702,7 +726,7 @@ async def gerar_qr_pix(
 async def confirmar_pagamento(
     id: str,
     db: Session = Depends(get_db),
-    usuario: Usuario = Depends(get_usuario_financeiro)
+    usuario: Usuario = Depends(get_usuario_preco)
 ):
     """Confirma pagamento (webhook ou confirmação manual)"""
     pag = db.query(Pagamento).filter(Pagamento.id == id).first()
@@ -716,7 +740,7 @@ async def confirmar_pagamento(
 async def abrir_caixa(
     dados: AbrirCaixaRequest,
     db: Session = Depends(get_db),
-    usuario: Usuario = Depends(get_usuario_financeiro)
+    usuario: Usuario = Depends(get_usuario_preco)
 ):
     """Abre um novo caixa para início de turno"""
     dados.estacionamento_id = garantir_escopo_estacionamento(
@@ -730,7 +754,7 @@ async def fechar_caixa(
     id: str,
     dados: FecharCaixaRequest,
     db: Session = Depends(get_db),
-    usuario: Usuario = Depends(get_usuario_financeiro)
+    usuario: Usuario = Depends(get_usuario_preco)
 ):
     """Fecha o caixa com valores consolidados"""
     caixa = db.query(FechamentoCaixa).filter(FechamentoCaixa.id == id).first()
@@ -758,10 +782,10 @@ async def obter_caixa_aberto(
 async def criar_cupom_desconto(
     dados: CupomCreate,
     db: Session = Depends(get_db),
-    admin: Usuario = Depends(get_usuario_gestor)
+    admin: Usuario = Depends(get_usuario_preco)
 ):
     """Cria um novo cupom de desconto"""
-    # ADR-07: gestor só cria cupom para o SEU estacionamento (admin global)
+    # Financeiro só cria cupom para o shopping vinculado (admin global).
     dados.estacionamento_id = garantir_escopo_estacionamento(
         admin, dados.estacionamento_id, "criar cupom neste estacionamento"
     ) or dados.estacionamento_id
