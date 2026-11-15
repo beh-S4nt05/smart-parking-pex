@@ -137,6 +137,15 @@ export default function Cadastro() {
     >
       <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: "center" }}>
         <View className="w-full max-w-[440px] self-center px-5 py-10 3xl:max-w-[520px] 3xl:py-14">
+          <Pressable
+            onPress={() => router.replace("/")}
+            accessibilityRole="button"
+            accessibilityLabel="Voltar ao início sem criar conta"
+            className="mb-5 min-h-11 flex-row items-center gap-2 self-start rounded-lg px-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+          >
+            <IconeVoltar />
+            <Text className="text-sm font-semibold text-blue-700">Início</Text>
+          </Pressable>
           <View className="mb-6 items-center">
             <Logo size={48} />
             <Text className="mt-3 text-2xl font-extrabold text-slate-900">
