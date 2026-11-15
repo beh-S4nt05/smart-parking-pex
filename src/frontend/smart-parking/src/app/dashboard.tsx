@@ -146,7 +146,8 @@ export default function Dashboard() {
         <AbaEstacionamentos
           estacionamentos={estacionamentos}
           onAbrir={(id) => router.push(`/shopping/${id}` as never)}
-          podeGerenciar={isAdmin}
+          podeGerenciar={isAdmin || user?.role === "gestor"}
+          podeAdministrar={isAdmin}
           onChanged={recarregarEstacionamentos}
         />
       )}
@@ -518,11 +519,13 @@ function AbaEstacionamentos({
   estacionamentos,
   onAbrir,
   podeGerenciar,
+  podeAdministrar,
   onChanged,
 }: {
   estacionamentos: Estacionamento[];
   onAbrir: (id: string) => void;
   podeGerenciar: boolean;
+  podeAdministrar: boolean;
   onChanged: () => void;
 }) {
   type ModalEst =
@@ -590,7 +593,7 @@ function AbaEstacionamentos({
           endereco: novo.endereco.trim(),
           hora_abertura: novo.abertura || "06:00",
           hora_fechamento: novo.fechamento || "23:00",
-          taxa_hora: Math.max(0, num(novo.taxa, 0)),
+          ...(podeAdministrar ? { taxa_hora: Math.max(0, num(novo.taxa, 0)) } : {}),
         });
         Alert.alert("Alterações salvas", modal.est.nome + " foi atualizado.");
       } else {
@@ -639,7 +642,7 @@ function AbaEstacionamentos({
 
   return (
     <View className="gap-3">
-      {podeGerenciar ? (
+      {podeAdministrar ? (
         <View className="flex-row justify-end">
           <Botao
             label="Novo estacionamento"
@@ -734,12 +737,12 @@ function AbaEstacionamentos({
                     setModal({ tipo: "editar", est: e });
                   }}
                 />
-                <Botao
+                {podeAdministrar ? <Botao
                   label="Excluir"
                   variant="contorno"
                   className="border-red-300 px-3.5 py-1.5"
                   onPress={() => excluir(e)}
-                />
+                /> : null}
               </View>
             ) : null}
           </Card>
@@ -759,7 +762,7 @@ function AbaEstacionamentos({
         }
         descricao={
           modal?.tipo === "editar"
-            ? "Nome, endereço, horários e taxa. Capacidade real vem dos andares/vagas."
+            ? "Nome, endereço e horários. Capacidade real vem dos andares/vagas."
             : modal?.tipo === "novo"
               ? "Entra na rede imediatamente — depois cadastre andares e vagas."
               : modal?.tipo === "andar"
@@ -795,7 +798,7 @@ function AbaEstacionamentos({
                 <Campo label="Fecha às" placeholder="23:00" value={novo.fechamento} onChangeText={(v) => setNovo((f) => ({ ...f, fechamento: v }))} />
               </View>
             </View>
-            <Campo label="Taxa por hora (R$)" keyboardType="numeric" value={novo.taxa} onChangeText={(v) => setNovo((f) => ({ ...f, taxa: v }))} />
+            {(podeAdministrar || modal?.tipo === "novo") ? <Campo label="Taxa por hora (R$)" keyboardType="numeric" value={novo.taxa} onChangeText={(v) => setNovo((f) => ({ ...f, taxa: v }))} /> : null}
           </>
         ) : null}
 
