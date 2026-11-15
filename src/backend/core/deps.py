@@ -168,6 +168,8 @@ get_usuario_gestor = permissao_necessaria(TipoUsuario.ADMIN, TipoUsuario.GESTOR)
 get_usuario_financeiro = permissao_necessaria(
     TipoUsuario.ADMIN, TipoUsuario.FINANCEIRO, TipoUsuario.GESTOR
 )
+get_usuario_preco = permissao_necessaria(TipoUsuario.ADMIN, TipoUsuario.FINANCEIRO)
+get_usuario_motorista = permissao_necessaria(TipoUsuario.ADMIN, TipoUsuario.USUARIO)
 get_usuario_autenticado = permissao_necessaria(
     TipoUsuario.ADMIN, TipoUsuario.GESTOR, TipoUsuario.FINANCEIRO, TipoUsuario.USUARIO
 )

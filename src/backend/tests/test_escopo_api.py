@@ -22,11 +22,11 @@ def test_bola_financeiro_gestor_so_no_proprio_estacionamento(client, db, fab):
     # preços do vizinho: 403 (antes: 200 com dados alheios)
     assert client.get(f"/api/admin/financeiro/precos/{est_b.id}", headers=hg).status_code == 403
     assert client.get(f"/api/admin/financeiro/precos/{est_a.id}", headers=hg).status_code == 200
-    # criar preço no vizinho: 403 — e no próprio: 201
+    # Preço é responsabilidade do financeiro/admin, não do gestor.
     corpo = {"estacionamento_id": est_b.id, "tipo_vaga": "comum", "valor_hora": 5.0}
     assert client.post("/api/admin/financeiro/precos", json=corpo, headers=hg).status_code == 403
     corpo["estacionamento_id"] = est_a.id
-    assert client.post("/api/admin/financeiro/precos", json=corpo, headers=hg).status_code == 201
+    assert client.post("/api/admin/financeiro/precos", json=corpo, headers=hg).status_code == 403
     # cupons do vizinho: 403
     assert client.get(f"/api/admin/financeiro/cupons/{est_b.id}", headers=hg).status_code == 403
     # eventos com estacionamento alheio explícito: 403

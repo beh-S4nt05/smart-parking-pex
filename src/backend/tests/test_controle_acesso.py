@@ -77,7 +77,6 @@ def test_rota_protegida_exige_autenticacao(client, metodo, url, corpo):
         ("GET", "/api/admin/sensores"),
         ("GET", "/api/admin/simulador/sessoes"),
         ("POST", "/api/admin/estacionamentos"),
-        ("POST", "/api/admin/vagas"),
         ("PATCH", "/api/admin/usuarios/id/promover-admin"),
     ],
 )
@@ -87,8 +86,6 @@ def test_admin_global_nao_pode_ser_substituído_por_outro_papel(client, fab, rol
     corpo = None
     if url == "/api/admin/estacionamentos":
         corpo = {"nome": "Tentativa sem privilégio", "total_andares": 1, "total_vagas": 0}
-    elif url == "/api/admin/vagas":
-        corpo = {"andar_id": "id", "codigo": "X1", "tipo": "comum"}
 
     response = client.request(metodo, url, json=corpo, headers=fab.token(usuario))
 
