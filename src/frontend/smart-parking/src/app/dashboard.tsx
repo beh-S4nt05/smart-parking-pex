@@ -63,7 +63,7 @@ export default function Dashboard() {
   const [aba, setAba] = useState<AbaPainel>("dashboard");
   const [estSel, setEstSel] = useState<string | null>(null); // null = todos (admin)
 
-  const { estacionamentos, loading: estLoading, refresh: recarregarEstacionamentos } =
+  const { estacionamentos, loading: estLoading, erro: erroEstacionamentos, refresh: recarregarEstacionamentos } =
     useEstacionamentos({ pollingMs: 30000, escopoPainel: true });
 
   useEffect(() => {
@@ -130,6 +130,12 @@ export default function Dashboard() {
             : undefined
       }
     >
+      {erroEstacionamentos ? (
+        <View accessibilityRole="alert" className="mb-3 flex-row flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3">
+          <Text className="min-w-0 flex-1 text-sm text-amber-900">{erroEstacionamentos}</Text>
+          <Botao label="Tentar novamente" variant="contorno" onPress={recarregarEstacionamentos} />
+        </View>
+      ) : null}
       {listaShoppings}
 
       <FadeTroca chave={aba}>
