@@ -75,7 +75,7 @@ export default function AnaliseCredenciaisAdmin() {
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
             <View style={{ flex: 1 }}>
               <Text style={{ fontSize: 14, fontWeight: "800", color: "#15233B" }}>{p.usuario_nome}</Text>
-              <Text style={{ fontSize: 12, color: "#64748B", marginTop: 3 }}>Solicitação {p.tipo.toUpperCase()} · pendente</Text>
+              <Text style={{ fontSize: 12, color: "#475569", marginTop: 3 }}>Solicitação {p.tipo.toUpperCase()} · pendente</Text>
             </View>
             <Pressable onPress={() => setSelecionado((cur) => cur === p.id ? null : p.id)}
               accessibilityRole="button" style={{ backgroundColor: "#DBEAFE", borderRadius: 11, padding: 12, minHeight: 44 }}>
