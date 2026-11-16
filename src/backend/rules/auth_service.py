@@ -103,7 +103,7 @@ def montar_token_response(usuario: Usuario, access: str, refresh: str) -> TokenR
     )
 
 
-def autenticar_usuario(db: Session, dados: LoginRequest) -> TokenResponse:
+def autenticar_usuario(db: Session, dados: LoginRequest, agente: str | None = None) -> TokenResponse:
     """
     Autentica usuário por e-mail OU telefone e retorna access + refresh tokens
     + os dados do usuário (o app usa `user` para popular o AuthContext).
@@ -155,8 +155,8 @@ def autenticar_usuario(db: Session, dados: LoginRequest) -> TokenResponse:
         raise HTTPException(status_code=403, detail="Confirme o e-mail cadastrado antes de entrar")
     identity_service.exigir_mfa_no_login(db, usuario, dados.mfa_codigo)
 
-    access_token = criar_token(subject=usuario.id, tipo_token="access")
-    refresh_token = criar_token(subject=usuario.id, tipo_token="refresh")
+    from rules import session_service
+    access_token, refresh_token = session_service.iniciar(db, usuario, agente)
 
     return montar_token_response(usuario, access_token, refresh_token)
 
@@ -193,6 +193,12 @@ def renovar_access_token(db: Session, refresh_token: str) -> TokenResponse:
     if sessao_revogada(db, payload, usuario_id):
         raise HTTPException(status_code=401, detail="Sessão encerrada. Faça login novamente.")
 
-    novo_access = criar_token(subject=usuario_id, tipo_token="access")
-
-    return montar_token_response(usuario, novo_access, refresh_token)
+    if payload.get("sid"):
+        from rules import session_service
+        novo_access, novo_refresh = session_service.renovar(db, usuario, payload)
+    else:
+        # Compatibilidade durante migração: tokens antigos sem sid expiram
+        # naturalmente. PR64 pode tornar SECURITY_SESSIONS_REQUIRED obrigatório.
+        novo_access = criar_token(subject=usuario_id, tipo_token="access")
+        novo_refresh = refresh_token
+    return montar_token_response(usuario, novo_access, novo_refresh)
