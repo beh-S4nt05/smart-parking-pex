@@ -287,8 +287,24 @@ def remover_veiculo(veiculo_id: str, usuario: Usuario = Depends(get_usuario_loga
     db.commit()
 
 
+def _expirar_credenciais_vencidas(db: Session, usuario_id: str) -> None:
+    """Não exibir credencial vencida como aprovada; permitir nova solicitação."""
+    hoje = datetime.now(timezone.utc).date()
+    vencidas = db.query(CredencialEstacionamento).filter(
+        CredencialEstacionamento.usuario_id == usuario_id,
+        CredencialEstacionamento.status == "aprovado",
+        CredencialEstacionamento.validade.isnot(None),
+        CredencialEstacionamento.validade < hoje,
+    ).all()
+    for cred in vencidas:
+        cred.status = "expirado"
+    if vencidas:
+        db.commit()
+
+
 @router.get("/credenciais", response_model=list[CredencialResponse])
 def listar_credenciais(usuario: Usuario = Depends(get_usuario_logado), db: Session = Depends(get_db)):
+    _expirar_credenciais_vencidas(db, usuario.id)
     return db.query(CredencialEstacionamento).filter(CredencialEstacionamento.usuario_id == usuario.id).all()
 
 
@@ -296,6 +312,7 @@ def listar_credenciais(usuario: Usuario = Depends(get_usuario_logado), db: Sessi
 def solicitar_credencial(
     dados: PedidoCredencial, usuario: Usuario = Depends(get_usuario_logado), db: Session = Depends(get_db)
 ):
+    _expirar_credenciais_vencidas(db, usuario.id)
     if dados.tipo == "idoso":
         nascimento = usuario.data_nascimento
         if nascimento is None:
