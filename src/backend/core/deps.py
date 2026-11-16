@@ -60,6 +60,11 @@ def get_usuario_logado_opcional(
             return None
         usuario = db.get(Usuario, usuario_id)
         if usuario and usuario.is_ativo:
+            sid = payload.get("sid")
+            if sid:
+                from rules.session_service import sessao_valida
+                if not sessao_valida(db, usuario.id, sid):
+                    return None
             return usuario
     except pyjwt.InvalidTokenError:
         return None
@@ -103,6 +108,12 @@ def get_usuario_logado(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Usuário desativado. Contate o suporte.",
         )
+
+    sid = payload.get("sid")
+    if sid:
+        from rules.session_service import sessao_valida
+        if not sessao_valida(db, usuario.id, sid):
+            raise HTTPException(status_code=401, detail="Sessão revogada ou expirada")
 
     # RF-13 — o token pode ser válido na assinatura e mesmo assim morto:
     if sessao_revogada(db, payload, usuario_id):
