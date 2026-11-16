@@ -167,7 +167,7 @@ test("garagem permite gerenciar carros e motos e alterar principal em viewport m
   await page.getByRole("button", { name: "Adicionar veículo" }).click();
   await page.getByRole("radio", { name: "Carro" }).click();
   await page.getByLabel("Placa", { exact: true }).fill("DEF2E34");
-  await page.getByLabel("Modelo", { exact: true }).fill("Sedan QA");
+  await page.getByLabel(/Modelo/).fill("Sedan QA");
   await page.getByRole("button", { name: "Salvar veículo", exact: true }).click();
   await expect(page.getByText("DEF2E34", { exact: true })).toBeVisible();
 
@@ -183,7 +183,7 @@ test("garagem permite gerenciar carros e motos e alterar principal em viewport m
   expect(lista.find((v) => v.placa === "ABC1D23")?.principal).toBe(false);
 
   await page.getByRole("button", { name: "Editar veículo DEF2E34" }).click();
-  await page.getByLabel("Modelo", { exact: true }).fill("Sedan QA atualizado");
+  await page.getByLabel(/Modelo/).fill("Sedan QA atualizado");
   await page.getByRole("radio", { name: "Híbrido" }).click();
   await page.getByRole("button", { name: "Salvar alterações do veículo" }).click();
   await expect(page.getByText(/Sedan QA atualizado/)).toBeVisible();
