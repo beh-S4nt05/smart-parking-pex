@@ -78,6 +78,18 @@ class Settings(BaseSettings):
     # OAuth Providers (autenticação social). ACH-08/ADR-06: o fluxo social
     # tem bugs conhecidos (Apple JWKS/Facebook sem app validation), então as
     # rotas só existem com a flag ligada — desligada, respondem 404.
+    # PR60: segregação de identidade. Nunca ativar sem SMTP e MFA configurados.
+    SMTP_HOST: str | None = None
+    SMTP_PORT: int = 587
+    SMTP_USER: str | None = None
+    SMTP_PASSWORD: str | None = None
+    SMTP_SENDER: str | None = None
+    SMTP_STARTTLS: bool = True
+    SECURITY_VERIFIED_EMAIL_REQUIRED: bool = False
+    SECURITY_STAFF_MFA_REQUIRED: bool = False
+    # Fernet base64 urlsafe gerado por cryptography.Fernet.generate_key()
+    MFA_ENCRYPTION_KEY: str | None = None
+
     LOGIN_SOCIAL_ENABLED: bool = False
 
     # OAuth Providers (autenticação social)
