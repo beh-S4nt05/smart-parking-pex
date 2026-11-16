@@ -3,7 +3,6 @@ from models.db_models import Sensor, StatusVaga
 
 
 def test_sensor_replay_out_of_order_and_same_batch(client, db, fab):
-    from core.security import criar_token
     admin = fab.usuario(role="admin")
     est = fab.est("Parking Seq")
     spot = fab.vaga(fab.andar(est), codigo="SEQ01")
