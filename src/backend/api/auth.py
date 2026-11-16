@@ -1,5 +1,5 @@
 
-from datetime import date
+from datetime import date, datetime, timezone
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -163,7 +163,7 @@ def atualizar_perfil(
         raise HTTPException(status_code=422, detail="Nada para atualizar")
     if "nome" in muda and (muda["nome"] or "").strip().__len__() < 2:
         raise HTTPException(status_code=422, detail="Nome precisa de 2+ caracteres")
-    if muda.get("data_nascimento") and muda["data_nascimento"] > date.today():
+    if muda.get("data_nascimento") and muda["data_nascimento"] > datetime.now(timezone.utc).date():
         raise HTTPException(status_code=422, detail="Data de nascimento não pode estar no futuro")
     for campo, val in muda.items():
         if isinstance(val, (bool, date)) or val is None:  # is_pcd não passa pelo strip de strings
@@ -300,7 +300,7 @@ def solicitar_credencial(
         nascimento = usuario.data_nascimento
         if nascimento is None:
             raise HTTPException(status_code=422, detail="Informe a data de nascimento no perfil")
-        hoje = date.today()
+        hoje = datetime.now(timezone.utc).date()
         idade = hoje.year - nascimento.year - ((hoje.month, hoje.day) < (nascimento.month, nascimento.day))
         if idade < 60:
             raise HTTPException(status_code=422, detail="Credencial de idoso exige 60 anos ou mais")
