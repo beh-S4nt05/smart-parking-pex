@@ -51,8 +51,8 @@ O gestor pode ter vários vínculos em `usuario_estacionamentos`; o financeiro f
 | `/` | Escolher shopping e abrir vagas; estado vazio e atualização | `GET /api/estacionamentos` |
 | `/explorar` | Buscar shopping por nome/endereço | Lista pública, filtro no cliente |
 | `/shopping/[id]` | Andar, status, filtro `Todas/Comum/PCD/Idoso/Moto/Elétrico`, sugestão, reserva/cancelamento | `GET /api/estacionamentos/{id}/vagas`, `.../proxima-vaga`, reservas |
-| `/cadastro` | Duas etapas, veículo opcional, autodeclaração PCD, voltar ao início, login após criar | `POST /auth/registrar`, `/auth/login` |
-| `/login` e `/perfil` | Acesso, sessão, dados pessoais, senha e saída | `/auth/login`, `/auth/me`, `/auth/senha`, `/auth/logout` |
+| `/cadastro` | Duas etapas: usuário, depois veículo carro/moto e motorização; pedido opcional de credencial idoso/PCD | `POST /auth/registrar`, `/auth/login` |
+| `/login` e `/perfil` | Login, perfil, garagem de veículos, solicitações de credenciais, análise administrativa, senha e saída | `/auth/*`, `/api/admin/credenciais/*` |
 | `/reservas` | Histórico das reservas próprias e cancelamento permitido | `GET /api/reservas/minhas`, `DELETE /api/reservas/{id}` |
 | `/dashboard` | KPIs, seletor por escopo, unidades, andares/vagas, relatórios e usuários conforme papel | `/api/admin/*`, `/api/relatorios/*` |
 | `/simulador-qr`, `/simulador` | Admin cria/revoga QR; sessão tokenizada abre operação de vagas no aparelho | `/api/admin/simulador/sessoes`, `/api/vagas/*` |
@@ -79,7 +79,7 @@ O frontend é Expo Router, React Native e NativeWind. Web e mobile compartilham 
 ### 4.1 Invariantes
 
 1. `reservar` exige vaga livre; a reserva muda seu status para `reservada` imediatamente, mesmo que o início seja futuro. Só o proprietário cancela; se a vaga ainda está reservada, o cancelamento libera. Reservas vencidas mudam para `expirada`.
-2. Vaga PCD só pode ser reservada por conta com `is_pcd=true`; o motor não atribui PCD a anônimo/não declarado. Para declarado, prioriza PCD quando disponível. A declaração é editável no cadastro/perfil.
+2. Vaga PCD ou de idoso requer credencial oficial aprovada e ainda válida na conta beneficiária. A sugestão não atribui vagas especiais a anônimos ou autodeclarados sem credencial, mesmo com `usuarios.is_pcd=true`. O processo de comprovação/validação é humano, não automatizado.
 3. Mudança `livre → ocupada` abre histórico e `ocupada → livre` encerra a estadia; uma reserva ocupada é concluída. O histórico sustenta métricas por período.
 4. O tipo de vaga pode ser `comum`, `idoso`, `pcd`, `moto` ou `eletrico`; o filtro do mapa compara o tipo real da vaga. A sugestão de próxima vaga prioriza o tipo pedido e pode recorrer a outra vaga elegível quando não houver do tipo.
 5. Preço/cupom/caixa/pagamento são escopados pela unidade. A tarifa considera tolerância, fração/hora, diária, mínimo e desconto; calcular não consome cupom. Caixa aberto é único por estacionamento.
@@ -88,12 +88,12 @@ O frontend é Expo Router, React Native e NativeWind. Web e mobile compartilham 
 
 ### 4.2 Evolução em desenvolvimento na versão 1 — usuários, veículos e vagas especiais
 
-**Situação: planejada para conclusão da V1, não implementada integralmente.** A funcionalidade atual utiliza `usuarios.is_pcd` como autodeclaração, e as vagas existentes são `comum`, `idoso`, `pcd`, `moto` e `eletrico`. A evolução abaixo deve integrar a própria versão 1, sem ser classificada como V2 nem descrita como pronta.
+**Situação na branch do PR #57:** backend, cadastro web/Android, garagem, solicitações, análise manual administrativa e verificação em reservas/sugestões foram implementados e submetidos ao CI. A integração só estará na versão instalada após merge e atualização do backend/banco. A comprovação física do beneficiário e uma integração oficial automatizada **não** estão implementadas. Os campos legados `usuarios.is_pcd` e `usuarios.placa_veiculo` permanecem para compatibilidade.
 
 | ID | Requisito V1 | Critério de aceite |
 |---|---|---|
 | RF-13 | Perfil do usuário com data de nascimento e indicação de benefício especial | Cadastro básico continua rápido; idade calculada no backend; informar 60+ não concede automaticamente acesso a vaga de idoso |
-| RF-14 | Garagem com múltiplos veículos por conta | Cadastrar/editar/excluir carro ou moto, placa normalizada e motorização combustão/híbrido/elétrico; diferenciar carro elétrico de moto elétrica |
+| RF-14 | Garagem com múltiplos veículos por conta | Cadastrar e desativar carro/moto, placa normalizada e motorização combustão/híbrido/elétrico; diferenciar carro elétrico de moto elétrica; edição direta ainda não adicionada |
 | RF-15 | Verificação de credencial de idoso/PCD | Solicitação sob demanda; estados pendente/aprovada/rejeitada/vencida/revogada; análise por responsável autorizado com registro de decisão e validade; beneficiário pode ser motorista ou passageiro |
 | RF-16 | Elegibilidade de vaga verificada no backend | Avaliar tipo da vaga, veículo, motorização e eventual carregador, credencial e regras do beneficiário antes da confirmação de reserva; negar com mensagem explicativa quando incompatível |
 | RF-17 | Interface mobile/web de veículos e credenciais | Acesso por perfil, seleção do veículo na reserva, consulta da situação de validação e fluxo comum sem exigência de documentos especiais |
@@ -101,7 +101,7 @@ O frontend é Expo Router, React Native e NativeWind. Web e mobile compartilham 
 
 **Modelo técnico da V1:** separar `vehicles` (pertencentes ao usuário, tipo, placa e motorização), `parking_credentials` (beneficiário, espécie, validade e estado da avaliação) e um serviço `parking_eligibility` para autorização transacional. Adaptar as referências de reserva quando necessário. Migrar o esquema com Alembic, atualizar contratos de API, testes de concorrência, autorização e mensagens de erro. A conferência automatizada por fonte oficial só deverá ser adicionada caso exista integração viável e autorizada; a simples leitura de imagem/QR não substitui verificação.
 
-**Sequência da V1:** (1) modelos, migrações e CRUD de veículos; (2) credenciais e revisão administrativa; (3) regras de elegibilidade e integração com reserva; (4) telas e testes de fluxo ponta a ponta. Preservar a autorização para vagas comuns durante todo o processo. A autodeclaração PCD vigente exige transição controlada, sem conceder privilégios como se já houvesse comprovação.
+**Implementação da V1:** (1) modelos e migração aditiva do PR #56; (2) cadastro e API de múltiplos veículos; (3) solicitações e conferência manual de credenciais com auditoria; (4) seleção de veículo e elegibilidade no backend; (5) testes de segurança e fluxo. A integração e avaliação em aparelho físico são fases de aceite distintas. Mantêm-se reservas comuns legadas sem veículo selecionado, e a autodeclaração antiga deixou de autorizar vaga PCD.
 
 ## 5. Arquitetura e dados
 
