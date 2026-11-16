@@ -4,6 +4,7 @@ import uuid
 from sqlalchemy import (
     Boolean,
     Column,
+    Date,
     DateTime,
     Float,
     ForeignKey,
@@ -107,6 +108,7 @@ class Usuario(Base):
     email = Column(String, nullable=False, unique=True, index=True)
     senha_hash = Column(String, nullable=False)
     placa_veiculo = Column(String, nullable=True, index=True)
+    data_nascimento = Column(Date, nullable=True)  # opcional; idade declarada não concede credencial
     telefone = Column(String, nullable=True)
     is_ativo = Column(Boolean, default=True)
     # RF-47 (22/10-rod.5): autodeclaração PCD feita no CADASTRO (ou na
@@ -121,6 +123,8 @@ class Usuario(Base):
     atualizado_em = Column(DateTime(timezone=True), onupdate=func.now())
 
     reservas = relationship("Reserva", back_populates="usuario", cascade="all, delete-orphan")
+    veiculos = relationship("Veiculo", back_populates="usuario", cascade="all, delete-orphan")
+    credenciais_estacionamento = relationship("CredencialEstacionamento", back_populates="usuario", cascade="all, delete-orphan")
     historicos = relationship("Historico", back_populates="usuario", foreign_keys="Historico.usuario_id")
     estacionamento_gerenciado = relationship("Estacionamento")
     # Vínculos ADICIONAIS de um gestor (N:N). `estacionamento_id` continua sendo
@@ -149,6 +153,62 @@ class Usuario(Base):
             if est.id not in ids:
                 ids.append(est.id)
         return ids
+
+
+
+class Veiculo(Base):
+    """Veículos do motorista: categoria e motorização são dimensões independentes."""
+    __tablename__ = "veiculos"
+    __table_args__ = (UniqueConstraint("usuario_id", "placa", name="uq_veiculo_usuario_placa"),)
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    usuario_id = Column(String, ForeignKey("usuarios.id", ondelete="CASCADE"), nullable=False, index=True)
+    placa = Column(String(12), nullable=False, index=True)
+    categoria = Column(String(12), nullable=False)  # carro | moto
+    motorizacao = Column(String(20), nullable=False, default="nao_informada")
+    marca = Column(String(80), nullable=True)
+    modelo = Column(String(100), nullable=True)
+    conector_tipo = Column(String(40), nullable=True)  # somente se recarregável
+    principal = Column(Boolean, nullable=False, default=False, server_default=false())
+    ativo = Column(Boolean, nullable=False, default=True)
+    criado_em = Column(DateTime(timezone=True), server_default=func.now())
+
+    usuario = relationship("Usuario", back_populates="veiculos")
+
+
+class CredencialEstacionamento(Base):
+    """Evidência de direito à vaga especial; autodeclaração nunca equivale a aprovação."""
+    __tablename__ = "credenciais_estacionamento"
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    usuario_id = Column(String, ForeignKey("usuarios.id", ondelete="CASCADE"), nullable=False, index=True)
+    tipo = Column(String(12), nullable=False)  # idoso | pcd
+    status = Column(String(16), nullable=False, default="pendente", index=True)
+    referencia_hash = Column(String(64), nullable=True)  # hash, não documento integral
+    validade = Column(Date, nullable=True)
+    verificado_por_id = Column(String, ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True)
+    verificado_em = Column(DateTime(timezone=True), nullable=True)
+    criado_em = Column(DateTime(timezone=True), server_default=func.now())
+    atualizado_em = Column(DateTime(timezone=True), onupdate=func.now())
+
+    usuario = relationship("Usuario", back_populates="credenciais_estacionamento", foreign_keys=[usuario_id])
+    verificado_por = relationship("Usuario", foreign_keys=[verificado_por_id])
+    auditorias = relationship("AuditoriaCredencial", back_populates="credencial", cascade="all, delete-orphan")
+
+
+class AuditoriaCredencial(Base):
+    """Decisões e revogações feitas por operador autorizado."""
+    __tablename__ = "auditoria_credenciais"
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    credencial_id = Column(String, ForeignKey("credenciais_estacionamento.id", ondelete="CASCADE"), nullable=False, index=True)
+    avaliador_id = Column(String, ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True)
+    acao = Column(String(30), nullable=False)
+    justificativa = Column(Text, nullable=True)
+    criado_em = Column(DateTime(timezone=True), server_default=func.now())
+
+    credencial = relationship("CredencialEstacionamento", back_populates="auditorias")
+    avaliador = relationship("Usuario", foreign_keys=[avaliador_id])
 
 
 class Estacionamento(Base):
@@ -194,6 +254,9 @@ class Vaga(Base):
     andar_id = Column(String, ForeignKey("andares.id", ondelete="CASCADE"), nullable=False, index=True)
     codigo = Column(String, nullable=False, index=True)
     tipo = Column(String, nullable=False, default=TipoVaga.COMUM)
+    categoria_veiculo = Column(String(12), nullable=True)  # carro | moto | ambos; NULL = legado
+    recarga_disponivel = Column(Boolean, nullable=False, default=False, server_default=false())
+    conector_tipo = Column(String(40), nullable=True)
     posicao_x = Column(Integer, nullable=True)
     posicao_y = Column(Integer, nullable=True)
     status = Column(String, nullable=False, default=StatusVaga.LIVRE, index=True)
@@ -211,6 +274,8 @@ class Reserva(Base):
     id = Column(String, primary_key=True, default=generate_uuid, index=True)
     usuario_id = Column(String, ForeignKey("usuarios.id", ondelete="CASCADE"), nullable=False, index=True)
     vaga_id = Column(String, ForeignKey("vagas.id", ondelete="CASCADE"), nullable=False, index=True)
+    veiculo_id = Column(String, ForeignKey("veiculos.id", ondelete="SET NULL"), nullable=True, index=True)
+    credencial_id = Column(String, ForeignKey("credenciais_estacionamento.id", ondelete="SET NULL"), nullable=True)
     horario_inicio = Column(DateTime(timezone=True), nullable=False)
     horario_fim = Column(DateTime(timezone=True), nullable=False)
     status = Column(String, nullable=False, default=StatusReserva.CONFIRMADA, index=True)
@@ -219,6 +284,8 @@ class Reserva(Base):
 
     usuario = relationship("Usuario", back_populates="reservas")
     vaga = relationship("Vaga", back_populates="reservas")
+    veiculo = relationship("Veiculo")
+    credencial = relationship("CredencialEstacionamento")
 
 
 class ConfiguracaoPreco(Base):
