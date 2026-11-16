@@ -32,6 +32,13 @@ jobs:
         with: { node-version: "24.19.0", cache: "npm", cache-dependency-path: "src/frontend/smart-parking/package-lock.json" }
       - run: npm install --global npm@11.17.0
       - run: npm ci --no-audit --no-fund
+      - name: Testar launcher LAN do Expo sem iniciar o Metro
+        run: |
+          bash -n ../../../scripts/dev-front.sh
+          LAN_IP=192.168.50.12 API_PORT=8000 ../../../scripts/dev-front.sh --no-start
+          grep -qx 'EXPO_PUBLIC_API_URL_MOBILE=http://192.168.50.12:8000' .env
+          LAN_IP=10.1.2.3 API_PORT=8010 ../../../scripts/dev-front.sh --no-start
+          grep -qx 'EXPO_PUBLIC_API_URL_MOBILE=http://10.1.2.3:8010' .env
       - run: npm audit --audit-level=moderate
       - run: npm run check-deps
       - run: npm run check-sdk
