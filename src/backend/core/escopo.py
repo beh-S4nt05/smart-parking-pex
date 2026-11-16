@@ -84,8 +84,6 @@ def garantir_vagas_no_escopo(db: Session, usuario: Usuario, vaga_ids: list[str])
     Todos os identificadores do lote devem existir; nenhum ID inválido
     ou de outro estacionamento pode resultar em atualização parcial.
     """
-    from models.db_models import Vaga
-
     ids = set(vaga_ids)
     if not ids:
         raise HTTPException(
