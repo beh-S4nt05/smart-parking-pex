@@ -236,8 +236,20 @@ class ReservaCreate(ReservaBase):
     veiculo_id: str | None = None
 
 
+class VeiculoResumoReserva(BaseModel):
+    """Veículo associado à reserva, inclusive se foi removido da garagem depois."""
+    id: str
+    placa: str
+    categoria: Literal["carro", "moto"]
+    motorizacao: str
+    modelo: str | None = None
+
+    model_config = {"from_attributes": True}
+
+
 class ReservaResponse(ReservaBase):
     veiculo_id: str | None = None
+    veiculo: VeiculoResumoReserva | None = None
     credencial_id: str | None = None
     id: str
     usuario_id: str
