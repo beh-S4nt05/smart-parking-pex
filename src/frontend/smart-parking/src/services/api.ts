@@ -20,6 +20,10 @@ import { storage } from "./storage";
 import { addRequestSignerInterceptor } from "./requestSigner";
 import type {
   CadastroPayload,
+  CategoriaVeiculo,
+  MotorizacaoVeiculo,
+  VeiculoUsuario,
+  CredencialUsuario,
   DashboardAdmin,
   Estacionamento,
   EventoVaga,
@@ -271,8 +275,39 @@ export const parkingApi = {
     placa_veiculo?: string;
     /** RF-47: declarar/revogar a condição PCD depois do cadastro. */
     is_pcd?: boolean;
+    data_nascimento?: string;
   }): Promise<Usuario> {
     const { data } = await api.put<Usuario>("/auth/me", payload);
+    return data;
+  },
+
+  // ---- Veículos do usuário e solicitações de credencial da V1 ----
+  async listarVeiculos(): Promise<VeiculoUsuario[]> {
+    const { data } = await api.get<VeiculoUsuario[]>("/auth/veiculos");
+    return data;
+  },
+
+  async criarVeiculo(payload: {
+    placa: string;
+    categoria: CategoriaVeiculo;
+    motorizacao: MotorizacaoVeiculo;
+    modelo?: string;
+  }): Promise<VeiculoUsuario> {
+    const { data } = await api.post<VeiculoUsuario>("/auth/veiculos", payload);
+    return data;
+  },
+
+  async removerVeiculo(id: string): Promise<void> {
+    await api.delete(`/auth/veiculos/${id}`);
+  },
+
+  async listarCredenciais(): Promise<CredencialUsuario[]> {
+    const { data } = await api.get<CredencialUsuario[]>("/auth/credenciais");
+    return data;
+  },
+
+  async solicitarCredencial(tipo: "idoso" | "pcd"): Promise<CredencialUsuario> {
+    const { data } = await api.post<CredencialUsuario>("/auth/credenciais/solicitar", { tipo });
     return data;
   },
 
