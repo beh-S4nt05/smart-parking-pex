@@ -151,7 +151,7 @@ export default function Header({ rotaAtual = "/" }: { rotaAtual?: string }) {
 
       <View className="sp-header-divisor border-t border-white/10 px-1 py-1 sm:px-4 lg:hidden 3xl:px-8">
         <View className="mx-auto w-full max-w-7xl flex-row flex-wrap items-center justify-between gap-x-2 gap-y-1">
-          <View className="min-w-0 flex-row flex-wrap items-center gap-2">
+          <View className="min-w-0 flex-row flex-wrap items-center gap-3">
             {links()}
             {ajuda()}
           </View>
