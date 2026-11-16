@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "start": "npx expo start",
+    "start": "bash ../../../scripts/dev-front.sh",
     "android": "npx expo start --android",
     "ios": "npx expo start --ios",
     "web": "npx expo start --web",
@@ -14,7 +14,10 @@
     "check-sdk": "node ../../../scripts/check_expo_sdk.cjs",
     "update-sdk": "bash ../../../scripts/update_expo_sdk.sh",
     "check-native": "bash ../../../scripts/validate_expo_native.sh",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "start:lan": "bash ../../../scripts/dev-front.sh",
+    "start:tunnel": "bash ../../../scripts/dev-front.sh --tunnel",
+    "start:expo": "npx expo start"
   },
   "dependencies": {
     "@expo/vector-icons": "15.1.1",
