@@ -398,8 +398,8 @@ export function Card({
 }) {
   return (
     <View
-      className={`${cartao} ${className}`}
-      style={Platform.OS === "web" ? style : [{ borderWidth: 1, borderColor: "#E2E8F0" }, style]}
+      className={Platform.OS === "web" ? `${cartao} ${className}` : `rounded-2xl ${className.includes("bg-") ? "" : "bg-white"} ${className}`}
+      style={Platform.OS === "web" ? style : [{ borderWidth: 0 }, style]}
     >
       {children}
     </View>
@@ -495,7 +495,7 @@ export function StatTile({
   };
   const t = tones[tone];
   return (
-    <View className={`sp-kpi items-start rounded-2xl p-4 ${t.bg} ${className}`}>
+    <View className={`${Platform.OS === "web" ? "sp-kpi " : ""}items-start rounded-2xl p-4 ${t.bg} ${className}`} style={Platform.OS === "web" ? undefined : { borderWidth: 0 }}>
       <Text className="text-[13px] font-medium text-slate-600">{rotulo}</Text>
       <Text className={`sp-kpi-valor mt-1 text-2xl font-extrabold ${t.text}`}>{valor}</Text>
     </View>

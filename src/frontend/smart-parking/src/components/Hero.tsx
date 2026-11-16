@@ -15,7 +15,6 @@ import { useEffect, useState } from "react";
 import { FlatList, Modal, Platform, Pressable, ScrollView, Text, View, useWindowDimensions } from "react-native";
 import { colors } from "../theme";
 import { Botao, IconeChevron } from "./ui";
-import ShoppingList from "./ShoppingList";
 import type { Estacionamento } from "../types/api";
 
 interface Props {
@@ -104,18 +103,40 @@ export default function Hero({ shoppings, selecionadoId, onSelect, onBuscar }: P
                   nativeID="hero-lista-shoppings"
                   accessibilityRole="list"
                   accessibilityLabel="Lista de shoppings"
-                  className="mt-2 rounded-xl border border-slate-200 bg-white p-2"
+                  className="mt-2 rounded-xl border border-slate-200 bg-white p-1.5"
                 >
-                  <ScrollView style={{ maxHeight: 360 }} keyboardShouldPersistTaps="handled">
-                    <ShoppingList
-                      shoppings={shoppings}
-                      variante="lista"
-                      selecionadoId={selecionado?.id ?? null}
-                      onPress={(est) => {
-                        onSelect(est.id);
-                        setListaAberta(false);
-                      }}
-                    />
+                  <ScrollView style={{ maxHeight: 280 }} keyboardShouldPersistTaps="always">
+                    {shoppings.map((est) => {
+                      const ativo = est.id === selecionado?.id;
+                      const livres = est.vagas_disponiveis_total ?? 0;
+                      const total = est.total_vagas ?? 0;
+                      return (
+                        <Pressable
+                          key={est.id}
+                          onPress={() => {
+                            onSelect(est.id);
+                            setListaAberta(false);
+                          }}
+                          accessibilityRole="button"
+                          accessibilityLabel={`${est.nome}, ${livres} vagas disponíveis de ${total}`}
+                          accessibilityState={{ selected: ativo }}
+                          className={`min-h-14 flex-row items-center gap-3 rounded-lg px-3 py-2.5 hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${ativo ? "bg-blue-50" : "bg-white"}`}
+                        >
+                          <View className={`h-8 w-8 shrink-0 items-center justify-center rounded-lg ${ativo ? "bg-blue-600" : "bg-blue-100"}`}>
+                            <Text className={`text-sm font-extrabold ${ativo ? "text-white" : "text-blue-700"}`}>P</Text>
+                          </View>
+                          <View className="min-w-0 flex-1">
+                            <Text numberOfLines={1} className="text-[13px] font-bold text-slate-900">
+                              {est.nome}
+                            </Text>
+                            <Text className="mt-0.5 text-[11px] text-slate-500">
+                              {livres} livres de {total} vagas · {est.total_andares} andares
+                            </Text>
+                          </View>
+                          {ativo ? <Text className="text-xs font-bold text-blue-700">Selecionado</Text> : null}
+                        </Pressable>
+                      );
+                    })}
                   </ScrollView>
                 </View>
               ) : null}

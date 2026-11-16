@@ -18,6 +18,7 @@ import Header from "../components/Header";
 import Footer from "../components/Footer";
 import { MobileBottomNav, MobileScreenHeader } from "../components/MobileChrome";
 import ShoppingList from "../components/ShoppingList";
+import MobileShoppingList from "../components/MobileShoppingList";
 import { Botao } from "../components/ui";
 import { useEstacionamentos } from "../hooks/useEstacionamentos";
 import { useAgora, desdeAte } from "../hooks/useAgora";
@@ -52,7 +53,7 @@ export default function Explorar() {
         }
       >
         <View className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-8 3xl:px-8">
-          <View className="mb-5 flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
+          {Platform.OS === "web" ? <View className="mb-5 flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
             <View className={minW0Flex1}>
               <Text className={tituloExplorar}>
                 Vagas disponíveis agora
@@ -70,7 +71,7 @@ export default function Explorar() {
                 </Text>
               </View>
             </View>
-          </View>
+          </View> : <View className="mb-5 gap-1"><Text className="text-xl font-extrabold text-slate-900">Encontre seu shopping</Text><Text className="text-sm text-slate-600">Veja vagas disponíveis e escolha onde estacionar.</Text></View>}
 
           {/* Hick: um único filtro, com rótulo e contagem de resultados. */}
           <View className="mb-2 flex-row items-center gap-2">
@@ -108,10 +109,17 @@ export default function Explorar() {
               </Text>
             </View>
           ) : (
-            <ShoppingList
-              shoppings={filtrados}
-              onPress={(e) => router.push(`/shopping/${e.id}` as never)}
-            />
+            Platform.OS === "web" ? (
+              <ShoppingList
+                shoppings={filtrados}
+                onPress={(e) => router.push(`/shopping/${e.id}` as never)}
+              />
+            ) : (
+              <MobileShoppingList
+                shoppings={filtrados}
+                onPress={(e) => router.push(`/shopping/${e.id}` as never)}
+              />
+            )
           )}
 
           {/* CTA de cadastro para reservar */}

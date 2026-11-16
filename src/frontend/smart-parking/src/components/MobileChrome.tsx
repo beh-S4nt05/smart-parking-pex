@@ -6,7 +6,7 @@ import { useRouter } from "expo-router";
 const C = {
   navy: "#0F1E38",
   blue: "#2563EB",
-  muted: "#71819A",
+  muted: "#516078",
   line: "#E3EAF4",
 };
 
