@@ -88,6 +88,9 @@ export default function Reservas() {
           <View style={{ marginTop: 13, borderTopWidth: 1, borderColor: "#EDF2F7", paddingTop: 11 }}>
             <Text style={{ fontSize: 12, color: "#64748B" }}>Início: {formatarDataHora(r.horario_inicio)}</Text>
             <Text style={{ fontSize: 12, color: "#64748B", marginTop: 4 }}>Término: {formatarDataHora(r.horario_fim)}</Text>
+            <Text style={{ fontSize: 12, color: "#475569", marginTop: 7, fontWeight: "700" }}>
+              {r.veiculo ? `Veículo: ${r.veiculo.placa} · ${r.veiculo.categoria === "moto" ? "Moto" : "Carro"}` : "Veículo não informado (reserva anterior)"}
+            </Text>
           </View>
           {ativo ? (
             <Pressable onPress={() => pedirCancelamento(r.id, codigo)} accessibilityRole="button" accessibilityLabel={`Cancelar reserva da vaga ${codigo}`} style={{ minHeight: 44, borderRadius: 12, backgroundColor: "#FFF1F2", alignItems: "center", justifyContent: "center", marginTop: 12 }}>
@@ -241,6 +244,9 @@ export default function Reservas() {
                           {formatarDataHora(r.horario_inicio)} até{" "}
                           {formatarDataHora(r.horario_fim)}
                           {r.observacoes ? ` · ${r.observacoes}` : ""}
+                        </Text>
+                        <Text style={{ fontSize: 12, color: "#475569", fontWeight: "700", marginTop: 5 }}>
+                          {r.veiculo ? `Veículo: ${r.veiculo.placa} · ${r.veiculo.categoria === "moto" ? "Moto" : "Carro"}` : "Veículo não informado (reserva anterior)"}
                         </Text>
                       </View>
                     </View>
