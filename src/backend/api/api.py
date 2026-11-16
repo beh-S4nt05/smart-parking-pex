@@ -164,10 +164,7 @@ async def proxima_vaga(
         "mensagem": (
             f"Vaga encontrada no {andar_numero}º andar!"
             if vaga
-            else "Não há vagas comuns disponíveis — vagas PCD são exclusivas "
-                 "de quem declarou PCPD no cadastro."
-            if not (usuario and usuario.is_pcd)
-            else "Não há vagas disponíveis no momento."
+            else "Não há vagas disponíveis para o tipo escolhido neste momento."
         ),
     }
 
