@@ -27,6 +27,23 @@ export interface CadastroPayload {
   };
 }
 
+export interface VeiculoUsuario {
+  id: string;
+  placa: string;
+  categoria: CategoriaVeiculo;
+  motorizacao: MotorizacaoVeiculo | "nao_informada";
+  modelo?: string | null;
+  principal: boolean;
+  ativo: boolean;
+}
+
+export interface CredencialUsuario {
+  id: string;
+  tipo: "idoso" | "pcd";
+  status: "pendente" | "aprovado" | "rejeitado" | "expirado" | "revogado";
+  validade?: string | null;
+}
+
 export interface Usuario {
   id: string;
   nome: string;
