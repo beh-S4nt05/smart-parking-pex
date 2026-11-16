@@ -41,7 +41,19 @@ with contextlib.suppress(ProgrammingError, IntegrityError):
 # rodada sem alembic no container Docker: uma linha aqui + a revisão no
 # `migrations/` (ver MIGRACOES.md).
 CORRECOES_ESQUEMA = {
-    "usuarios": {"is_pcd": "BOOLEAN NOT NULL DEFAULT false"},  # RF-47 / a7e41c9d0b52
+    "usuarios": {
+        "is_pcd": "BOOLEAN NOT NULL DEFAULT false",  # RF-47
+        "data_nascimento": "DATE",  # V1: campo opcional sem inventar idade
+    },
+    "vagas": {
+        "categoria_veiculo": "VARCHAR(12)",
+        "recarga_disponivel": "BOOLEAN NOT NULL DEFAULT false",
+        "conector_tipo": "VARCHAR(40)",
+    },
+    "reservas": {
+        "veiculo_id": "VARCHAR",
+        "credencial_id": "VARCHAR",
+    },
 }
 
 
