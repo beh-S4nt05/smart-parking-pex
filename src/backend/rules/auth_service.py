@@ -108,12 +108,38 @@ def autenticar_usuario(db: Session, dados: LoginRequest) -> TokenResponse:
     Autentica usuário por e-mail OU telefone e retorna access + refresh tokens
     + os dados do usuário (o app usa `user` para popular o AuthContext).
     """
-    usuario = buscar_usuario_por_credencial(db, dados.email)
+    credencial = (dados.email or "").strip()
+    if "@" in credencial:
+        usuario = buscar_usuario_por_credencial(db, credencial)
+        senha_correta = bool(usuario and verificar_senha(dados.senha, usuario.senha_hash))
+    else:
+        # Telefones não possuem restrição de unicidade no banco.
+        # A implementação antiga devolvia o PRIMEIRO usuário com o número,
+        # ignorando a senha dos demais. Isso bloqueava o login de contas
+        # cadastradas que compartilhassem um telefone.
+        digitos = _somente_digitos(credencial)
+        candidatos = (
+            [u for u in db.query(Usuario).filter(Usuario.telefone.isnot(None)).all()
+             if _somente_digitos(u.telefone) == digitos]
+            if len(digitos) >= 8 else []
+        )
+        correspondentes = [
+            u for u in candidatos if verificar_senha(dados.senha, u.senha_hash)
+        ]
+        if len(correspondentes) > 1:
+            # Duas contas compartilham telefone E senha: nenhuma pode ser
+            # escolhida sem identificar a conta. Nunca escolher arbitrariamente.
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Mais de uma conta corresponde ao telefone informado. Entre usando seu e-mail.",
+            )
+        usuario = correspondentes[0] if correspondentes else None
+        senha_correta = usuario is not None
 
-    if not usuario or not verificar_senha(dados.senha, usuario.senha_hash):
+    if not senha_correta:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="E-mail/telefone ou senha incorretos"
+            detail="E-mail/telefone ou senha incorretos",
         )
 
     if not usuario.is_ativo:

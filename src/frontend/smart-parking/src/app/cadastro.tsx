@@ -135,6 +135,7 @@ export default function Cadastro() {
   async function enviar(pularOpcionais = false) {
     setLoading(true);
     setErroGeral(null);
+    let contaCriada = false;
     try {
       const comVeiculo = !pularOpcionais && Boolean(form.placa.trim());
       await register({
@@ -152,10 +153,16 @@ export default function Cadastro() {
           modelo: form.modeloCarro.trim() || undefined,
         } : undefined,
       });
+      contaCriada = true;
       await signIn(form.email, form.senha);
       router.replace("/");
     } catch (err) {
-      setErroGeral(apiErrorMessage(err, "Não foi possível criar a conta."));
+      const motivo = apiErrorMessage(err, "Tente novamente.");
+      setErroGeral(
+        contaCriada
+          ? `Sua conta foi cadastrada, mas o acesso automático falhou: ${motivo} Abra Entrar e use o e-mail e a senha cadastrados. Não é necessário se cadastrar novamente.`
+          : motivo,
+      );
     } finally {
       setLoading(false);
     }
