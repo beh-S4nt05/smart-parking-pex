@@ -21,6 +21,7 @@ import { useAuth } from "../hooks/useAuth";
 import { apiErrorMessage, parkingApi } from "../services/api";
 import { Botao, Card, Campo, Chip } from "../components/ui";
 import GaragemECredenciais from "../components/GaragemECredenciais";
+import AnaliseCredenciaisAdmin from "../components/AnaliseCredenciaisAdmin";
 import Header from "../components/Header";
 import { MobileBottomNav, MobileScreenHeader } from "../components/MobileChrome";
 import Footer from "../components/Footer";
@@ -190,6 +191,7 @@ export default function Perfil() {
           </Card>
 
           <GaragemECredenciais dataNascimento={user.data_nascimento} onProfileChanged={refreshUser} />
+          {user.role === "admin" ? <AnaliseCredenciaisAdmin /> : null}
 
           <Card className="p-5">
             {Platform.OS === "web" ? <Text className="mb-1 text-[15px] font-bold text-slate-800">Segurança</Text> : <View className="mb-2 flex-row items-center gap-2"><Ionicons name="shield-checkmark-outline" size={23} color="#2563EB" /><Text className="text-[16px] font-extrabold text-slate-800">Segurança</Text></View>}
