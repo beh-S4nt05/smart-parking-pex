@@ -79,7 +79,25 @@ def garantir_escopo_estacionamento(
 
 
 def garantir_vagas_no_escopo(db: Session, usuario: Usuario, vaga_ids: list[str]) -> None:
-    """Bloqueia PATCH de vagas que não pertençam a NENHUM shopping permitido."""
+    """Verifica existência e escopo do lote ANTES de qualquer mutação.
+
+    Todos os identificadores do lote devem existir; nenhum ID inválido
+    ou de outro estacionamento pode resultar em atualização parcial.
+    """
+    from models.db_models import Vaga
+
+    ids = set(vaga_ids)
+    if not ids:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Informe ao menos uma vaga para atualização.",
+        )
+    total = db.query(Vaga.id).filter(Vaga.id.in_(ids)).count()
+    if total != len(ids):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Uma ou mais vagas não foram encontradas.",
+        )
     if usuario.role == TipoUsuario.ADMIN.value:
         return
     permitidos = ids_permitidos(usuario)
@@ -91,7 +109,7 @@ def garantir_vagas_no_escopo(db: Session, usuario: Usuario, vaga_ids: list[str])
     fora = (
         db.query(Vaga.id)
         .join(Andar, Vaga.andar_id == Andar.id)
-        .filter(Vaga.id.in_(vaga_ids), Andar.estacionamento_id.not_in(permitidos))
+        .filter(Vaga.id.in_(ids), Andar.estacionamento_id.not_in(permitidos))
         .count()
     )
     if fora:
