@@ -46,6 +46,7 @@ export default function GaragemECredenciais({
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [exibirFormulario, setExibirFormulario] = useState(false);
+  const [editandoId, setEditandoId] = useState<string | null>(null);
   const [placa, setPlaca] = useState("");
   const [modelo, setModelo] = useState("");
   const [categoria, setCategoria] = useState<CategoriaVeiculo>("carro");
@@ -72,25 +73,81 @@ export default function GaragemECredenciais({
 
   useEffect(() => { void recarregar(); }, [recarregar]);
 
-  async function adicionar() {
+  function limparFormulario() {
+    setPlaca("");
+    setModelo("");
+    setCategoria("carro");
+    setMotorizacao("combustao");
+  }
+
+  function iniciarAdicao() {
+    if (exibirFormulario && !editandoId) {
+      setExibirFormulario(false);
+      return;
+    }
+    limparFormulario();
+    setEditandoId(null);
+    setExibirFormulario(true);
+  }
+
+  function iniciarEdicao(v: VeiculoUsuario) {
+    if (editandoId === v.id) {
+      setEditandoId(null);
+      return;
+    }
+    setExibirFormulario(false);
+    setEditandoId(v.id);
+    setPlaca(v.placa);
+    setModelo(v.modelo ?? "");
+    setCategoria(v.categoria);
+    setMotorizacao(v.motorizacao === "nao_informada" ? "combustao" : v.motorizacao);
+  }
+
+  async function salvarVeiculo() {
     if (!/^[A-Z]{3}[0-9]{4}$/.test(placa) && !/^[A-Z]{3}[0-9][A-Z][0-9]{2}$/.test(placa)) {
       avisar("Placa inválida", "Informe uma placa como ABC1234 ou ABC1D23.");
       return;
     }
     setSalvando(true);
     try {
-      await parkingApi.criarVeiculo({ placa, modelo: modelo.trim() || undefined, categoria, motorizacao });
-      setPlaca(""); setModelo(""); setExibirFormulario(false);
+      const dados = { placa, modelo: modelo.trim() || undefined, categoria, motorizacao };
+      if (editandoId) await parkingApi.atualizarVeiculo(editandoId, dados);
+      else await parkingApi.criarVeiculo(dados);
+      setEditandoId(null);
+      setExibirFormulario(false);
+      limparFormulario();
       await recarregar();
+      await onProfileChanged();
     } catch (e) {
-      avisar("Não foi possível cadastrar", apiErrorMessage(e));
-    } finally { setSalvando(false); }
+      avisar("Não foi possível salvar o veículo", apiErrorMessage(e));
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  async function definirPrincipal(v: VeiculoUsuario) {
+    if (v.principal || salvando) return;
+    setSalvando(true);
+    try {
+      await parkingApi.definirVeiculoPrincipal(v.id);
+      await recarregar();
+      await onProfileChanged();
+    } catch (e) {
+      avisar("Não foi possível alterar o principal", apiErrorMessage(e));
+    } finally {
+      setSalvando(false);
+    }
   }
 
   async function remover(v: VeiculoUsuario) {
     async function executar() {
       setSalvando(true);
-      try { await parkingApi.removerVeiculo(v.id); await recarregar(); }
+      try {
+        await parkingApi.removerVeiculo(v.id);
+        if (editandoId === v.id) setEditandoId(null);
+        await recarregar();
+        await onProfileChanged();
+      }
       catch (e) { avisar("Não foi possível remover", apiErrorMessage(e)); }
       finally { setSalvando(false); }
     }
@@ -134,41 +191,95 @@ export default function GaragemECredenciais({
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
           <View style={{ flex: 1 }}>
             <Text style={titulo}>Meus veículos</Text>
-            <Text style={{ fontSize: 12, color: "#475569", marginTop: 4 }}>Carros, motos e modelos elétricos</Text>
+            <Text style={{ fontSize: 12, color: "#475569", marginTop: 4 }}>
+              Gerencie os carros e motos usados em suas reservas
+            </Text>
           </View>
-          <Pressable accessibilityRole="button" onPress={() => setExibirFormulario((v) => !v)}
-            style={{ paddingVertical: 11, paddingHorizontal: 14, borderRadius: 13, backgroundColor: "#EAF1FF", minHeight: 44 }}>
-            <Text style={{ color: "#1D4ED8", fontWeight: "800", fontSize: 13 }}>{exibirFormulario ? "Fechar" : "+ Adicionar"}</Text>
+          <Pressable accessibilityRole="button" accessibilityLabel="Adicionar veículo"
+            disabled={salvando} onPress={iniciarAdicao}
+            style={{ paddingVertical: 11, paddingHorizontal: 14, borderRadius: 13, backgroundColor: "#EAF1FF", minHeight: 44, justifyContent: "center" }}>
+            <Text style={{ color: "#1D4ED8", fontWeight: "800", fontSize: 13 }}>
+              {exibirFormulario && !editandoId ? "Fechar" : "+ Adicionar"}
+            </Text>
           </Pressable>
         </View>
         {veiculos.length === 0 && !exibirFormulario ? (
-          <Text style={{ color: "#475569", fontSize: 13 }}>Ainda não há veículos. Você pode adicioná-los quando quiser.</Text>
+          <Text style={{ color: "#475569", fontSize: 13 }}>
+            Ainda não há veículos. Adicione um para escolher nas reservas.
+          </Text>
         ) : null}
         {veiculos.map((v) => (
-          <View key={v.id} style={{ backgroundColor: "#F4F7FD", borderRadius: 13, padding: 13, flexDirection: "row", alignItems: "center", gap: 8 }}>
-            <View style={{ flex: 1 }}>
-              <Text style={{ color: "#15233B", fontSize: 15, fontWeight: "800" }}>{v.placa} {v.principal ? "· Principal" : ""}</Text>
-              <Text style={{ color: "#475569", fontSize: 12, marginTop: 3 }}>
-                {v.categoria === "moto" ? "Moto" : "Carro"} · {v.motorizacao === "eletrico" ? "Elétrico" : v.motorizacao === "hibrido" ? "Híbrido" : v.motorizacao === "combustao" ? "Combustão" : "Não informada"}
-                {v.modelo ? ` · ${v.modelo}` : ""}
-              </Text>
+          <View key={v.id} style={{ backgroundColor: "#F4F7FD", borderRadius: 15, padding: 14, gap: 11 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: "#15233B", fontSize: 16, fontWeight: "800" }}>
+                  {v.placa}
+                </Text>
+                <Text style={{ color: "#475569", fontSize: 12, marginTop: 4, lineHeight: 18 }}>
+                  {v.categoria === "moto" ? "Moto" : "Carro"} · {v.motorizacao === "eletrico" ? "Elétrico" : v.motorizacao === "hibrido" ? "Híbrido" : v.motorizacao === "combustao" ? "Combustão" : "Não informado"}
+                  {v.modelo ? ` · ${v.modelo}` : ""}
+                </Text>
+              </View>
+              {v.principal ? (
+                <View style={{ borderRadius: 12, padding: 9, backgroundColor: "#DBEAFE" }}>
+                  <Text style={{ color: "#1D4ED8", fontWeight: "800", fontSize: 12 }}>Principal</Text>
+                </View>
+              ) : null}
             </View>
-            <Pressable disabled={salvando} onPress={() => void remover(v)} accessibilityRole="button"
-              accessibilityLabel={`Remover veículo ${v.placa}`}
-              style={{ padding: 10, borderRadius: 10, backgroundColor: "#FFE8E8", minHeight: 44, justifyContent: "center" }}>
-              <Text style={{ color: "#B91C1C", fontSize: 12, fontWeight: "800" }}>Remover</Text>
-            </Pressable>
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+              {!v.principal ? (
+                <Pressable disabled={salvando} onPress={() => void definirPrincipal(v)}
+                  accessibilityRole="button" accessibilityLabel={`Definir ${v.placa} como principal`}
+                  style={{ paddingHorizontal: 13, paddingVertical: 10, minHeight: 44, borderRadius: 12, backgroundColor: "#DBEAFE", justifyContent: "center" }}>
+                  <Text style={{ color: "#1D4ED8", fontWeight: "800", fontSize: 12 }}>Tornar principal</Text>
+                </Pressable>
+              ) : null}
+              <Pressable disabled={salvando} onPress={() => iniciarEdicao(v)}
+                accessibilityRole="button" accessibilityLabel={`Editar veículo ${v.placa}`}
+                style={{ paddingHorizontal: 13, paddingVertical: 10, minHeight: 44, borderRadius: 12, backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "#CBD5E1", justifyContent: "center" }}>
+                <Text style={{ color: "#334155", fontWeight: "800", fontSize: 12 }}>
+                  {editandoId === v.id ? "Fechar edição" : "Editar"}
+                </Text>
+              </Pressable>
+              <Pressable disabled={salvando} onPress={() => void remover(v)} accessibilityRole="button"
+                accessibilityLabel={`Remover veículo ${v.placa}`}
+                style={{ paddingHorizontal: 13, paddingVertical: 10, minHeight: 44, borderRadius: 12, backgroundColor: "#FEE2E2", justifyContent: "center" }}>
+                <Text style={{ color: "#B91C1C", fontSize: 12, fontWeight: "800" }}>Remover</Text>
+              </Pressable>
+            </View>
+            {editandoId === v.id ? (
+              <View style={{ borderTopWidth: 1, borderColor: "#CBD5E1", paddingTop: 12 }}>
+                <Text style={{ fontSize: 15, fontWeight: "800", color: "#15233B", marginBottom: 12 }}>
+                  Editar {v.placa}
+                </Text>
+                <OptionChips label="Tipo do veículo" value={categoria} onChange={setCategoria}
+                  options={[{ value: "carro", label: "Carro" }, { value: "moto", label: "Moto" }]} />
+                <OptionChips label="Motorização" value={motorizacao} onChange={setMotorizacao}
+                  options={[{ value: "combustao", label: "Combustão" }, { value: "hibrido", label: "Híbrido" }, { value: "eletrico", label: "Elétrico" }]} />
+                <Campo label="Placa" placeholder="ABC1D23" autoCapitalize="characters" maxLength={7}
+                  value={placa} onChangeText={(valor) => setPlaca(normalizarPlaca(valor))} />
+                <Campo label="Modelo" placeholder="Ex.: Onix 1.0" value={modelo} onChangeText={setModelo} opcional />
+                <Text style={{ fontSize: 12, color: "#475569", lineHeight: 18, marginBottom: 12 }}>
+                  Se houver uma reserva ativa com este veículo, a placa, o tipo e a motorização ficam protegidos até o término ou cancelamento.
+                </Text>
+                <Botao label="Salvar alterações do veículo" onPress={() => void salvarVeiculo()} loading={salvando} />
+              </View>
+            ) : null}
           </View>
         ))}
-        {exibirFormulario ? (
+        {exibirFormulario && !editandoId ? (
           <View style={{ borderTopWidth: 1, borderColor: "#E5EAF2", paddingTop: 16 }}>
-            <OptionChips label="Veículo" value={categoria} onChange={setCategoria} options={[{ value: "carro", label: "Carro" }, { value: "moto", label: "Moto" }]} />
+            <Text style={{ fontSize: 15, fontWeight: "800", color: "#15233B", marginBottom: 12 }}>
+              Adicionar veículo
+            </Text>
+            <OptionChips label="Tipo do veículo" value={categoria} onChange={setCategoria}
+              options={[{ value: "carro", label: "Carro" }, { value: "moto", label: "Moto" }]} />
             <OptionChips label="Motorização" value={motorizacao} onChange={setMotorizacao}
               options={[{ value: "combustao", label: "Combustão" }, { value: "hibrido", label: "Híbrido" }, { value: "eletrico", label: "Elétrico" }]} />
             <Campo label="Placa" placeholder="ABC1D23" autoCapitalize="characters" maxLength={7}
-              value={placa} onChangeText={(v) => setPlaca(normalizarPlaca(v))} />
-            <Campo label="Modelo" placeholder="Opcional" value={modelo} onChangeText={setModelo} opcional />
-            <Botao label="Salvar veículo" onPress={() => void adicionar()} loading={salvando} />
+              value={placa} onChangeText={(valor) => setPlaca(normalizarPlaca(valor))} />
+            <Campo label="Modelo" placeholder="Ex.: Honda CG 160" value={modelo} onChangeText={setModelo} opcional />
+            <Botao label="Salvar veículo" onPress={() => void salvarVeiculo()} loading={salvando} />
           </View>
         ) : null}
       </View>
