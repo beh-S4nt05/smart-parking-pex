@@ -10,7 +10,7 @@ import { limparCacheEstacionamentos } from "../services/cacheEstacionamentos";
 import { parkingApi } from "../services/api";
 import { storage } from "../services/storage";
 import { erroRevogaSessao, ROLES_PAINEL } from "../services/authFlow";
-import type { Tokens, Usuario } from "../types/api";
+import type { CadastroPayload, Tokens, Usuario } from "../types/api";
 
 export type { Usuario };
 
@@ -33,14 +33,7 @@ export interface AuthContextData {
   loading: boolean;
   /** credencial = e-mail OU telefone (o backend aceita os dois) */
   signIn: (credencial: string, senha: string) => Promise<Usuario>;
-  register: (payload: {
-    nome: string;
-    email: string;
-    senha: string;
-    telefone?: string;
-    placa_veiculo?: string;
-    /** RF-47 */ is_pcd?: boolean;
-  }) => Promise<Usuario>;
+  register: (payload: CadastroPayload) => Promise<Usuario>;
   signOut: () => Promise<void>;
   /** rebusca /auth/me após edições do perfil (RF-15) */
   refreshUser: () => Promise<void>;
@@ -122,14 +115,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   }, []);
 
   const register = useCallback(
-    async (payload: {
-      nome: string;
-      email: string;
-      senha: string;
-      telefone?: string;
-      placa_veiculo?: string;
-      is_pcd?: boolean;
-    }) => parkingApi.registrar(payload),
+    async (payload: CadastroPayload) => parkingApi.registrar(payload),
     [],
   );
 
