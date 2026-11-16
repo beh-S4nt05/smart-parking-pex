@@ -67,7 +67,7 @@ async def login(request: Request, dados: LoginRequest, db: Session = Depends(get
     Endpoint de login (e-mail OU telefone + senha).
     Retorna access_token, refresh_token e os dados do usuário autenticado.
     """
-    return auth_service.autenticar_usuario(db, dados)
+    return auth_service.autenticar_usuario(db, dados, request.headers.get('User-Agent'))
 
 
 @router.post("/refresh", response_model=TokenResponse)
@@ -140,6 +140,10 @@ def logout(
         ))
 
     _revogar(token, "logout")
+    from rules import session_service
+    payload = _dec(token)
+    if payload.get("sid"):
+        session_service.revogar(db, usuario.id, payload["sid"])
     if refresh_token:
         _revogar(refresh_token, "logout_refresh")
     # faxina: linhas já vencidas não servem mais para nada
@@ -577,3 +581,34 @@ def confirmar_mfa(
 ):
     from rules.identity_service import confirmar_mfa as _confirmar
     _confirmar(db, usuario, dados.codigo)
+
+
+# --- Gestão de sessões por conta; sem exposição de tokens ao frontend. ---
+@router.get("/sessoes")
+def listar_sessoes(usuario: Usuario = Depends(get_usuario_logado), db: Session = Depends(get_db)):
+    from rules.session_service import listar
+    return listar(db, usuario.id)
+
+
+@router.delete("/sessoes/{sessao_id}", status_code=204)
+def revogar_sessao(
+    sessao_id: str, usuario: Usuario = Depends(get_usuario_logado),
+    db: Session = Depends(get_db),
+):
+    from rules.session_service import revogar
+    revogar(db, usuario.id, sessao_id)
+
+
+@router.post("/sessoes/revogar-todas", status_code=204)
+def revogar_todas_sessoes(
+    usuario: Usuario = Depends(get_usuario_logado), db: Session = Depends(get_db),
+):
+    from datetime import datetime, timezone
+    from models.db_models import SessaoAcesso, RevogacaoToken
+    agora = datetime.now(timezone.utc)
+    db.query(SessaoAcesso).filter(
+        SessaoAcesso.usuario_id == usuario.id, SessaoAcesso.revogada_em.is_(None)
+    ).update({"revogada_em": agora}, synchronize_session=False)
+    db.add(RevogacaoToken(jti=None, usuario_id=usuario.id,
+                          motivo="revogacao_sessoes", criado_em=agora))
+    db.commit()

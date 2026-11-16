@@ -269,6 +269,22 @@ export const parkingApi = {
     await storage.clearTokens();
   },
 
+  // Inventário de sessões, igual para navegador e Android.
+  async listarSessoes(): Promise<Array<{
+    id: string; dispositivo: string; criado_em: string;
+    ultimo_acesso_em?: string | null; expira_em: string; ativa: boolean;
+  }>> {
+    const { data } = await api.get("/auth/sessoes");
+    return data;
+  },
+  async revogarSessao(id: string): Promise<void> {
+    await api.delete(`/auth/sessoes/${id}`);
+  },
+  async revogarTodasSessoes(): Promise<void> {
+    await api.post("/auth/sessoes/revogar-todas");
+    await storage.clearTokens();
+  },
+
   // ---- Conta (RF-15) ----
   async atualizarMe(payload: {
     nome?: string;

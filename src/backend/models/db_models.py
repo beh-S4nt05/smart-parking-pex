@@ -160,6 +160,19 @@ class Usuario(Base):
 
 
 
+class SessaoAcesso(Base):
+    """Sessão emitida pelo servidor. JWT com sid revogado deixa de autorizar acesso."""
+    __tablename__ = "sessoes_acesso"
+    id = Column(String, primary_key=True, default=generate_uuid)
+    usuario_id = Column(String, ForeignKey("usuarios.id", ondelete="CASCADE"), nullable=False, index=True)
+    refresh_jti_hash = Column(String(64), nullable=False)
+    dispositivo = Column(String(160), nullable=False, default="Desconhecido")
+    criado_em = Column(DateTime(timezone=True), server_default=func.now())
+    ultimo_acesso_em = Column(DateTime(timezone=True), nullable=True)
+    expira_em = Column(DateTime(timezone=True), nullable=False)
+    revogada_em = Column(DateTime(timezone=True), nullable=True)
+
+
 class TokenIdentidade(Base):
     """Desafios de verificação de e-mail e recuperação, guardados somente por hash."""
     __tablename__ = "tokens_identidade"

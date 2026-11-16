@@ -37,7 +37,8 @@ def verificar_senha(senha_limpa: str, senha_hash: str) -> bool:
 def criar_token(
     subject: str | Any,
     tipo_token: str,
-    expiracao_delta: timedelta | None = None
+    expiracao_delta: timedelta | None = None,
+    sessao_id: str | None = None,
 ) -> str:
     """
     Cria um JWT token (access ou refresh)
@@ -66,6 +67,8 @@ def criar_token(
         "jti": uuid.uuid4().hex,
     }
 
+    if sessao_id:
+        payload["sid"] = sessao_id
     return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
 
