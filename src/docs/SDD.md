@@ -193,7 +193,7 @@ Referências complementares: `MIGRACOES.md`, `INTEGRACAO_FRONTEND.md`, `QA_UI_UX
 
 ## 12. Direção da versão 2 (fora do aceite da v1)
 
-O produto tem **quatro** frentes propostas para a próxima versão. Nenhuma é declarada como pronta por este SDD. Antes da implementação, cada frente precisa de contrato de dados, tratamento de falhas, autorização e evidência de operação.
+O produto tem **cinco** frentes propostas para a próxima versão. Nenhuma é declarada como pronta por este SDD. Antes da implementação, cada frente precisa de contrato de dados, tratamento de falhas, autorização e evidência de operação.
 
 | ID | Frente | Contrato inicial e critério de aceite proposto |
 |---|---|---|
@@ -201,5 +201,28 @@ O produto tem **quatro** frentes propostas para a próxima versão. Nenhuma é d
 | V2-02 | Modelo 3D simulado do estacionamento | Representar unidade → andar → vaga e estado a partir dos IDs atuais; sincronizar com a mesma API do mapa 2D; preservar uma alternativa 2D acessível e desempenho aceitável nos dispositivos alvo. A representação não deve inventar ocupação. |
 | V2-03 | Sensores com visão computacional e câmeras inteligentes | Criar serviço de inferência que associa detecção a vaga/câmera, indica confiança e publica transições idempotentes; prever calibração, revisão humana de ambiguidade e tratamento de câmera offline. Validar privacidade, retenção e segurança das imagens antes de implantação real. |
 | V2-04 | Integração com sistemas de gerenciamento de estacionamento | Definir adaptadores por fornecedor, identidade externa ↔ IDs internos, autenticação, sincronização inicial/incremental, reconciliação de conflitos e observabilidade. O sistema de origem e a direção de cada dado devem ser definidos por integração. |
+| V2-05 | Veículos, beneficiários e elegibilidade de vagas especiais | Permitir múltiplos veículos por conta (carro/moto, combustão/híbrido/elétrico); registrar beneficiário, credenciais de idoso/PCD e estados de verificação; verificar elegibilidade pelo backend antes da reserva; aplicar requisitos da credencial oficial e compatibilidade da vaga/veículo, com testes de autorização, auditoria e privacidade. |
+
+### 12.1 V2-05 — Identidade, veículos e elegibilidade
+
+**Objetivo:** separar o *motorista/beneficiário* do *veículo* e do *tipo de vaga*. A versão 1 mantém os tipos `comum`, `idoso`, `pcd`, `moto` e `eletrico` e a autodeclaração `usuarios.is_pcd`; isso **não comprova credencial**. A V2-05 substitui essa confiança isolada por autorização verificável sem desativar fluxos existentes durante migração.
+
+**Escopo funcional, a implementar:**
+
+1. **Perfil do usuário:** data de nascimento (para regra de 60+), atributos cadastrais mínimos e situações distintas `nao_solicitado`, `pendente`, `aprovado`, `rejeitado`, `expirado`, `revogado` para credenciais especiais. Idade declarada não substitui comprovação.
+2. **Garagem do usuário:** múltiplos veículos, marca/modelo opcional, placa normalizada, categoria `carro|moto`, motorização `combustao|hibrido|eletrico`; se necessário, discriminar híbrido plug-in e compatibilidade de conector/carregador. Veículos e pessoas são entidades separadas.
+3. **Credenciais de estacionamento:** beneficiário `idoso|pcd`, referência e validade de credencial oficial, verificação documental por agente autorizado, trilha de revisão; exigir credencial compatível em vez de inferir o direito apenas pela idade, aparência facial ou `is_pcd`. Considerar beneficiário como condutor **ou passageiro**.
+4. **Motor de elegibilidade server-side:** para cada pedido, verificar estado da vaga, classe do veículo, motorização/infraestrutura da vaga, credencial validada, presença/uso pelo beneficiário conforme regra aplicável, e escopo da unidade. Devolver razão compreensível quando negar; tratar vagas de recarga elétrica separadamente das de idoso e PCD.
+5. **Experiência mobile-first:** cadastro comum curto; veículo opcional na primeira jornada; configuração posterior em *Meus veículos*; solicitar validação de credencial **apenas quando o usuário pedir uma vaga reservada**. Permitir acompanhamento da análise sem bloquear vagas comuns.
+6. **Segurança/LGPD:** limitar coleta de documentos, preferir evidência mínima e registro da decisão à retenção de imagens, acesso restrito a revisores, logs de consulta/alteração e política de retenção/exclusão. **Não utilizar reconhecimento facial nem estimativa visual da idade como prova de elegibilidade**; eventual biometria exigiria projeto independente, justificativa, avaliação de risco e base legal.
+7. **Integração oficial:** estudar validação eletrônica de credenciais por fonte/autorização oficial quando disponível; não assumir autenticidade apenas pela leitura de QR Code ou imagem. Na ausência de integração, revisão humana com critérios documentados.
+
+**Modelo proposto, sujeito ao SDD de implementação:** `vehicles` (usuário ↔ veículos), `parking_credentials` (beneficiário, tipo, validade e verificação), `parking_eligibility` (serviço de domínio, não necessariamente tabela) e referência opcional ao veículo e beneficiário na reserva. Alterações de ORM exigem Alembic e atualização de API, clientes, regras, documentação e testes.
+
+**Critérios mínimos de aceite:** impedir reservas especiais sem credencial verificada; permitir idoso/PCD com credencial válida e veículo adequado quando autorizado; não confundir `moto eletrica` com `carro eletrico`; impedir veículo incompatível com a vaga/carregador; lidar com credencial vencida/revogada; manter reserva comum disponível; validar concorrência, mensagens e acessibilidade; testes backend, frontend, matrizes de elegibilidade e CI/CD. A versão 1 não deve ser descrita como tendo essas validações implementadas.
+
+**Sequência sugerida:** V2-05A (dados e migração de veículos), V2-05B (credenciais e processo de revisão), V2-05C (regras de elegibilidade na reserva), V2-05D (interface e testes ponta a ponta), V2-05E (integração oficial, somente se viável/autorizada).
 
 Ordem técnica sugerida: estabilizar contratos de eventos/identidades e observabilidade, integrar pagamentos e sistemas externos por adaptadores, então conectar visão computacional e a visualização 3D aos mesmos estados consolidados. Essa ordem é uma proposta de planejamento, não uma promessa de prazo ou decisão sobre fornecedores.
+
+V2-05 deve preceder qualquer automação de alocação de vagas especiais e integrar-se ao controle de acesso e às demais frentes da v2.
