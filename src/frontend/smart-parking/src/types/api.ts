@@ -158,6 +158,8 @@ export interface ProximaVaga {
 
 export interface Reserva {
   id: string;
+  veiculo_id?: string | null;
+  veiculo?: Pick<VeiculoUsuario, "id" | "placa" | "categoria" | "motorizacao" | "modelo"> | null;
   vaga_id: string;
   usuario_id: string;
   horario_inicio: string;
