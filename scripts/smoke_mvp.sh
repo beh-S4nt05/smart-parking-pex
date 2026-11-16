@@ -62,6 +62,18 @@ else
     exit 1
 fi
 
+# O painel usa esta leitura autenticada. Uma imagem antiga ainda pode aceitar
+# POST nesta URL e passar o CRUD abaixo, mas responder 405 ao GET do frontend.
+r=$(req GET /api/admin/estacionamentos "" "$TOKEN")
+s=$(status_of "$r")
+if [ "$s" = "200" ]; then
+    pass "GET /api/admin/estacionamentos (lista do painel) → 200"
+else
+    fail "lista do painel → $s" "$(body_of "$r")"
+    echo "A API em $BASE não oferece a leitura usada pelo painel. Atualize o main e recrie o backend: ./scripts/docker.sh up"
+    exit 1
+fi
+
 echo "── 3. Entrada e saída de dados (CRUD admin de ponta a ponta, com verificação no mapa)"
 # Sequência idêntica à do modal do painel: casca → andar → vagas em lote → o
 # dado precisa APARECER no mapa (senão é só um 200 vazio — passou assim numa
