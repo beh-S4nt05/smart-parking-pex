@@ -12,7 +12,7 @@ import { minW0Flex1, subtituloHero } from "../styles/recipes";
  * com hierarquia real — a primeira dobra agora se parece com um produto.
  */
 import { useEffect, useState } from "react";
-import { Platform, Pressable, ScrollView, Text, View } from "react-native";
+import { Platform, Pressable, ScrollView, Text, View, useWindowDimensions } from "react-native";
 import { colors } from "../theme";
 import { Botao, IconeChevron } from "./ui";
 import ShoppingList from "./ShoppingList";
@@ -27,6 +27,8 @@ interface Props {
 
 export default function Hero({ shoppings, selecionadoId, onSelect, onBuscar }: Props) {
   const [listaAberta, setListaAberta] = useState(false);
+  const { height: alturaTela } = useWindowDimensions();
+  const listaMaxHeight = Platform.OS === "web" ? 360 : Math.max(160, Math.min(320, alturaTela * 0.38));
   const selecionado =
     shoppings.find((s) => s.id === selecionadoId) ?? shoppings[0];
   const vazio = shoppings.length === 0;
@@ -101,9 +103,15 @@ export default function Hero({ shoppings, selecionadoId, onSelect, onBuscar }: P
                   nativeID="hero-lista-shoppings"
                   accessibilityRole="list"
                   accessibilityLabel="Lista de shoppings"
-                  className="mt-2 rounded-xl border border-slate-200 bg-white p-2"
+                  className={`mt-2 rounded-xl bg-white p-2 ${Platform.OS === "web" ? "border border-slate-200" : "border border-slate-100"}`}
                 >
-                  <ScrollView style={{ maxHeight: 360 }} keyboardShouldPersistTaps="handled">
+                  <ScrollView
+                    style={{ maxHeight: listaMaxHeight, flexGrow: 0 }}
+                    nestedScrollEnabled={Platform.OS !== "web"}
+                    scrollEnabled
+                    keyboardShouldPersistTaps="always"
+                    showsVerticalScrollIndicator={Platform.OS !== "web"}
+                  >
                     <ShoppingList
                       shoppings={shoppings}
                       variante="lista"
