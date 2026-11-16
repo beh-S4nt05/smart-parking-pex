@@ -4,7 +4,7 @@ Nunca inferir aprovação da data de nascimento ou de usuarios.is_pcd.
 A data de nascimento pode ser usada apenas para pré-requisito do pedido
 de credencial de idoso, não como substituto da comprovação oficial.
 """
-from datetime import date
+from datetime import datetime, timezone
 
 from sqlalchemy.orm import Session
 
@@ -16,7 +16,7 @@ def credencial_valida(
 ) -> CredencialEstacionamento | None:
     if tipo not in {"pcd", "idoso"}:
         return None
-    hoje = date.today()
+    hoje = datetime.now(timezone.utc).date()
     candidatas = db.query(CredencialEstacionamento).filter(
         CredencialEstacionamento.usuario_id == usuario_id,
         CredencialEstacionamento.tipo == tipo,
