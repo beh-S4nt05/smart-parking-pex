@@ -59,18 +59,24 @@ test("cadastro em duas etapas valida dados e cria sessão de motorista", async (
   await page.getByRole("button", { name: "Continuar", exact: true }).click();
   await expect(page.getByText("Se quiser, cadastre seu veículo agora")).toBeVisible();
 
-  await page.getByLabel(/Modelo do carro/).fill("Onix 1.0");
+  await page.getByRole("radio", { name: "Moto" }).click();
+  await page.getByRole("radio", { name: "Elétrico" }).click();
+  await page.getByLabel(/Modelo do veículo/).fill("Moto elétrica QA");
   await page.getByLabel(/Placa/).fill("XX");
   await page.getByRole("button", { name: "Criar conta", exact: true }).click();
   await expect(page.getByText(/Placa inválida/)).toBeVisible();
 
   await page.getByLabel(/Placa/).fill("ABC1D23");
-  await page.getByRole("checkbox", { name: "Sou pessoa com deficiência (PCD)" }).click();
+  await page.getByRole("radio", { name: "PCD" }).click();
   await page.getByRole("button", { name: "Criar conta", exact: true }).click();
 
   await expect(page).toHaveURL(/\/$/);
   await expect(page.getByText("Minhas reservas").first()).toBeVisible();
   await expect(page.getByText("Usuário").first()).toBeVisible();
+  await page.goto("/perfil");
+  await expect(page.getByText("Meus veículos")).toBeVisible();
+  await expect(page.getByText(/ABC1D23/).first()).toBeVisible();
+  await expect(page.getByText("Aguardando análise")).toBeVisible();
 });
 
 
