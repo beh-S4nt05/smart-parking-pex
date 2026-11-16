@@ -64,7 +64,7 @@ export default function AnaliseCredenciaisAdmin() {
           <Text style={{ fontSize: 12, color: "#64748B", marginTop: 4 }}>Acesso administrativo: validação com evidência oficial</Text>
         </View>
         <Pressable onPress={() => void carregar()} accessibilityRole="button"
-          style={{ backgroundColor: "#EAF1FF", padding: 11, borderRadius: 12 }}>
+          style={{ backgroundColor: "#EAF1FF", padding: 11, borderRadius: 12, minHeight: 44, justifyContent: "center" }}>
           <Text style={{ color: "#1D4ED8", fontWeight: "800", fontSize: 12 }}>Atualizar</Text>
         </Pressable>
       </View>
