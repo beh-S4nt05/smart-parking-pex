@@ -233,10 +233,12 @@ class ReservaBase(BaseModel):
 
 
 class ReservaCreate(ReservaBase):
-    pass
+    veiculo_id: str | None = None
 
 
 class ReservaResponse(ReservaBase):
+    veiculo_id: str | None = None
+    credencial_id: str | None = None
     id: str
     usuario_id: str
     status: StatusReserva
