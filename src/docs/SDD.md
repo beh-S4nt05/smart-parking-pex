@@ -93,15 +93,15 @@ O frontend é Expo Router, React Native e NativeWind. Web e mobile compartilham 
 | ID | Requisito V1 | Critério de aceite |
 |---|---|---|
 | RF-13 | Perfil do usuário com data de nascimento e indicação de benefício especial | Cadastro básico continua rápido; idade calculada no backend; informar 60+ não concede automaticamente acesso a vaga de idoso |
-| RF-14 | Garagem com múltiplos veículos por conta | Cadastrar e desativar carro/moto, placa normalizada e motorização combustão/híbrido/elétrico; diferenciar carro elétrico de moto elétrica; edição direta ainda não adicionada |
+| RF-14 | Garagem com múltiplos veículos por conta | Cadastrar, editar, definir um principal e desativar vários carros/motos; placa normalizada, motorização independente; reservas ativas bloqueiam alterações operacionais e exclusão |
 | RF-15 | Verificação de credencial de idoso/PCD | Solicitação sob demanda; estados pendente/aprovada/rejeitada/vencida/revogada; análise por responsável autorizado com registro de decisão e validade; beneficiário pode ser motorista ou passageiro |
 | RF-16 | Elegibilidade de vaga verificada no backend | Avaliar tipo da vaga, veículo, motorização e eventual carregador, credencial e regras do beneficiário antes da confirmação de reserva; negar com mensagem explicativa quando incompatível |
-| RF-17 | Interface mobile/web de veículos e credenciais | Acesso por perfil, seleção do veículo na reserva, consulta da situação de validação e fluxo comum sem exigência de documentos especiais |
+| RF-17 | Interface mobile/web de veículos e credenciais | Acesso no perfil web e Android, gerenciamento inline, seleção por reserva com principal pré-selecionado, placa exibida no histórico e consulta de credenciais |
 | RF-18 | Segurança e privacidade das credenciais | Coleta mínima de documentos, acesso restrito, histórico de decisões e política de retenção; sem reconhecimento facial ou estimativa de idade como comprovação automática |
 
 **Modelo técnico da V1:** separar `vehicles` (pertencentes ao usuário, tipo, placa e motorização), `parking_credentials` (beneficiário, espécie, validade e estado da avaliação) e um serviço `parking_eligibility` para autorização transacional. Adaptar as referências de reserva quando necessário. Migrar o esquema com Alembic, atualizar contratos de API, testes de concorrência, autorização e mensagens de erro. A conferência automatizada por fonte oficial só deverá ser adicionada caso exista integração viável e autorizada; a simples leitura de imagem/QR não substitui verificação.
 
-**Implementação da V1:** (1) modelos e migração aditiva do PR #56; (2) cadastro e API de múltiplos veículos; (3) solicitações e conferência manual de credenciais com auditoria; (4) seleção de veículo e elegibilidade no backend; (5) testes de segurança e fluxo. A integração e avaliação em aparelho físico são fases de aceite distintas. Mantêm-se reservas comuns legadas sem veículo selecionado, e a autodeclaração antiga deixou de autorizar vaga PCD.
+**Implementação da V1:** (1) modelos e migração aditiva do PR #56; (2) cadastro e API de múltiplos veículos; (3) solicitações e conferência manual de credenciais com auditoria; (4) seleção de veículo e elegibilidade no backend; (5) testes de segurança e fluxo. A integração e avaliação em aparelho físico são fases de aceite distintas. Mantêm-se reservas comuns legadas para contas sem garagem; contas com veículos ativos precisam selecionar um deles. O veículo principal altera apenas a seleção padrão de reservas futuras, preservando o vínculo das reservas já criadas. A autodeclaração antiga deixou de autorizar vaga PCD.
 
 ## 5. Arquitetura e dados
 
