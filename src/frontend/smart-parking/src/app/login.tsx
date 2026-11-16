@@ -18,6 +18,7 @@ import {
   View,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../hooks/useAuth";
 import { apiErrorMessage } from "../services/api";
 import { destinoAposLogin } from "../services/authFlow";
@@ -200,6 +201,7 @@ export default function Login() {
             accessibilityLabel="Preencher credenciais do motorista"
             hitSlop={4}
             className="flex-row items-center justify-between rounded-lg border border-slate-200 bg-white px-3 py-2 active:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+            style={Platform.OS === "web" ? undefined : { borderWidth: 0, borderRadius: 12, backgroundColor: "#FFFFFF", paddingVertical: 12, flexWrap: "wrap", gap: 4 }}
           >
             <Text className={rotulo}>
               Motorista
@@ -218,6 +220,7 @@ export default function Login() {
             accessibilityLabel="Preencher credenciais do administrador"
             hitSlop={4}
             className="flex-row items-center justify-between rounded-lg border border-slate-200 bg-white px-3 py-2 active:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+            style={Platform.OS === "web" ? undefined : { borderWidth: 0, borderRadius: 12, backgroundColor: "#FFFFFF", paddingVertical: 12, flexWrap: "wrap", gap: 4 }}
           >
             <Text className={rotulo}>
               Administrador
@@ -236,8 +239,9 @@ export default function Login() {
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : undefined}
       className="flex-1 bg-white"
+      style={Platform.OS === "web" ? undefined : { backgroundColor: "#F3F7FD" }}
     >
-      <View className="flex-1 flex-row bg-white">
+      <View className="flex-1 flex-row bg-white" style={Platform.OS === "web" ? undefined : { backgroundColor: "#F3F7FD" }}>
         {/* Painel de marca apenas em desktop real (>= 1024px). CSS puro: o
             pré-render já nasce com o split, sem o "flash" do layout mobile
             que aparecia enquanto useLarguraResponsiva hidratava. */}
@@ -256,13 +260,11 @@ export default function Login() {
 
         <ScrollView
           className={minW0Flex1}
-          contentContainerStyle={{
-            flexGrow: 1,
-            justifyContent: "center",
-            alignItems: "center",
-          }}
+          contentContainerStyle={Platform.OS === "web"
+            ? { flexGrow: 1, justifyContent: "center", alignItems: "center" }
+            : { flexGrow: 1, justifyContent: "flex-start", alignItems: "center", paddingBottom: 32 }}
         >
-          <View className="w-full max-w-[420px] px-6 py-8 sm:px-8 3xl:max-w-[480px] 3xl:px-10 3xl:py-12">
+          <View className="w-full max-w-[420px] px-6 py-8 sm:px-8 3xl:max-w-[480px] 3xl:px-10 3xl:py-12" style={Platform.OS === "web" ? undefined : { paddingTop: 20, paddingHorizontal: 20, maxWidth: 480 }}>
             {/* botão de voltar vive no fluxo: edge-to-edge no Android não
                 deixa o toque cair na barra de status do sistema. */}
             <Pressable
@@ -271,6 +273,7 @@ export default function Login() {
               accessibilityLabel="Voltar ao Início"
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               className="mb-5 min-h-11 flex-row items-center gap-2 self-start rounded-full border border-slate-200 bg-white px-3.5 py-1.5 active:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+              style={Platform.OS === "web" ? undefined : { backgroundColor: "transparent", borderWidth: 0, paddingHorizontal: 0, marginBottom: 17 }}
             >
               <IconeVoltar />
               <Text className="text-[13px] font-semibold text-slate-600">Início</Text>
@@ -285,17 +288,36 @@ export default function Login() {
               </Text>
             </View>
 
-            <View className="mb-7 items-center lg:hidden">
-              <Logo size={56} />
-              <Text accessibilityRole="header" className="mt-4 text-[22px] font-extrabold text-slate-900">
-                Bem-vindo ao Smart Parking
-              </Text>
-              <Text className={textoApoio}>
-                Entre para acessar sua conta
-              </Text>
-            </View>
+            {Platform.OS === "web" ? (
+              <View className="mb-7 items-center lg:hidden">
+                <Logo size={56} />
+                <Text accessibilityRole="header" className="mt-4 text-[22px] font-extrabold text-slate-900">
+                  Bem-vindo ao Smart Parking
+                </Text>
+                <Text className={textoApoio}>Entre para acessar sua conta</Text>
+              </View>
+            ) : (
+              <View style={{ backgroundColor: "#0F1E38", borderRadius: 24, padding: 22, marginBottom: 18 }}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 18 }}>
+                  <View style={{ height: 46, width: 46, borderRadius: 14, backgroundColor: "#2563EB", alignItems: "center", justifyContent: "center" }}>
+                    <Ionicons name="car-sport" color="#FFFFFF" size={26} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 17, fontWeight: "800", color: "#FFFFFF" }}>Smart Parking</Text>
+                    <Text style={{ color: "#ADC3E0", fontSize: 11 }}>Acesso à sua conta</Text>
+                  </View>
+                </View>
+                <Text style={{ fontSize: 26, fontWeight: "900", lineHeight: 31, color: "#FFFFFF" }}>Bem-vindo de volta!</Text>
+                <Text style={{ fontSize: 13, color: "#BFCCE1", marginTop: 7, lineHeight: 20 }}>Entre para acompanhar suas vagas e reservas.</Text>
+              </View>
+            )}
 
-            {formulario}
+            {Platform.OS === "web" ? formulario : (
+              <View style={{ backgroundColor: "#FFFFFF", borderRadius: 22, padding: 18 }}>
+                <Text style={{ fontSize: 17, fontWeight: "800", color: "#15233B", marginBottom: 17 }}>Entrar na minha conta</Text>
+                {formulario}
+              </View>
+            )}
           </View>
         </ScrollView>
       </View>

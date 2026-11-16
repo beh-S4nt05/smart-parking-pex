@@ -630,10 +630,13 @@ export function Campo({
             accessibilityHint="Alterna a visualização da senha digitada"
             accessibilityState={{ disabled: !onAlternarVisivel }}
             className="min-h-11 min-w-11 flex-row items-center justify-center rounded-md px-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+            style={Platform.OS === "web" ? undefined : { borderWidth: 0, backgroundColor: "transparent" }}
           >
-            <Text className="text-xs font-semibold text-blue-600">
-              {visivel ? "Ocultar" : "Mostrar"}
-            </Text>
+            {Platform.OS === "web" ? (
+              <Text className="text-xs font-semibold text-blue-600">{visivel ? "Ocultar" : "Mostrar"}</Text>
+            ) : (
+              <Ionicons name={visivel ? "eye-off-outline" : "eye-outline"} size={22} color="#2563EB" />
+            )}
           </Pressable>
         ) : null}
       </View>

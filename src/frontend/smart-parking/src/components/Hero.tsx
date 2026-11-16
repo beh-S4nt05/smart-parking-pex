@@ -13,7 +13,6 @@ import { minW0Flex1, subtituloHero } from "../styles/recipes";
  */
 import { useEffect, useState } from "react";
 import { FlatList, Modal, Platform, Pressable, ScrollView, Text, View, useWindowDimensions } from "react-native";
-import { colors } from "../theme";
 import { Botao, IconeChevron } from "./ui";
 import type { Estacionamento } from "../types/api";
 
@@ -72,8 +71,8 @@ export default function Hero({ shoppings, selecionadoId, onSelect, onBuscar }: P
               Onde você quer estacionar?
             </Text>
           </View>
-          <View className="flex w-full min-w-0 flex-col gap-3 md:flex-row md:items-start md:gap-3">
-            <View className={minW0Flex1}>
+          <View className={`flex w-full min-w-0 flex-col gap-3 md:items-start md:gap-3 ${Platform.OS === "web" && listaAberta ? "md:flex-col" : "md:flex-row"}`}>
+            <View className={minW0Flex1} style={Platform.OS === "web" && listaAberta ? { width: "100%" } : undefined}>
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel={`Selecionar shopping: ${nomeSelecionado} — Manaus, AM`}
@@ -105,7 +104,7 @@ export default function Hero({ shoppings, selecionadoId, onSelect, onBuscar }: P
                   accessibilityLabel="Lista de shoppings"
                   className="mt-2 rounded-xl border border-slate-200 bg-white p-1.5"
                 >
-                  <ScrollView style={{ maxHeight: 280 }} keyboardShouldPersistTaps="always">
+                  <ScrollView style={{ maxHeight: 320 }} keyboardShouldPersistTaps="always">
                     {shoppings.map((est) => {
                       const ativo = est.id === selecionado?.id;
                       const livres = est.vagas_disponiveis_total ?? 0;
@@ -217,19 +216,7 @@ export default function Hero({ shoppings, selecionadoId, onSelect, onBuscar }: P
           </View>
         </View>
 
-        {/* Legenda agrupada: o significado das cores fica ao lado da decisão. */}
-        <View className="mt-5 flex-row flex-wrap items-center justify-center gap-x-3 gap-y-1 sm:mt-6 sm:gap-x-6">
-          {[
-            { c: "#10B981", t: "Vaga livre" },
-            { c: "#EF4444", t: "Vaga ocupada" },
-            { c: colors.warning, t: "Poucas vagas" },
-          ].map((i) => (
-            <View key={i.t} className="flex-row items-center gap-1.5">
-              <View className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: i.c }} />
-              <Text className="text-[11px] font-medium text-slate-600 sm:text-[13px]">{i.t}</Text>
-            </View>
-          ))}
-        </View>
+
       </View>
     </View>
   );
