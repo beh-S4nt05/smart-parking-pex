@@ -3,8 +3,9 @@ from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
 from core.timeutils import utc_agora
-from models.db_models import Andar, Reserva, StatusReserva, StatusVaga, TipoVaga, Usuario, Vaga
+from models.db_models import Andar, Reserva, StatusReserva, StatusVaga, TipoVaga, Usuario, Vaga, Veiculo
 from models.schemas import ReservaCreate
+from rules.elegibilidade_service import credencial_valida
 
 
 def expirar_reservas_vencidas(db: Session) -> int:
@@ -53,18 +54,51 @@ def criar_reserva(db: Session, dados: ReservaCreate, usuario_logado: Usuario) ->
             detail="Esta vaga não está disponível para reserva"
         )
 
-    # RF-47: vaga PCD é restrita a quem se declarou PCD. A reserva explícita
-    # (toque no mapa) passa pelo mesmo crivo do motor de atribuição — sem
-    # essa amarração bastaria mirar a célula PCD no mapa para furar a fila.
-    if vaga.tipo == TipoVaga.PCD.value and not usuario_logado.is_pcd:
+    # O veículo é sempre identificado no escopo do usuário autenticado.
+    veiculo = None
+    if dados.veiculo_id:
+        veiculo = db.query(Veiculo).filter(
+            Veiculo.id == dados.veiculo_id,
+            Veiculo.usuario_id == usuario_logado.id,
+            Veiculo.ativo.is_(True),
+        ).first()
+        if not veiculo:
+            raise HTTPException(status_code=403, detail="Veículo não pertence à sua conta")
+
+    # Vaga especial: documento oficial verificado, não a autodeclaração.
+    credencial = None
+    if vaga.tipo in {TipoVaga.PCD.value, TipoVaga.IDOSO.value}:
+        credencial = credencial_valida(db, usuario_logado.id, vaga.tipo)
+        if not credencial:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Vaga exclusiva para beneficiário com credencial oficial validada. Solicite a verificação em Minha conta.",
+            )
+
+    # Sem veículo informado ainda é permitido reservar vaga comum legado.
+    # Para moto/recarga ou categoria explicitamente restrita, não é possível
+    # decidir compatibilidade sem um veículo cadastrado e selecionado.
+    if (vaga.tipo in {TipoVaga.MOTO.value, TipoVaga.ELETRICO.value}
+        or vaga.categoria_veiculo is not None or vaga.recarga_disponivel) and not veiculo:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=(
-                "Vaga PCD é exclusiva para motoristas com deficiência declarada "
-                "no cadastro. Escolha uma vaga comum — ou declare sua condição "
-                "em “Minha conta”, se aplicável."
-            ),
+            status_code=422,
+            detail="Selecione um veículo cadastrado para confirmar esta vaga.",
         )
+    if veiculo:
+        categoria = vaga.categoria_veiculo
+        if categoria in {"carro", "moto"} and veiculo.categoria != categoria:
+            raise HTTPException(status_code=422, detail="Seu veículo não é compatível com o tipo desta vaga.")
+        if vaga.tipo == TipoVaga.MOTO.value and veiculo.categoria != "moto":
+            raise HTTPException(status_code=422, detail="Vaga reservada para motocicletas.")
+        if vaga.tipo == TipoVaga.ELETRICO.value:
+            if veiculo.motorizacao != "eletrico":
+                raise HTTPException(status_code=422, detail="Vaga de recarga reservada para veículo elétrico.")
+            if categoria is None and veiculo.categoria != "carro":
+                raise HTTPException(status_code=422, detail="Esta vaga elétrica é para carros; motos elétricas exigem vaga compatível.")
+        if vaga.recarga_disponivel and veiculo.motorizacao != "eletrico":
+            raise HTTPException(status_code=422, detail="Vaga de recarga requer veículo elétrico compatível.")
+        if vaga.conector_tipo and veiculo.conector_tipo != vaga.conector_tipo:
+            raise HTTPException(status_code=422, detail="Conector de recarga incompatível.")
 
     if dados.horario_fim <= dados.horario_inicio:
         raise HTTPException(
@@ -75,6 +109,7 @@ def criar_reserva(db: Session, dados: ReservaCreate, usuario_logado: Usuario) ->
     # Cria a reserva
     nova_reserva = Reserva(
         **dados.model_dump(),
+        credencial_id=credencial.id if credencial else None,
         usuario_id=usuario_logado.id,
         status=StatusReserva.CONFIRMADA
     )

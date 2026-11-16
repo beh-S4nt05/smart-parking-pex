@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 
 from models.db_models import Andar, Estacionamento, StatusVaga, TipoVaga, Usuario, Vaga
 from models.schemas import AndarCreate, EstacionamentoCreate
+from rules.elegibilidade_service import credencial_valida
 
 
 def listar_todos_estacionamentos(
@@ -98,17 +99,12 @@ def buscar_proxima_vaga_disponivel(
     usuario: Usuario | None = None,
 ) -> tuple[Vaga | None, int | None, str | None]:
     """
-    Motor de atribuição de próxima vaga (RF-47):
-    Busca a primeira vaga livre, priorizando o tipo desejado, retornando
-    também o andar e um AVISO quando a elegibilidade PCD mexeu no resultado.
-
-    Regra da vaga PCD (medida do relato do usuário em 22/10-rod.5): a vaga
-    PCD só é atribuída a motorista com `is_pcd` declarado no cadastro/perfil.
-    Anônimo ou não-declarado = motorista COMUM — recebe "vaga normal", nunca
-    PCD, mesmo que a PCD seja a mais próxima. Para o declarado PCD, a PCD é
-    PRIORITÁRIA (cai para comum se não houver livre).
+    Motor da V1: sugere vaga especial apenas para credenciais oficiais
+    verificadas e vigentes. Um booleano legado is_pcd ou uma idade declarada
+    não substituem a autorização. Para usuários comuns prioriza vaga comum.
     """
-    eh_pcd = bool(usuario and usuario.is_pcd)
+    eh_pcd = bool(usuario and credencial_valida(db, usuario.id, "pcd"))
+    eh_idoso = bool(usuario and credencial_valida(db, usuario.id, "idoso"))
     query = db.query(Vaga).join(Andar).filter(
         Andar.estacionamento_id == estacionamento_id,
         Vaga.status == StatusVaga.LIVRE
@@ -117,22 +113,27 @@ def buscar_proxima_vaga_disponivel(
 
     if not eh_pcd:
         query = query.filter(Vaga.tipo != TipoVaga.PCD.value)
-        if tipo_vaga_desejado == TipoVaga.PCD.value:
-            tipo_vaga_desejado = None
-            aviso = (
-                "Vagas PCD são reservadas a motoristas com deficiência "
-                "declarada no cadastro. Atribuímos uma vaga comum."
-            )
-        elif tipo_vaga_desejado == "normal":
-            # sinônimo histórico do Figma → vocabulário oficial do sistema
-            tipo_vaga_desejado = TipoVaga.COMUM.value
+    if not eh_idoso:
+        query = query.filter(Vaga.tipo != TipoVaga.IDOSO.value)
+    if tipo_vaga_desejado == "normal":
+        tipo_vaga_desejado = TipoVaga.COMUM.value
+
+    if tipo_vaga_desejado in {"pcd", "idoso"} and (
+        (tipo_vaga_desejado == "pcd" and not eh_pcd)
+        or (tipo_vaga_desejado == "idoso" and not eh_idoso)
+    ):
+        aviso = "Vagas reservadas a idoso/PCD exigem credencial oficial validada. Exibimos opções comuns."
+        tipo_vaga_desejado = TipoVaga.COMUM.value
 
     vaga = None
     if tipo_vaga_desejado:
         vaga = query.filter(Vaga.tipo == tipo_vaga_desejado).first()
     elif eh_pcd:
-        # PCD declarado: prioriza a vaga especial livre
         vaga = query.filter(Vaga.tipo == TipoVaga.PCD.value).first()
+    elif eh_idoso:
+        vaga = query.filter(Vaga.tipo == TipoVaga.IDOSO.value).first()
+    else:
+        vaga = query.filter(Vaga.tipo == TipoVaga.COMUM.value).first()
 
     if not vaga:
         vaga = query.first()

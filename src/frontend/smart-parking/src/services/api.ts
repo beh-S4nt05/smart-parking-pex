@@ -19,6 +19,11 @@ import Constants from "expo-constants";
 import { storage } from "./storage";
 import { addRequestSignerInterceptor } from "./requestSigner";
 import type {
+  CadastroPayload,
+  CategoriaVeiculo,
+  MotorizacaoVeiculo,
+  VeiculoUsuario,
+  CredencialUsuario,
   DashboardAdmin,
   Estacionamento,
   EventoVaga,
@@ -237,15 +242,7 @@ export const parkingApi = {
     return data;
   },
 
-  async registrar(payload: {
-    nome: string;
-    email: string;
-    senha: string;
-    telefone?: string;
-    placa_veiculo?: string;
-    /** RF-47: autodeclaração PCD colhida no cadastro (opcional). */
-    is_pcd?: boolean;
-  }): Promise<Usuario> {
+  async registrar(payload: CadastroPayload): Promise<Usuario> {
     const { data } = await api.post<Usuario>("/auth/registrar", payload);
     return data;
   },
@@ -278,13 +275,63 @@ export const parkingApi = {
     placa_veiculo?: string;
     /** RF-47: declarar/revogar a condição PCD depois do cadastro. */
     is_pcd?: boolean;
+    data_nascimento?: string;
   }): Promise<Usuario> {
     const { data } = await api.put<Usuario>("/auth/me", payload);
     return data;
   },
 
+  // ---- Veículos do usuário e solicitações de credencial da V1 ----
+  async listarVeiculos(): Promise<VeiculoUsuario[]> {
+    const { data } = await api.get<VeiculoUsuario[]>("/auth/veiculos");
+    return data;
+  },
+
+  async criarVeiculo(payload: {
+    placa: string;
+    categoria: CategoriaVeiculo;
+    motorizacao: MotorizacaoVeiculo;
+    modelo?: string;
+  }): Promise<VeiculoUsuario> {
+    const { data } = await api.post<VeiculoUsuario>("/auth/veiculos", payload);
+    return data;
+  },
+
+  async removerVeiculo(id: string): Promise<void> {
+    await api.delete(`/auth/veiculos/${id}`);
+  },
+
+  async listarCredenciais(): Promise<CredencialUsuario[]> {
+    const { data } = await api.get<CredencialUsuario[]>("/auth/credenciais");
+    return data;
+  },
+
+  async solicitarCredencial(tipo: "idoso" | "pcd"): Promise<CredencialUsuario> {
+    const { data } = await api.post<CredencialUsuario>("/auth/credenciais/solicitar", { tipo });
+    return data;
+  },
+
   async trocarSenha(senha_atual: string, nova_senha: string): Promise<void> {
     await api.put("/auth/senha", { senha_atual, nova_senha });
+  },
+
+  async credenciaisPendentesAdmin(): Promise<Array<{
+    id: string; usuario_id: string; usuario_nome: string;
+    tipo: "idoso" | "pcd"; status: string; criado_em?: string;
+  }>> {
+    const { data } = await api.get("/api/admin/credenciais/pendentes");
+    return data;
+  },
+
+  async avaliarCredencialAdmin(id: string, payload: {
+    decisao: "aprovado" | "rejeitado" | "revogado";
+    justificativa: string;
+    metodo_verificacao: "conferencia_presencial" | "consulta_oficial";
+    referencia_oficial?: string;
+    validade?: string;
+  }): Promise<{ id: string; status: string }> {
+    const { data } = await api.post(`/api/admin/credenciais/${id}/avaliar`, payload);
+    return data;
   },
 
   // ---- Estacionamentos / vagas ----
@@ -363,6 +410,7 @@ export const parkingApi = {
 
   // ---- Reservas ----
   async criarReserva(payload: {
+    veiculo_id?: string;
     vaga_id: string;
     horario_inicio: string;
     horario_fim: string;

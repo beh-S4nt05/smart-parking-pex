@@ -7,12 +7,50 @@ export type VagaStatus = "livre" | "ocupada" | "reservada" | "inativa";
 export type VagaTipo = "comum" | "pcd" | "idoso" | "moto" | "eletrico";
 export type ReservaStatus = "confirmada" | "cancelada" | "concluida" | "expirada";
 
+export type CategoriaVeiculo = "carro" | "moto";
+export type MotorizacaoVeiculo = "combustao" | "hibrido" | "eletrico";
+
+export interface CadastroPayload {
+  nome: string;
+  email: string;
+  senha: string;
+  telefone?: string;
+  placa_veiculo?: string;
+  is_pcd?: boolean; // legado: nunca aprova uma credencial solicitada
+  data_nascimento?: string;
+  beneficio_solicitado?: "idoso" | "pcd";
+  veiculo?: {
+    placa: string;
+    categoria: CategoriaVeiculo;
+    motorizacao: MotorizacaoVeiculo;
+    modelo?: string;
+  };
+}
+
+export interface VeiculoUsuario {
+  id: string;
+  placa: string;
+  categoria: CategoriaVeiculo;
+  motorizacao: MotorizacaoVeiculo | "nao_informada";
+  modelo?: string | null;
+  principal: boolean;
+  ativo: boolean;
+}
+
+export interface CredencialUsuario {
+  id: string;
+  tipo: "idoso" | "pcd";
+  status: "pendente" | "aprovado" | "rejeitado" | "expirado" | "revogado";
+  validade?: string | null;
+}
+
 export interface Usuario {
   id: string;
   nome: string;
   email: string;
   telefone?: string | null;
   placa_veiculo?: string | null;
+  data_nascimento?: string | null;
   /** RF-47: autodeclaração PCD — vaga PCD só é atribuída a quem declara. */
   is_pcd?: boolean;
   is_ativo: boolean;

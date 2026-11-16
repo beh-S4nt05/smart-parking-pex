@@ -24,6 +24,7 @@ import { Ionicons } from "@expo/vector-icons";
 import Header, { BarraEscura } from "../../components/Header";
 import VagaMapa from "../../components/VagaMapa";
 import { MobileBottomNav } from "../../components/MobileChrome";
+import OptionChips from "../../components/OptionChips";
 import { useMapaVagas } from "../../hooks/useMapaVagas";
 import { useLarguraResponsiva } from "../../hooks/useLarguraResponsiva";
 import { useAgora, desdeAte } from "../../hooks/useAgora";
@@ -46,6 +47,7 @@ import type {
   Reserva,
   Vaga,
   VagaTipo,
+  VeiculoUsuario,
 } from "../../types/api";
 
 const FILTROS_TIPO: { id: VagaTipo | "todos"; label: string }[] = [
@@ -75,6 +77,19 @@ export default function MapaVagas() {
   const [reservando, setReservando] = useState(false);
   const [shopping, setShopping] = useState<Estacionamento | null>(null);
   const [minhasReservas, setMinhasReservas] = useState<Reserva[]>([]);
+  const [veiculos, setVeiculos] = useState<VeiculoUsuario[]>([]);
+  const [veiculoId, setVeiculoId] = useState("");
+
+  useEffect(() => {
+    if (!isAuthenticated) { setVeiculos([]); setVeiculoId(""); return; }
+    let alive = true;
+    parkingApi.listarVeiculos().then((lista) => {
+      if (!alive) return;
+      setVeiculos(lista);
+      setVeiculoId((atual) => lista.some((v) => v.id === atual) ? atual : (lista.find((v) => v.principal)?.id ?? lista[0]?.id ?? ""));
+    }).catch(() => { if (alive) setVeiculos([]); });
+    return () => { alive = false; };
+  }, [isAuthenticated]);
 
   // reservas ativas do usuário — dão o botão "Cancelar reserva" no mapa
   useEffect(() => {
@@ -225,6 +240,7 @@ export default function MapaVagas() {
       const fim = new Date(ini.getTime() + 2 * 3600000);
       await parkingApi.criarReserva({
         vaga_id: v.id,
+        veiculo_id: veiculoId || undefined,
         horario_inicio: ini.toISOString().slice(0, 19),
         horario_fim: fim.toISOString().slice(0, 19),
         observacoes: "Reserva pelo app (2 horas)",
@@ -293,6 +309,25 @@ export default function MapaVagas() {
     </View>
   );
 
+  const seletorVeiculo = isAuthenticated ? (
+    <View style={{ marginTop: 12, marginBottom: 8 }}>
+      {veiculos.length ? (
+        <OptionChips label="Veículo desta reserva" value={veiculoId} onChange={setVeiculoId}
+          options={veiculos.map((v) => ({
+            value: v.id,
+            label: `${v.categoria === "moto" ? "Moto" : "Carro"} ${v.placa}${v.motorizacao === "eletrico" ? " · elétrico" : ""}`,
+          }))} />
+      ) : (
+        <Pressable onPress={() => router.push("/perfil")} accessibilityRole="button"
+          style={{ borderRadius: 12, backgroundColor: "#EFF6FF", padding: 13, minHeight: 44 }}>
+          <Text style={{ color: "#1D4ED8", fontWeight: "800", fontSize: 12 }}>
+            Cadastre um veículo em Minha conta para vagas de moto ou recarga.
+          </Text>
+        </Pressable>
+      )}
+    </View>
+  ) : null;
+
   const gradeVagas = (
     <Card className="p-4 sm:p-6">
       {/* seleção no mobile → barra de ação */}
@@ -303,12 +338,15 @@ export default function MapaVagas() {
             {vagaSel.status === "livre" ? "disponível" : vagaSel.status}
           </Text>
           {vagaSel.status === "livre" ? (
+            <>
+            {seletorVeiculo}
             <Botao
               label={`Reservar por 2h${shopping?.taxa_hora ? ` · ${formatarMoedaBR(shopping.taxa_hora * 2)}` : ""}`}
               onPress={() => reservar(vagaSel)}
               loading={reservando}
               className="mt-3 w-full"
             />
+            </>
           ) : reservaDestaVaga ? (
             <Botao
               label="Cancelar minha reserva"
@@ -481,12 +519,15 @@ export default function MapaVagas() {
                     : "Reserve pelo app e pague na saída."}
                 </Text>
                 {vagaSel.status === "livre" ? (
+                  <>
+                  {seletorVeiculo}
                   <Botao
                     label="Reservar por 2h"
                     onPress={() => reservar(vagaSel)}
                     loading={reservando}
                     className="mt-3 w-full"
                   />
+                  </>
                 ) : reservaDestaVaga ? (
                   <Botao
                     label="Cancelar minha reserva"

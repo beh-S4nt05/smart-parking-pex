@@ -19,15 +19,13 @@ import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../hooks/useAuth";
 import { apiErrorMessage, parkingApi } from "../services/api";
-import { Botao, Card, Campo, Checkbox, Chip } from "../components/ui";
+import { Botao, Card, Campo, Chip } from "../components/ui";
+import GaragemECredenciais from "../components/GaragemECredenciais";
+import AnaliseCredenciaisAdmin from "../components/AnaliseCredenciaisAdmin";
 import Header from "../components/Header";
 import { MobileBottomNav, MobileScreenHeader } from "../components/MobileChrome";
 import Footer from "../components/Footer";
 import { colors } from "../theme";
-
-/** Lei de Postel: aceita minúsculas, hífen e espaços; envia placa limpa. */
-const normalizarPlaca = (valor: string) =>
-  valor.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8);
 
 const ROLE_LABEL: Record<string, string> = {
   admin: "Admin global",
@@ -41,7 +39,7 @@ export default function Perfil() {
   const router = useRouter();
   const { user, loading, signIn, signOut, refreshUser } = useAuth();
 
-  const [f, setF] = useState({ nome: "", telefone: "", placa: "", pcd: false });
+  const [f, setF] = useState({ nome: "", telefone: "" });
   const [salvando, setSalvando] = useState(false);
   const [senha, setSenha] = useState({ atual: "", nova: "", confirma: "" });
   const [trocando, setTrocando] = useState(false);
@@ -51,8 +49,6 @@ export default function Perfil() {
       setF({
         nome: user.nome ?? "",
         telefone: user.telefone ?? "",
-        placa: user.placa_veiculo ?? "",
-        pcd: Boolean(user.is_pcd),
       });
     }
   }, [user]);
@@ -89,11 +85,10 @@ export default function Perfil() {
       await parkingApi.atualizarMe({
         nome: f.nome.trim(),
         telefone: f.telefone.trim() || undefined,
-        placa_veiculo: f.placa.trim() || undefined,
-        is_pcd: f.pcd, // RF-47: declarar/revogar a elegibilidade PCD
       });
       await refreshUser();
-      Alert.alert("Perfil atualizado", "Já vale para a reserva da próxima vaga.");
+      if (Platform.OS === "web") window.alert("Perfil atualizado");
+      else Alert.alert("Perfil atualizado", "Informações de conta salvas.");
     } catch (e) {
       Alert.alert("Não foi possível salvar", apiErrorMessage(e));
     } finally {
@@ -164,7 +159,7 @@ export default function Perfil() {
 
           {/* Zeigarnic: uma tarefa incompleta visível incentiva o fechamento.
               Desaparece assim que telefone e placa são preenchidos. */}
-          {!f.telefone.trim() || !f.placa.trim() ? (
+          {!f.telefone.trim() ? (
             <Card className="sp-alerta flex-row items-start gap-3 border-blue-200 bg-blue-50/60 p-4">
               <View className="mt-0.5 h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-600">
                 <Text className="text-base font-bold text-white">!</Text>
@@ -174,7 +169,7 @@ export default function Perfil() {
                   Complete seu cadastro
                 </Text>
                 <Text className="mt-1 text-[13px] leading-5 text-slate-600">
-                  Telefone e placa agilizam a leitura do portão nas suas reservas.
+                  Informe seu telefone para facilitar o contato. Veículos e credenciais são gerenciados separadamente.
                 </Text>
               </View>
             </Card>
@@ -184,15 +179,8 @@ export default function Perfil() {
             {Platform.OS === "web" ? <Text className="mb-3 text-[15px] font-bold text-slate-800">Dados de cadastro</Text> : <View className="mb-4 flex-row items-center gap-2"><Ionicons name="person-circle-outline" size={23} color="#2563EB" /><Text className="text-[16px] font-extrabold text-slate-800">Dados de cadastro</Text></View>}
             <Campo label="Nome completo" value={f.nome} onChangeText={(v) => setF((p) => ({ ...p, nome: v }))} autoCapitalize="words" />
             <Campo label="Telefone" keyboardType="phone-pad" placeholder="(92) 99999-0000" value={f.telefone} onChangeText={(v) => setF((p) => ({ ...p, telefone: v }))} />
-            <Campo label="Placa do veículo" normalizar={normalizarPlaca} autoCapitalize="characters" maxLength={8} placeholder="RRA1A23" value={f.placa} onChangeText={(v) => setF((p) => ({ ...p, placa: v }))} />
-            <Checkbox
-              checked={f.pcd}
-              onPress={() => setF((p) => ({ ...p, pcd: !p.pcd }))}
-              label="Sou pessoa com deficiência (PCD)"
-              hint="Com a declaração, você ganha prioridade (e exclusividade) nas vagas PCD. Sem ela, o sistema sempre atribui vaga Comum."
-            />
-            <Text className="mt-1 text-xs text-slate-600">
-              A placa entra na reserva para a leitura do portão — use maiúsculas sem hífen.
+            <Text className="mt-2 text-xs text-slate-600">
+              Cadastre carros, motos e solicite validação de credenciais nas seções abaixo.
             </Text>
             <Botao
               label="Salvar alterações"
@@ -201,6 +189,9 @@ export default function Perfil() {
               className="mt-4 self-start"
             />
           </Card>
+
+          <GaragemECredenciais dataNascimento={user.data_nascimento} onProfileChanged={refreshUser} />
+          {user.role === "admin" ? <AnaliseCredenciaisAdmin /> : null}
 
           <Card className="p-5">
             {Platform.OS === "web" ? <Text className="mb-1 text-[15px] font-bold text-slate-800">Segurança</Text> : <View className="mb-2 flex-row items-center gap-2"><Ionicons name="shield-checkmark-outline" size={23} color="#2563EB" /><Text className="text-[16px] font-extrabold text-slate-800">Segurança</Text></View>}

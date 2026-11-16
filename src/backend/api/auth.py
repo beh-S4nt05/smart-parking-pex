@@ -1,4 +1,7 @@
 
+from datetime import date, datetime, timezone
+from typing import Literal
+
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.orm import Session
@@ -7,7 +10,7 @@ from core.config import settings
 from core.deps import get_usuario_logado, oauth2_scheme
 from core.rate_limiter import LIMITS, limiter
 from models.database import get_db
-from models.db_models import Usuario
+from models.db_models import CredencialEstacionamento, Usuario, Veiculo
 from models.schemas import (
     LoginRequest,
     RefreshRequest,
@@ -15,6 +18,7 @@ from models.schemas import (
     UsuarioCreate,
     UsuarioMeResponse,
     UsuarioResponse,
+    VeiculoCadastro,
     validar_tamanho_senha,
 )
 from rules import auth_service, social_auth_service
@@ -80,7 +84,8 @@ class UsuarioAtualizar(BaseModel):
     nome: str | None = Field(None, min_length=2, max_length=120)
     telefone: str | None = Field(None, max_length=20)
     placa_veiculo: str | None = Field(None, max_length=12)
-    is_pcd: bool | None = None  # RF-47: declarar/revogar depois também
+    is_pcd: bool | None = None  # legado; credenciais oficiais usam processo separado
+    data_nascimento: date | None = None
 
     def _limpa(self):
         if self.placa_veiculo:
@@ -158,8 +163,10 @@ def atualizar_perfil(
         raise HTTPException(status_code=422, detail="Nada para atualizar")
     if "nome" in muda and (muda["nome"] or "").strip().__len__() < 2:
         raise HTTPException(status_code=422, detail="Nome precisa de 2+ caracteres")
+    if muda.get("data_nascimento") and muda["data_nascimento"] > datetime.now(timezone.utc).date():
+        raise HTTPException(status_code=422, detail="Data de nascimento não pode estar no futuro")
     for campo, val in muda.items():
-        if isinstance(val, bool):  # is_pcd não passa pelo strip de strings
+        if isinstance(val, (bool, date)) or val is None:  # is_pcd não passa pelo strip de strings
             setattr(usuario, campo, val)
         else:
             setattr(usuario, campo, (val or "").strip() or None)
@@ -216,6 +223,116 @@ async def obter_dados_usuario_logado(
         if est:
             payload.estacionamento_nome = est.nome
     return payload
+
+
+# --- Garagem do motorista e pedidos de credenciais especiais (V1) ---
+class VeiculoResponse(BaseModel):
+    id: str
+    placa: str
+    categoria: str
+    motorizacao: str
+    modelo: str | None
+    principal: bool
+    ativo: bool
+
+    model_config = {"from_attributes": True}
+
+
+class CredencialResponse(BaseModel):
+    id: str
+    tipo: str
+    status: str
+    validade: date | None = None
+
+    model_config = {"from_attributes": True}
+
+
+class PedidoCredencial(BaseModel):
+    tipo: Literal["idoso", "pcd"]
+
+
+@router.get("/veiculos", response_model=list[VeiculoResponse])
+def listar_veiculos(usuario: Usuario = Depends(get_usuario_logado), db: Session = Depends(get_db)):
+    return db.query(Veiculo).filter(Veiculo.usuario_id == usuario.id, Veiculo.ativo.is_(True)).all()
+
+
+@router.post("/veiculos", response_model=VeiculoResponse, status_code=201)
+def cadastrar_veiculo(
+    dados: VeiculoCadastro,
+    usuario: Usuario = Depends(get_usuario_logado),
+    db: Session = Depends(get_db),
+):
+    duplicado = db.query(Veiculo).filter(Veiculo.usuario_id == usuario.id, Veiculo.placa == dados.placa).first()
+    if duplicado:
+        raise HTTPException(status_code=409, detail="Veículo já cadastrado nesta conta")
+    primeiro = db.query(Veiculo).filter(Veiculo.usuario_id == usuario.id, Veiculo.ativo.is_(True)).first() is None
+    v = Veiculo(usuario_id=usuario.id, placa=dados.placa, categoria=dados.categoria,
+                motorizacao=dados.motorizacao, modelo=dados.modelo, principal=primeiro)
+    db.add(v)
+    if primeiro:
+        usuario.placa_veiculo = dados.placa  # compatibilidade da V1
+    db.commit()
+    db.refresh(v)
+    return v
+
+
+@router.delete("/veiculos/{veiculo_id}", status_code=204)
+def remover_veiculo(veiculo_id: str, usuario: Usuario = Depends(get_usuario_logado), db: Session = Depends(get_db)):
+    v = db.query(Veiculo).filter(Veiculo.id == veiculo_id, Veiculo.usuario_id == usuario.id, Veiculo.ativo.is_(True)).first()
+    if not v:
+        raise HTTPException(status_code=404, detail="Veículo não encontrado nesta conta")
+    v.ativo = False  # preservar histórico/referências
+    if usuario.placa_veiculo == v.placa:
+        usuario.placa_veiculo = None
+    db.commit()
+
+
+def _expirar_credenciais_vencidas(db: Session, usuario_id: str) -> None:
+    """Não exibir credencial vencida como aprovada; permitir nova solicitação."""
+    hoje = datetime.now(timezone.utc).date()
+    vencidas = db.query(CredencialEstacionamento).filter(
+        CredencialEstacionamento.usuario_id == usuario_id,
+        CredencialEstacionamento.status == "aprovado",
+        CredencialEstacionamento.validade.isnot(None),
+        CredencialEstacionamento.validade < hoje,
+    ).all()
+    for cred in vencidas:
+        cred.status = "expirado"
+    if vencidas:
+        db.commit()
+
+
+@router.get("/credenciais", response_model=list[CredencialResponse])
+def listar_credenciais(usuario: Usuario = Depends(get_usuario_logado), db: Session = Depends(get_db)):
+    _expirar_credenciais_vencidas(db, usuario.id)
+    return db.query(CredencialEstacionamento).filter(CredencialEstacionamento.usuario_id == usuario.id).all()
+
+
+@router.post("/credenciais/solicitar", response_model=CredencialResponse, status_code=201)
+def solicitar_credencial(
+    dados: PedidoCredencial, usuario: Usuario = Depends(get_usuario_logado), db: Session = Depends(get_db)
+):
+    _expirar_credenciais_vencidas(db, usuario.id)
+    if dados.tipo == "idoso":
+        nascimento = usuario.data_nascimento
+        if nascimento is None:
+            raise HTTPException(status_code=422, detail="Informe a data de nascimento no perfil")
+        hoje = datetime.now(timezone.utc).date()
+        idade = hoje.year - nascimento.year - ((hoje.month, hoje.day) < (nascimento.month, nascimento.day))
+        if idade < 60:
+            raise HTTPException(status_code=422, detail="Credencial de idoso exige 60 anos ou mais")
+    ja = db.query(CredencialEstacionamento).filter(
+        CredencialEstacionamento.usuario_id == usuario.id,
+        CredencialEstacionamento.tipo == dados.tipo,
+        CredencialEstacionamento.status.in_(["pendente", "aprovado"]),
+    ).first()
+    if ja:
+        raise HTTPException(status_code=409, detail="Já existe uma solicitação ou credencial válida")
+    cred = CredencialEstacionamento(usuario_id=usuario.id, tipo=dados.tipo, status="pendente")
+    db.add(cred)
+    db.commit()
+    db.refresh(cred)
+    return cred
 
 
 # --- Rotas de Autenticação Social (OAuth) ---

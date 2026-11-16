@@ -17,7 +17,9 @@ import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../hooks/useAuth";
 import { apiErrorMessage } from "../services/api";
-import { Botao, Campo, Checkbox, IconeCheck, IconeVoltar, Logo } from "../components/ui";
+import { Botao, Campo, IconeCheck, IconeVoltar, Logo } from "../components/ui";
+import OptionChips from "../components/OptionChips";
+import type { CategoriaVeiculo, MotorizacaoVeiculo } from "../types/api";
 
 type FormState = {
   nome: string;
@@ -27,8 +29,10 @@ type FormState = {
   confirmarSenha: string;
   modeloCarro: string;
   placa: string;
-  /** RF-47: autodeclaração PCD — habilita prioridade/exclusividade nas PCD. */
-  pcd: boolean;
+  categoria: CategoriaVeiculo;
+  motorizacao: MotorizacaoVeiculo;
+  beneficio: "nenhum" | "idoso" | "pcd";
+  dataNascimento: string;
 };
 
 type FormErrors = Partial<Record<keyof FormState, string>>;
@@ -64,7 +68,10 @@ export default function Cadastro() {
     confirmarSenha: "",
     modeloCarro: "",
     placa: "",
-    pcd: false,
+    categoria: "carro",
+    motorizacao: "combustao",
+    beneficio: "nenhum",
+    dataNascimento: "",
 });
   const [errors, setErrors] = useState<FormErrors>({});
   const [erroGeral, setErroGeral] = useState<string | null>(null);
@@ -97,35 +104,58 @@ export default function Cadastro() {
   }
 
   function validarEtapa2() {
-    const preenchido = form.modeloCarro.trim() || form.placa.trim();
-    if (!preenchido) return true; // pulou o veículo
     const e: FormErrors = {};
-    if (!form.modeloCarro.trim()) e.modeloCarro = "Informe o modelo do carro";
-    if (!form.placa.trim()) e.placa = "Informe a placa";
-    else if (!placaValida(form.placa))
-      e.placa = "Placa inválida (ex: ABC1D23)";
+    if (form.modeloCarro.trim() && !form.placa.trim()) {
+      e.placa = "Informe a placa para cadastrar o veículo";
+    }
+    if (form.placa.trim() && !placaValida(form.placa)) {
+      e.placa = "Placa inválida (ex.: ABC1D23)";
+    }
+    if (form.dataNascimento.trim()) {
+      const [dia, mes, ano] = form.dataNascimento.split("/").map(Number);
+      const dt = new Date(Date.UTC(ano, mes - 1, dia));
+      if (!/^[0-9]{2}\/[0-9]{2}\/[0-9]{4}$/.test(form.dataNascimento) ||
+          dt.getUTCFullYear() !== ano || dt.getUTCMonth() !== mes - 1 || dt.getUTCDate() !== dia ||
+          dt > new Date()) {
+        e.dataNascimento = "Informe uma data válida: DD/MM/AAAA";
+      }
+    } else if (form.beneficio === "idoso") {
+      e.dataNascimento = "Informe o nascimento para solicitar benefício de idoso";
+    }
     setErrors(e);
     return Object.keys(e).length === 0;
   }
 
-  async function enviar() {
+  function dataISO() {
+    if (!form.dataNascimento) return undefined;
+    const [dia, mes, ano] = form.dataNascimento.split("/");
+    return `${ano}-${mes}-${dia}`;
+  }
+
+  async function enviar(pularOpcionais = false) {
     setLoading(true);
     setErroGeral(null);
     try {
+      const comVeiculo = !pularOpcionais && Boolean(form.placa.trim());
       await register({
         nome: form.nome.trim(),
         email: form.email.trim().toLowerCase(),
         senha: form.senha,
         telefone: form.telefone.replace(/\D/g, ""),
-        placa_veiculo: form.placa ? formatarPlaca(form.placa) : undefined,
-        is_pcd: form.pcd,
+        data_nascimento: pularOpcionais ? undefined : dataISO(),
+        beneficio_solicitado: pularOpcionais || form.beneficio === "nenhum" ? undefined : form.beneficio,
+        is_pcd: false, // verificação documental pendente; não habilitar vaga especial sem análise
+        veiculo: comVeiculo ? {
+          placa: formatarPlaca(form.placa),
+          categoria: form.categoria,
+          motorizacao: form.motorizacao,
+          modelo: form.modeloCarro.trim() || undefined,
+        } : undefined,
       });
-      // login automático após criar a conta
       await signIn(form.email, form.senha);
       router.replace("/");
     } catch (err) {
       setErroGeral(apiErrorMessage(err, "Não foi possível criar a conta."));
-      if (step === 2 && /placa|email|e-mail/i.test(String(erroGeral))) setStep(1);
     } finally {
       setLoading(false);
     }
@@ -287,9 +317,29 @@ export default function Cadastro() {
               </>
             ) : (
               <>
+                <Text style={{ fontSize: 17, fontWeight: "800", color: "#17243B", marginBottom: 7 }}>Seu veículo</Text>
+                <Text style={{ color: "#64748B", fontSize: 12, marginBottom: 16 }}>
+                  Opcional. Escolha o tipo e a motorização; informe a placa para salvar.
+                </Text>
+                <OptionChips
+                  label="Tipo do veículo"
+                  value={form.categoria}
+                  onChange={(categoria) => setForm((p) => ({ ...p, categoria }))}
+                  options={[{ value: "carro", label: "Carro" }, { value: "moto", label: "Moto" }]}
+                />
+                <OptionChips
+                  label="Motorização"
+                  value={form.motorizacao}
+                  onChange={(motorizacao) => setForm((p) => ({ ...p, motorizacao }))}
+                  options={[
+                    { value: "combustao", label: "Combustão" },
+                    { value: "hibrido", label: "Híbrido" },
+                    { value: "eletrico", label: "Elétrico" },
+                  ]}
+                />
                 <Campo
-                  label="Modelo do carro"
-                  placeholder="Ex.: Onix 1.0"
+                  label="Modelo do veículo"
+                  placeholder={form.categoria === "moto" ? "Ex.: Honda CG 160" : "Ex.: Onix 1.0"}
                   opcional
                   autoCapitalize="words"
                   value={form.modeloCarro}
@@ -305,12 +355,45 @@ export default function Cadastro() {
                   onChangeText={(v) => setField("placa", formatarPlaca(v))}
                   erro={errors.placa}
                 />
-                <Checkbox
-                  checked={form.pcd}
-                  onPress={() => setForm((p) => ({ ...p, pcd: !p.pcd }))}
-                  label="Sou pessoa com deficiência (PCD)"
-                  hint="Opcional. Declarar habilita a prioridade e a exclusividade das vagas PCD — sem a declaração, o sistema sempre atribui vaga Comum."
-                />
+                <View style={{ borderTopWidth: 1, borderColor: "#EDF2F7", paddingTop: 18, marginTop: 3 }}>
+                  <Text style={{ fontSize: 17, fontWeight: "800", color: "#17243B", marginBottom: 6 }}>Vaga especial</Text>
+                  <Text style={{ fontSize: 12, color: "#64748B", lineHeight: 18, marginBottom: 16 }}>
+                    Somente se precisar. A solicitação exige credencial oficial e análise; não libera vagas especiais automaticamente.
+                  </Text>
+                  <OptionChips
+                    label="Deseja solicitar validação?"
+                    value={form.beneficio}
+                    onChange={(beneficio) => setForm((p) => ({ ...p, beneficio }))}
+                    options={[
+                      { value: "nenhum", label: "Não preciso" },
+                      { value: "idoso", label: "Idoso (60+)" },
+                      { value: "pcd", label: "PCD" },
+                    ]}
+                  />
+                  {form.beneficio === "idoso" ? (
+                    <Campo
+                      label="Data de nascimento"
+                      placeholder="DD/MM/AAAA"
+                      keyboardType="number-pad"
+                      value={form.dataNascimento}
+                      onChangeText={(v) => {
+                        const numeros = v.replace(/\D/g, "").slice(0, 8);
+                        const formatado = numeros.length <= 2 ? numeros :
+                          numeros.length <= 4 ? `${numeros.slice(0, 2)}/${numeros.slice(2)}` :
+                          `${numeros.slice(0, 2)}/${numeros.slice(2, 4)}/${numeros.slice(4)}`;
+                        setField("dataNascimento", formatado);
+                      }}
+                      erro={errors.dataNascimento}
+                    />
+                  ) : null}
+                  {form.beneficio !== "nenhum" ? (
+                    <View style={{ backgroundColor: "#EFF6FF", borderRadius: 12, padding: 12, marginBottom: 16 }}>
+                      <Text style={{ color: "#1E40AF", fontSize: 12, lineHeight: 19 }}>
+                        Solicitação registrada como pendente. A autorização dependerá da conferência da credencial oficial por responsável habilitado.
+                      </Text>
+                    </View>
+                  ) : null}
+                </View>
                 {erroGeral ? (
                   <View className="mb-3 rounded-xl border border-red-200 bg-red-50 px-3.5 py-2.5">
                     <Text className="text-[13px] font-medium text-red-600">
@@ -327,9 +410,9 @@ export default function Cadastro() {
                   className="mt-1 w-full"
                 />
                 <Botao
-                  label="Pular esta etapa"
+                  label="Cadastrar sem opcionais"
                   variant="fantasma"
-                  onPress={enviar}
+                  onPress={() => enviar(true)}
                   disabled={loading}
                   className="mt-2 w-full"
                 />
