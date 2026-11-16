@@ -173,7 +173,10 @@ test("garagem permite gerenciar carros e motos e alterar principal em viewport m
 
   await page.getByRole("button", { name: "Definir DEF2E34 como principal" }).click();
   await expect(page.getByText("Principal", { exact: true })).toHaveCount(1);
-  const garagem = await page.request.get("/auth/veiculos");
+  const token = await page.evaluate(() => localStorage.getItem("smartparking_access_token"));
+  expect(token).toBeTruthy();
+  const headers = { Authorization: `Bearer ${token}` };
+  const garagem = await page.request.get("/auth/veiculos", { headers });
   expect(garagem.ok()).toBeTruthy();
   const lista = await garagem.json() as Array<{ placa: string; principal: boolean }>;
   expect(lista.find((v) => v.placa === "DEF2E34")?.principal).toBe(true);
@@ -184,7 +187,7 @@ test("garagem permite gerenciar carros e motos e alterar principal em viewport m
   await page.getByRole("radio", { name: "Híbrido" }).click();
   await page.getByRole("button", { name: "Salvar alterações do veículo" }).click();
   await expect(page.getByText(/Sedan QA atualizado/)).toBeVisible();
-  const atualizados = (await (await page.request.get("/auth/veiculos")).json()) as Array<{
+  const atualizados = (await (await page.request.get("/auth/veiculos", { headers })).json()) as Array<{
     placa: string; motorizacao: string; modelo: string;
   }>;
   expect(atualizados.find((v) => v.placa === "DEF2E34")?.motorizacao).toBe("hibrido");
