@@ -294,6 +294,35 @@ export default function MapaVagas() {
 
   const gradeVagas = (
     <Card className="p-4 sm:p-6">
+      {/* seleção no mobile → barra de ação */}
+      {vagaSel && !isWeb ? (
+        <View className="mb-4 rounded-2xl border border-blue-100 bg-blue-50 p-4">
+          <Text className={rotulo}>
+            Vaga {vagaSel.codigo} ·{" "}
+            {vagaSel.status === "livre" ? "disponível" : vagaSel.status}
+          </Text>
+          {vagaSel.status === "livre" ? (
+            <Botao
+              label={`Reservar por 2h${shopping?.taxa_hora ? ` · ${formatarMoedaBR(shopping.taxa_hora * 2)}` : ""}`}
+              onPress={() => reservar(vagaSel)}
+              loading={reservando}
+              className="mt-3 w-full"
+            />
+          ) : reservaDestaVaga ? (
+            <Botao
+              label="Cancelar minha reserva"
+              variant="contorno"
+              className="mt-3 w-full border-red-300"
+              onPress={() => pedirCancelamentoReserva(reservaDestaVaga.id, vagaSel.codigo)}
+            />
+          ) : (
+            <Text className="mt-1 text-xs text-slate-600">
+              Vaga indisponível para reserva neste momento.
+            </Text>
+          )}
+        </View>
+      ) : null}
+
       {!isWeb ? (
         <View className="mb-4 flex-row flex-wrap gap-2">
           {andares.map((a) => {
@@ -380,34 +409,7 @@ export default function MapaVagas() {
         <LegendaVagas />
       </View>
 
-      {/* seleção no mobile → barra de ação */}
-      {vagaSel && !isWeb ? (
-        <View className="mt-4 rounded-2xl border border-blue-200 bg-blue-50 p-4">
-          <Text className={rotulo}>
-            Vaga {vagaSel.codigo} ·{" "}
-            {vagaSel.status === "livre" ? "disponível" : vagaSel.status}
-          </Text>
-          {vagaSel.status === "livre" ? (
-            <Botao
-              label={`Reservar por 2h${shopping?.taxa_hora ? ` · ${formatarMoedaBR(shopping.taxa_hora * 2)}` : ""}`}
-              onPress={() => reservar(vagaSel)}
-              loading={reservando}
-              className="mt-3 w-full"
-            />
-          ) : reservaDestaVaga ? (
-            <Botao
-              label="Cancelar minha reserva"
-              variant="contorno"
-              className="mt-3 w-full border-red-300"
-              onPress={() => pedirCancelamentoReserva(reservaDestaVaga.id, vagaSel.codigo)}
-            />
-          ) : (
-            <Text className="mt-1 text-xs text-slate-600">
-              Vaga indisponível para reserva neste momento.
-            </Text>
-          )}
-        </View>
-      ) : null}
+
     </Card>
   );
 
@@ -524,6 +526,9 @@ export default function MapaVagas() {
           }
         />
         <ScrollView
+          style={{ flex: 1 }}
+          nestedScrollEnabled
+          keyboardShouldPersistTaps="handled"
           contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
           refreshControl={
             <RefreshControl refreshing={false} onRefresh={refresh} tintColor="#2563EB" />
