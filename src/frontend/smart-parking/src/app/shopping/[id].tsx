@@ -8,7 +8,7 @@ import { minW0Flex1, pagina, rotulo, textoApoio, tituloCard } from "../../styles
  * Integração: GET /api/estacionamentos/{id}/vagas (polling 5s), proxima-vaga via
  * motor de atribuição do backend e POST /api/reservas autenticado.
  */
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Alert,
   Platform,
@@ -19,7 +19,7 @@ import {
   View,
   Linking,
 } from "react-native";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import Header, { BarraEscura } from "../../components/Header";
 import VagaMapa from "../../components/VagaMapa";
@@ -80,16 +80,34 @@ export default function MapaVagas() {
   const [veiculos, setVeiculos] = useState<VeiculoUsuario[]>([]);
   const [veiculoId, setVeiculoId] = useState("");
 
-  useEffect(() => {
-    if (!isAuthenticated) { setVeiculos([]); setVeiculoId(""); return; }
-    let alive = true;
+  const [carregandoVeiculos, setCarregandoVeiculos] = useState(false);
+  const [erroVeiculos, setErroVeiculos] = useState<string | null>(null);
+
+  // Sempre atualizar ao voltar de Minha conta: o motorista pode ter
+  // adicionado, editado, removido ou tornado outro veículo principal.
+  useFocusEffect(useCallback(() => {
+    if (!isAuthenticated) {
+      setVeiculos([]);
+      setVeiculoId("");
+      setErroVeiculos(null);
+      return;
+    }
+    let ativo = true;
+    setCarregandoVeiculos(true);
     parkingApi.listarVeiculos().then((lista) => {
-      if (!alive) return;
+      if (!ativo) return;
       setVeiculos(lista);
-      setVeiculoId((atual) => lista.some((v) => v.id === atual) ? atual : (lista.find((v) => v.principal)?.id ?? lista[0]?.id ?? ""));
-    }).catch(() => { if (alive) setVeiculos([]); });
-    return () => { alive = false; };
-  }, [isAuthenticated]);
+      setVeiculoId(lista.find((v) => v.principal)?.id ?? lista[0]?.id ?? "");
+      setErroVeiculos(null);
+    }).catch((e) => {
+      if (ativo) {
+        setVeiculos([]);
+        setVeiculoId("");
+        setErroVeiculos(apiErrorMessage(e, "Não foi possível consultar seus veículos."));
+      }
+    }).finally(() => { if (ativo) setCarregandoVeiculos(false); });
+    return () => { ativo = false; };
+  }, [isAuthenticated]));
 
   // reservas ativas do usuário — dão o botão "Cancelar reserva" no mapa
   useEffect(() => {
@@ -234,6 +252,14 @@ export default function MapaVagas() {
       ]);
       return;
     }
+    if (carregandoVeiculos || erroVeiculos) {
+      Alert.alert("Confira o veículo", erroVeiculos ?? "Atualizando os veículos da conta. Tente novamente.");
+      return;
+    }
+    if (veiculos.length > 0 && !veiculoId) {
+      Alert.alert("Selecione um veículo", "Escolha o carro ou a moto para esta reserva.");
+      return;
+    }
     setReservando(true);
     try {
       const ini = new Date(Date.now() + 15 * 60000);
@@ -311,11 +337,17 @@ export default function MapaVagas() {
 
   const seletorVeiculo = isAuthenticated ? (
     <View style={{ marginTop: 12, marginBottom: 8 }}>
-      {veiculos.length ? (
+      {carregandoVeiculos ? (
+        <Text style={{ fontSize: 12, color: "#475569" }}>Atualizando seus veículos…</Text>
+      ) : erroVeiculos ? (
+        <Text style={{ fontSize: 12, color: "#BE123C" }}>
+          Não foi possível carregar os veículos. Abra Minha conta ou tente novamente.
+        </Text>
+      ) : veiculos.length ? (
         <OptionChips label="Veículo desta reserva" value={veiculoId} onChange={setVeiculoId}
           options={veiculos.map((v) => ({
             value: v.id,
-            label: `${v.categoria === "moto" ? "Moto" : "Carro"} ${v.placa}${v.motorizacao === "eletrico" ? " · elétrico" : ""}`,
+            label: `${v.categoria === "moto" ? "Moto" : "Carro"} ${v.placa}${v.motorizacao === "eletrico" ? " · elétrico" : ""}${v.principal ? " · principal" : ""}`,
           }))} />
       ) : (
         <Pressable onPress={() => router.push("/perfil")} accessibilityRole="button"
