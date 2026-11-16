@@ -38,6 +38,7 @@ export default function Login() {
 
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
+  const [codigoMfa, setCodigoMfa] = useState("");
   const [senhaVisivel, setSenhaVisivel] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [recuperar, setRecuperar] = useState(false);
@@ -55,7 +56,7 @@ export default function Login() {
     setLoading(true);
     setErro(null);
     try {
-      const usuario = await signIn(email, senha);
+      const usuario = await signIn(email, senha, codigoMfa.trim() || undefined);
       // Retorna ao mapa/QR que pediu autenticação, sem aceitar URL externa
       // nem liberar painel/simulador para um papel sem permissão.
       router.replace(destinoAposLogin(next, usuario.role) as never);
@@ -100,6 +101,16 @@ export default function Login() {
         onSubmitEditing={handleEntrar}
         returnKeyType="go"
         erro={erros.senha}
+      />
+
+      <Campo
+        label="Código MFA (equipe, se ativado)"
+        placeholder="6 dígitos do autenticador"
+        keyboardType="number-pad"
+        maxLength={6}
+        value={codigoMfa}
+        onChangeText={(valor) => setCodigoMfa(valor.replace(/\D/g, "").slice(0, 6))}
+        opcional
       />
 
       <View className="-mt-1 mb-4 flex-row justify-end">
