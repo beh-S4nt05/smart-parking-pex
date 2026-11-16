@@ -398,8 +398,8 @@ export function Card({
 }) {
   return (
     <View
-      className={`${cartao} ${className}`}
-      style={Platform.OS === "web" ? style : [{ borderWidth: 1, borderColor: "#E2E8F0" }, style]}
+      className={Platform.OS === "web" ? `${cartao} ${className}` : `rounded-2xl bg-white ${className}`}
+      style={Platform.OS === "web" ? style : [{ borderWidth: 0, backgroundColor: "#FFFFFF" }, style]}
     >
       {children}
     </View>
