@@ -71,8 +71,6 @@ export default function Explorar() {
                 </Text>
               </View>
             </View>
-          </View>
-
           </View> : <View className="mb-5 gap-1"><Text className="text-xl font-extrabold text-slate-900">Encontre seu shopping</Text><Text className="text-sm text-slate-600">Veja vagas disponíveis e escolha onde estacionar.</Text></View>}
 
           {/* Hick: um único filtro, com rótulo e contagem de resultados. */}
