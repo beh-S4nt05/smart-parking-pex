@@ -1,4 +1,7 @@
-from typing import Optional
+from datetime import date
+from hashlib import sha256
+import hmac
+from typing import Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
@@ -18,6 +21,8 @@ from core.deps import (
 from models.database import get_db
 from models.db_models import (
     Andar,
+    CredencialEstacionamento,
+    AuditoriaCredencial,
     Estacionamento,
     FechamentoCaixa,
     Historico,
@@ -49,6 +54,84 @@ from rules import (
 )
 
 router = APIRouter(prefix="/api/admin", tags=["Painel Administrativo"])
+
+
+class DecisaoCredencial(BaseModel):
+    decisao: Literal["aprovado", "rejeitado", "revogado"]
+    justificativa: str = Field(min_length=8, max_length=500)
+    metodo_verificacao: Literal["conferencia_presencial", "consulta_oficial"]
+    referencia_oficial: str | None = Field(None, min_length=4, max_length=200)
+    validade: date | None = None
+
+
+@router.get("/credenciais/pendentes")
+def listar_pedidos_credenciais(
+    db: Session = Depends(get_db),
+    admin: Usuario = Depends(get_usuario_admin),
+):
+    """Admin pode revisar pedidos; não retorna documentos pessoais em texto."""
+    pedidos = db.query(CredencialEstacionamento).filter(
+        CredencialEstacionamento.status == "pendente"
+    ).order_by(CredencialEstacionamento.criado_em.asc()).all()
+    return [
+        {
+            "id": c.id,
+            "usuario_id": c.usuario_id,
+            "usuario_nome": c.usuario.nome,
+            "tipo": c.tipo,
+            "status": c.status,
+            "criado_em": c.criado_em,
+        }
+        for c in pedidos
+    ]
+
+
+@router.post("/credenciais/{credencial_id}/avaliar")
+def avaliar_credencial(
+    credencial_id: str,
+    dados: DecisaoCredencial,
+    db: Session = Depends(get_db),
+    admin: Usuario = Depends(get_usuario_admin),
+):
+    """Decisão administrativa auditável, sem imagem facial ou documento bruto."""
+    from core.timeutils import utc_agora
+    from core.config import settings
+
+    cred = db.get(CredencialEstacionamento, credencial_id)
+    if not cred:
+        raise HTTPException(status_code=404, detail="Solicitação não encontrada")
+    if cred.status not in {"pendente", "aprovado"}:
+        raise HTTPException(status_code=409, detail="Solicitação não está disponível para esta avaliação")
+    if dados.decisao == "aprovado" and cred.status != "pendente":
+        raise HTTPException(status_code=409, detail="Credencial já foi avaliada")
+    if dados.decisao == "aprovado" and not dados.referencia_oficial:
+        raise HTTPException(status_code=422, detail="Informe a referência da credencial oficial verificada")
+    if dados.decisao == "revogado" and cred.status != "aprovado":
+        raise HTTPException(status_code=409, detail="Somente credenciais aprovadas podem ser revogadas")
+    if dados.validade and dados.validade < date.today():
+        raise HTTPException(status_code=422, detail="A validade não pode ser anterior à data atual")
+    if dados.decisao == "aprovado" and dados.metodo_verificacao not in {"conferencia_presencial", "consulta_oficial"}:
+        raise HTTPException(status_code=422, detail="Método de verificação inválido")
+
+    if dados.referencia_oficial:
+        chave = settings.APP_SIGNING_SECRET.encode("utf-8")
+        cred.referencia_hash = hmac.new(
+            chave, dados.referencia_oficial.strip().encode("utf-8"), sha256
+        ).hexdigest()
+    cred.status = dados.decisao
+    cred.validade = dados.validade if dados.decisao == "aprovado" else cred.validade
+    cred.verificado_por_id = admin.id
+    cred.verificado_em = utc_agora()
+    db.add(AuditoriaCredencial(
+        credencial_id=cred.id,
+        avaliador_id=admin.id,
+        acao=dados.decisao,
+        justificativa=f"{dados.metodo_verificacao}: {dados.justificativa.strip()}",
+    ))
+    db.commit()
+    return {"id": cred.id, "status": cred.status, "tipo": cred.tipo, "validade": cred.validade}
+
+
 
 
 def _shopping_do_andar(db: Session, andar_id: str) -> str:
