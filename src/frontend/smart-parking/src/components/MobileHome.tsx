@@ -111,7 +111,7 @@ export default function MobileHome({
             </View>
 
             <Pressable
-              onPress={() => router.push(isAuthenticated ? "/perfil" : "/login")}
+              onPress={() => router.push((isAuthenticated ? "/perfil" : "/login") as never)}
               accessibilityRole="button"
               accessibilityLabel={isAuthenticated ? "Abrir minha conta" : "Entrar"}
               style={{
@@ -428,7 +428,7 @@ export default function MobileHome({
               backgroundColor: "#FFFFFF",
               borderRadius: 23,
               padding: 18,
-              maxHeight: Math.max(280, height * 0.7),
+              maxHeight: Math.max(220, Math.min(height - 80, height * 0.7)),
             }}
           >
             <View
