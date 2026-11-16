@@ -16,6 +16,7 @@ import {
   View,
 } from "react-native";
 import { useRouter } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../hooks/useAuth";
 import { apiErrorMessage, parkingApi } from "../services/api";
 import { Botao, Card, Campo, Checkbox, Chip } from "../components/ui";
@@ -140,13 +141,26 @@ export default function Perfil() {
       )}
       <ScrollView className="flex-1" contentContainerStyle={{ paddingVertical: 20 }}>
         <View className="mx-auto w-full max-w-3xl gap-4 px-4 sm:px-6 3xl:gap-6 3xl:px-8">
-          <View className="flex-row flex-wrap items-center justify-between gap-3">
-            <View className={minW0Flex1}>
-              <Text className="text-2xl font-extrabold text-slate-900">Minha conta</Text>
-              <Text className={meta}>{user.email}</Text>
+          {Platform.OS === "web" ? (
+            <View className="flex-row flex-wrap items-center justify-between gap-3">
+              <View className={minW0Flex1}>
+                <Text className="text-2xl font-extrabold text-slate-900">Minha conta</Text>
+                <Text className={meta}>{user.email}</Text>
+              </View>
+              <Chip label={ROLE_LABEL[user.role] ?? user.role} tone="azul" />
             </View>
-            <Chip label={ROLE_LABEL[user.role] ?? user.role} tone="azul" />
-          </View>
+          ) : (
+            <View style={{ backgroundColor: "#FFFFFF", borderRadius: 20, padding: 20, flexDirection: "row", alignItems: "center", gap: 14 }}>
+              <View style={{ width: 56, height: 56, borderRadius: 18, backgroundColor: "#EAF1FF", alignItems: "center", justifyContent: "center" }}>
+                <Ionicons name="person-outline" size={30} color="#2563EB" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 17, fontWeight: "800", color: "#15233B" }} numberOfLines={2}>{user.nome}</Text>
+                <Text style={{ color: "#64748B", fontSize: 12, marginTop: 3 }} numberOfLines={1}>{user.email}</Text>
+                <Text style={{ color: "#2563EB", fontWeight: "700", fontSize: 12, marginTop: 5 }}>{ROLE_LABEL[user.role] ?? user.role}</Text>
+              </View>
+            </View>
+          )}
 
           {/* Zeigarnic: uma tarefa incompleta visível incentiva o fechamento.
               Desaparece assim que telefone e placa são preenchidos. */}
@@ -167,7 +181,7 @@ export default function Perfil() {
           ) : null}
 
           <Card className="p-5">
-            <Text className="mb-3 text-[15px] font-bold text-slate-800">Dados de cadastro</Text>
+            {Platform.OS === "web" ? <Text className="mb-3 text-[15px] font-bold text-slate-800">Dados de cadastro</Text> : <View className="mb-4 flex-row items-center gap-2"><Ionicons name="person-circle-outline" size={23} color="#2563EB" /><Text className="text-[16px] font-extrabold text-slate-800">Dados de cadastro</Text></View>}
             <Campo label="Nome completo" value={f.nome} onChangeText={(v) => setF((p) => ({ ...p, nome: v }))} autoCapitalize="words" />
             <Campo label="Telefone" keyboardType="phone-pad" placeholder="(92) 99999-0000" value={f.telefone} onChangeText={(v) => setF((p) => ({ ...p, telefone: v }))} />
             <Campo label="Placa do veículo" normalizar={normalizarPlaca} autoCapitalize="characters" maxLength={8} placeholder="RRA1A23" value={f.placa} onChangeText={(v) => setF((p) => ({ ...p, placa: v }))} />
@@ -189,7 +203,7 @@ export default function Perfil() {
           </Card>
 
           <Card className="p-5">
-            <Text className="mb-1 text-[15px] font-bold text-slate-800">Segurança</Text>
+            {Platform.OS === "web" ? <Text className="mb-1 text-[15px] font-bold text-slate-800">Segurança</Text> : <View className="mb-2 flex-row items-center gap-2"><Ionicons name="shield-checkmark-outline" size={23} color="#2563EB" /><Text className="text-[16px] font-extrabold text-slate-800">Segurança</Text></View>}
             <Text className="mb-3 text-xs text-slate-600">
               Trocar a senha encerra todas as outras sessões (celular, navegador). RF-13/14.
             </Text>
