@@ -3,12 +3,13 @@ import { meta, minW0Flex1, pagina, textoApoio, tituloCardShopping } from "../sty
  * Minhas reservas — integração real: GET /api/reservas/minhas e
  * DELETE /api/reservas/{id} (a vaga volta a "livre" no mesmo instante).
  */
-import { Alert, ScrollView, Text, View } from "react-native";
+import { Alert, Platform, ScrollView, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import { useAuth } from "../hooks/useAuth";
 import { useReservas } from "../hooks/useReservas";
 import { apiErrorMessage } from "../services/api";
 import Header from "../components/Header";
+import { MobileBottomNav, MobileScreenHeader } from "../components/MobileChrome";
 import {
   AnimarEntrada,
   BlocoCarregando,
@@ -62,8 +63,12 @@ export default function Reservas() {
   }
 
   return (
-    <View className={pagina}>
-      <Header rotaAtual="/" />
+    <View className={pagina} style={Platform.OS === "web" ? undefined : { backgroundColor: "#F3F7FD" }}>
+      {Platform.OS === "web" ? (
+        <Header rotaAtual="/" />
+      ) : (
+        <MobileScreenHeader title="Reservas" subtitle="Gerencie as vagas que você garantiu" />
+      )}
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 48 }}>
         <View className="mx-auto w-full max-w-3xl">
           <Text className="text-2xl font-extrabold text-slate-900 3xl:text-3xl">
@@ -175,6 +180,7 @@ export default function Reservas() {
           </View>
         </View>
       </ScrollView>
+      {Platform.OS !== "web" ? <MobileBottomNav active="reservas" /> : null}
     </View>
   );
 }
