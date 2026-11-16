@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 
 from typing import Literal
 
@@ -49,12 +49,12 @@ class UsuarioCreate(UsuarioBase):
 
     @model_validator(mode="after")
     def validar_beneficio(self):
-        if self.data_nascimento and self.data_nascimento > date.today():
+        if self.data_nascimento and self.data_nascimento > datetime.now(timezone.utc).date():
             raise ValueError("Data de nascimento não pode estar no futuro")
         if self.beneficio_solicitado == "idoso":
             if not self.data_nascimento:
                 raise ValueError("Informe a data de nascimento para solicitar credencial de idoso")
-            hoje = date.today()
+            hoje = datetime.now(timezone.utc).date()
             idade = hoje.year - self.data_nascimento.year - ((hoje.month, hoje.day) < (self.data_nascimento.month, self.data_nascimento.day))
             if idade < 60:
                 raise ValueError("Credencial de idoso exige pelo menos 60 anos")
