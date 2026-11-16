@@ -160,6 +160,21 @@ class Usuario(Base):
 
 
 
+
+class EventoSeguranca(Base):
+    """Auditoria mínima sem tokens, senhas, documentos ou URL bruta."""
+    __tablename__ = "eventos_seguranca"
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    usuario_id = Column(String, nullable=True, index=True)
+    estacionamento_id = Column(String, nullable=True, index=True)
+    categoria = Column(String(32), nullable=False, index=True)
+    operacao = Column(String(64), nullable=False)
+    metodo = Column(String(8), nullable=False)
+    status_http = Column(Integer, nullable=False)
+    criado_em = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+
 class SessaoAcesso(Base):
     """Sessão emitida pelo servidor. JWT com sid revogado deixa de autorizar acesso."""
     __tablename__ = "sessoes_acesso"
