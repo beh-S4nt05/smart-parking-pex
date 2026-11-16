@@ -122,7 +122,7 @@ def buscar_proxima_vaga_disponivel(
         (tipo_vaga_desejado == "pcd" and not eh_pcd)
         or (tipo_vaga_desejado == "idoso" and not eh_idoso)
     ):
-        aviso = "Vagas especiais exigem credencial oficial verificada. Exibimos opções comuns."
+        aviso = "Vagas reservadas a idoso/PCD exigem credencial oficial validada. Exibimos opções comuns."
         tipo_vaga_desejado = TipoVaga.COMUM.value
 
     vaga = None
