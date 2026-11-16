@@ -225,10 +225,11 @@ function humanizeValidationMessage(msg: string): string {
 // ======================================================================
 export const parkingApi = {
   // ---- Autenticação ----
-  async login(credencial: string, senha: string): Promise<Tokens> {
+  async login(credencial: string, senha: string, codigoMfa?: string): Promise<Tokens> {
     const { data } = await api.post<Tokens>("/auth/login", {
       email: credencial.trim(),
       senha,
+      ...(codigoMfa ? { mfa_codigo: codigoMfa } : {}),
     });
     try {
       await storage.setAccessToken(data.access_token);
