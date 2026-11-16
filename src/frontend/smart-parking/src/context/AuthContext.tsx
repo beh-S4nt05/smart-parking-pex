@@ -32,7 +32,7 @@ export interface AuthContextData {
   isAdmin: boolean;
   loading: boolean;
   /** credencial = e-mail OU telefone (o backend aceita os dois) */
-  signIn: (credencial: string, senha: string) => Promise<Usuario>;
+  signIn: (credencial: string, senha: string, codigoMfa?: string) => Promise<Usuario>;
   register: (payload: CadastroPayload) => Promise<Usuario>;
   signOut: () => Promise<void>;
   /** rebusca /auth/me após edições do perfil (RF-15) */
@@ -96,8 +96,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const signIn = useCallback(async (credencial: string, senha: string) => {
-    const data: Tokens = await parkingApi.login(credencial, senha);
+  const signIn = useCallback(async (credencial: string, senha: string, codigoMfa?: string) => {
+    const data: Tokens = await parkingApi.login(credencial, senha, codigoMfa);
     const usuario = data.user ?? (await parkingApi.me());
     setUser(usuario);
     await cachearUsuario(usuario);
