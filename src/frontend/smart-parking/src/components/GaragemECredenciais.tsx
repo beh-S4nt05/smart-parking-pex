@@ -134,7 +134,7 @@ export default function GaragemECredenciais({
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
           <View style={{ flex: 1 }}>
             <Text style={titulo}>Meus veículos</Text>
-            <Text style={{ fontSize: 12, color: "#64748B", marginTop: 4 }}>Carros, motos e modelos elétricos</Text>
+            <Text style={{ fontSize: 12, color: "#475569", marginTop: 4 }}>Carros, motos e modelos elétricos</Text>
           </View>
           <Pressable accessibilityRole="button" onPress={() => setExibirFormulario((v) => !v)}
             style={{ paddingVertical: 11, paddingHorizontal: 14, borderRadius: 13, backgroundColor: "#EAF1FF", minHeight: 44 }}>
@@ -142,13 +142,13 @@ export default function GaragemECredenciais({
           </Pressable>
         </View>
         {veiculos.length === 0 && !exibirFormulario ? (
-          <Text style={{ color: "#64748B", fontSize: 13 }}>Ainda não há veículos. Você pode adicioná-los quando quiser.</Text>
+          <Text style={{ color: "#475569", fontSize: 13 }}>Ainda não há veículos. Você pode adicioná-los quando quiser.</Text>
         ) : null}
         {veiculos.map((v) => (
           <View key={v.id} style={{ backgroundColor: "#F4F7FD", borderRadius: 13, padding: 13, flexDirection: "row", alignItems: "center", gap: 8 }}>
             <View style={{ flex: 1 }}>
               <Text style={{ color: "#15233B", fontSize: 15, fontWeight: "800" }}>{v.placa} {v.principal ? "· Principal" : ""}</Text>
-              <Text style={{ color: "#64748B", fontSize: 12, marginTop: 3 }}>
+              <Text style={{ color: "#475569", fontSize: 12, marginTop: 3 }}>
                 {v.categoria === "moto" ? "Moto" : "Carro"} · {v.motorizacao === "eletrico" ? "Elétrico" : v.motorizacao === "hibrido" ? "Híbrido" : v.motorizacao === "combustao" ? "Combustão" : "Não informada"}
                 {v.modelo ? ` · ${v.modelo}` : ""}
               </Text>
@@ -175,7 +175,7 @@ export default function GaragemECredenciais({
 
       <View style={{ backgroundColor: "#FFFFFF", borderRadius: 20, padding: 20, gap: 11 }}>
         <Text style={titulo}>Vagas especiais</Text>
-        <Text style={{ fontSize: 13, color: "#64748B", lineHeight: 20 }}>
+        <Text style={{ fontSize: 13, color: "#475569", lineHeight: 20 }}>
           Idoso (60+) e PCD: a liberação depende de credencial oficial conferida. Você pode continuar reservando vagas comuns enquanto aguarda.
         </Text>
         {credenciais.map((cred) => (
@@ -187,7 +187,7 @@ export default function GaragemECredenciais({
           </View>
         ))}
         {dataNascimento ? (
-          <Text style={{ fontSize: 12, color: "#64748B" }}>Nascimento cadastrado: {dataNascimento.split("-").reverse().join("/")}</Text>
+          <Text style={{ fontSize: 12, color: "#475569" }}>Nascimento cadastrado: {dataNascimento.split("-").reverse().join("/")}</Text>
         ) : (
           <Campo label="Nascimento (para solicitação de idoso)" placeholder="DD/MM/AAAA" keyboardType="numeric"
             value={nascimento} onChangeText={(v) => {
@@ -202,14 +202,14 @@ export default function GaragemECredenciais({
               <Pressable key={tipo} accessibilityRole="button" disabled={salvando || bloqueado}
                 onPress={() => void solicitar(tipo)}
                 style={{ padding: 13, minHeight: 44, borderRadius: 12, backgroundColor: bloqueado ? "#E8EDF4" : "#EAF1FF", opacity: bloqueado ? 0.7 : 1 }}>
-                <Text style={{ color: bloqueado ? "#64748B" : "#1D4ED8", fontWeight: "800", fontSize: 12 }}>
+                <Text style={{ color: bloqueado ? "#475569" : "#1D4ED8", fontWeight: "800", fontSize: 12 }}>
                   {bloqueado ? (tipo === "idoso" ? "Idoso solicitado" : "PCD solicitado") : `Solicitar ${tipo === "idoso" ? "idoso" : "PCD"}`}
                 </Text>
               </Pressable>
             );
           })}
         </View>
-        <Text style={{ fontSize: 11, color: "#64748B", lineHeight: 17 }}>
+        <Text style={{ fontSize: 11, color: "#475569", lineHeight: 17 }}>
           Envie/apresente a credencial por canal autorizado do estacionamento. Uma autodeclaração não é comprovação.
         </Text>
       </View>
