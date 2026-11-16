@@ -151,7 +151,9 @@ def _registrar_transicao(
 def atualizar_status_vaga(
     db: Session,
     vaga_id: str,
-    dados: VagaAtualizaStatus
+    dados: VagaAtualizaStatus,
+    *,
+    commit: bool = True,
 ) -> Vaga:
     """
     Atualiza o status de uma vaga e cria registro de histórico automaticamente
@@ -166,8 +168,11 @@ def atualizar_status_vaga(
 
     _registrar_transicao(db, vaga, dados.status, getattr(dados, "origem", None))
 
-    db.commit()
-    db.refresh(vaga)
+    if commit:
+        db.commit()
+        db.refresh(vaga)
+    else:
+        db.flush()  # The ingest service persists event+sequence+spot atomically.
 
     # Adiciona numero do andar na resposta
     if vaga.andar:
