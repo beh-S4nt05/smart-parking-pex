@@ -109,6 +109,10 @@ class Usuario(Base):
     senha_hash = Column(String, nullable=False)
     placa_veiculo = Column(String, nullable=True, index=True)
     data_nascimento = Column(Date, nullable=True)  # opcional; idade declarada não concede credencial
+    email_verificado_em = Column(DateTime(timezone=True), nullable=True)
+    mfa_segredo_cifrado = Column(Text, nullable=True)
+    mfa_ativado_em = Column(DateTime(timezone=True), nullable=True)
+    mfa_ultimo_contador = Column(Integer, nullable=False, default=-1, server_default="-1")
     telefone = Column(String, nullable=True)
     is_ativo = Column(Boolean, default=True)
     # RF-47 (22/10-rod.5): autodeclaração PCD feita no CADASTRO (ou na
@@ -153,6 +157,20 @@ class Usuario(Base):
             if est.id not in ids:
                 ids.append(est.id)
         return ids
+
+
+
+class TokenIdentidade(Base):
+    """Desafios de verificação de e-mail e recuperação, guardados somente por hash."""
+    __tablename__ = "tokens_identidade"
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    usuario_id = Column(String, ForeignKey("usuarios.id", ondelete="CASCADE"), nullable=False, index=True)
+    finalidade = Column(String(24), nullable=False)  # verificar_email | recuperar_senha
+    token_hash = Column(String(64), nullable=False, unique=True, index=True)
+    expira_em = Column(DateTime(timezone=True), nullable=False)
+    consumido_em = Column(DateTime(timezone=True), nullable=True)
+    criado_em = Column(DateTime(timezone=True), server_default=func.now())
 
 
 
