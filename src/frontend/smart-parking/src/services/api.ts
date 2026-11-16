@@ -297,6 +297,21 @@ export const parkingApi = {
     return data;
   },
 
+  async atualizarVeiculo(id: string, payload: {
+    placa: string;
+    categoria: CategoriaVeiculo;
+    motorizacao: MotorizacaoVeiculo;
+    modelo?: string;
+  }): Promise<VeiculoUsuario> {
+    const { data } = await api.put<VeiculoUsuario>(`/auth/veiculos/${id}`, payload);
+    return data;
+  },
+
+  async definirVeiculoPrincipal(id: string): Promise<VeiculoUsuario> {
+    const { data } = await api.put<VeiculoUsuario>(`/auth/veiculos/${id}/principal`);
+    return data;
+  },
+
   async removerVeiculo(id: string): Promise<void> {
     await api.delete(`/auth/veiculos/${id}`);
   },
