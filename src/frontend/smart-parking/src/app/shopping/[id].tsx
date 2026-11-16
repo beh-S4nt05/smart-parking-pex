@@ -49,6 +49,7 @@ import type {
 
 const FILTROS_TIPO: { id: VagaTipo | "todos"; label: string }[] = [
   { id: "todos", label: "Todas" },
+  { id: "comum", label: "Comum" },
   { id: "pcd", label: "PCD" },
   { id: "idoso", label: "Idoso" },
   { id: "moto", label: "Moto" },
@@ -345,16 +346,19 @@ export default function MapaVagas() {
         </View>
       )}
 
-      {filtroTipo !== "todos" && !isWeb ? (
-        <View className="mb-4 flex-row flex-wrap gap-2">
-          {FILTROS_TIPO.map((f) => (
-            <FiltroPill
-              key={f.id}
-              item={f}
-              ativo={filtroTipo === f.id}
-              onPress={() => setFiltroTipo(f.id)}
-            />
-          ))}
+      {!isWeb ? (
+        <View className="mb-4">
+          <Text className="mb-2 text-[13px] font-semibold text-slate-700">Filtrar por tipo</Text>
+          <View className="flex-row flex-wrap gap-2">
+            {FILTROS_TIPO.map((f) => (
+              <FiltroPill
+                key={f.id}
+                item={f}
+                ativo={filtroTipo === f.id}
+                onPress={() => setFiltroTipo(f.id)}
+              />
+            ))}
+          </View>
         </View>
       ) : null}
 
@@ -598,6 +602,8 @@ function FiltroPill({
   return (
     <Pressable
       onPress={onPress}
+      accessibilityRole="button"
+      accessibilityState={{ selected: ativo }}
       className={`rounded-full border px-3.5 py-1.5 ${
         ativo ? "border-blue-600 bg-blue-50" : "border-slate-200 bg-white"
       }`}
