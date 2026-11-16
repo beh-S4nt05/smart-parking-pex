@@ -1,6 +1,8 @@
-from datetime import datetime
+from datetime import date, datetime
 
-from pydantic import BaseModel, EmailStr, Field, field_validator
+from typing import Literal
+
+from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
 
 from core.security import senha_cabe_no_bcrypt
 from models.db_models import StatusReserva, StatusVaga, TipoVaga
@@ -13,10 +15,28 @@ def validar_tamanho_senha(senha: str) -> str:
 
 
 # --- Schemas de Usuário ---
+class VeiculoCadastro(BaseModel):
+    """Veículo inicial opcional do cadastro, sem depender de documento/credencial."""
+    placa: str = Field(min_length=7, max_length=7)
+    categoria: Literal["carro", "moto"]
+    motorizacao: Literal["combustao", "hibrido", "eletrico"]
+    modelo: str | None = Field(None, max_length=100)
+
+    @field_validator("placa")
+    @classmethod
+    def normalizar_placa(cls, placa: str) -> str:
+        import re
+        placa = placa.upper().replace("-", "").replace(" ", "")
+        if not (re.fullmatch(r"[A-Z]{3}[0-9]{4}", placa) or re.fullmatch(r"[A-Z]{3}[0-9][A-Z][0-9]{2}", placa)):
+            raise ValueError("Placa inválida, use ABC1234 ou ABC1D23")
+        return placa
+
+
 class UsuarioBase(BaseModel):
     nome: str = Field(..., min_length=2, max_length=120)
     email: EmailStr
     telefone: str | None = None
+    data_nascimento: date | None = None
     placa_veiculo: str | None = Field(None, max_length=10)
     # RF-47: autodeclaração PCD (cadastro/perfil). False = motorista comum.
     is_pcd: bool = False
@@ -24,6 +44,22 @@ class UsuarioBase(BaseModel):
 
 class UsuarioCreate(UsuarioBase):
     senha: str = Field(..., min_length=6)
+    veiculo: VeiculoCadastro | None = None
+    beneficio_solicitado: Literal["idoso", "pcd"] | None = None
+
+    @model_validator(mode="after")
+    def validar_beneficio(self):
+        if self.data_nascimento and self.data_nascimento > date.today():
+            raise ValueError("Data de nascimento não pode estar no futuro")
+        if self.beneficio_solicitado == "idoso":
+            if not self.data_nascimento:
+                raise ValueError("Informe a data de nascimento para solicitar credencial de idoso")
+            hoje = date.today()
+            idade = hoje.year - self.data_nascimento.year - ((hoje.month, hoje.day) < (self.data_nascimento.month, self.data_nascimento.day))
+            if idade < 60:
+                raise ValueError("Credencial de idoso exige pelo menos 60 anos")
+        return self
+
 
     @field_validator("senha")
     @classmethod
