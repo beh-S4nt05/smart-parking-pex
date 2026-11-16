@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime, timezone
 from hashlib import sha256
 import hmac
 from typing import Literal, Optional
@@ -108,7 +108,7 @@ def avaliar_credencial(
         raise HTTPException(status_code=422, detail="Informe a referência da credencial oficial verificada")
     if dados.decisao == "revogado" and cred.status != "aprovado":
         raise HTTPException(status_code=409, detail="Somente credenciais aprovadas podem ser revogadas")
-    if dados.validade and dados.validade < date.today():
+    if dados.validade and dados.validade < datetime.now(timezone.utc).date():
         raise HTTPException(status_code=422, detail="A validade não pode ser anterior à data atual")
     if dados.decisao == "aprovado" and dados.metodo_verificacao not in {"conferencia_presencial", "consulta_oficial"}:
         raise HTTPException(status_code=422, detail="Método de verificação inválido")
