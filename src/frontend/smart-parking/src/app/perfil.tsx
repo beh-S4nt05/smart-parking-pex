@@ -21,6 +21,7 @@ import { useAuth } from "../hooks/useAuth";
 import { apiErrorMessage, parkingApi } from "../services/api";
 import { Botao, Card, Campo, Chip } from "../components/ui";
 import GaragemECredenciais from "../components/GaragemECredenciais";
+import SessoesAtivas from "../components/SessoesAtivas";
 import AnaliseCredenciaisAdmin from "../components/AnaliseCredenciaisAdmin";
 import Header from "../components/Header";
 import { MobileBottomNav, MobileScreenHeader } from "../components/MobileChrome";
@@ -225,6 +226,8 @@ export default function Perfil() {
               </View>
             </View>
           </Card>
+
+          <SessoesAtivas onRevogarTodas={async () => { await signOut(); router.replace("/login"); }} />
 
           <Text className="px-1 text-xs text-slate-600">
             Esqueceu a senha? Peça ao administrador do estacionamento uma senha temporária
