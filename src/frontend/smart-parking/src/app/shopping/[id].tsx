@@ -23,6 +23,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import Header, { BarraEscura } from "../../components/Header";
 import VagaMapa from "../../components/VagaMapa";
+import { MobileBottomNav } from "../../components/MobileChrome";
 import { useMapaVagas } from "../../hooks/useMapaVagas";
 import { useLarguraResponsiva } from "../../hooks/useLarguraResponsiva";
 import { useAgora, desdeAte } from "../../hooks/useAgora";
@@ -268,12 +269,12 @@ export default function MapaVagas() {
   const painelSugerida = (
     <View
       className="rounded-2xl p-5"
-      style={{ backgroundColor: colors.primary }}
+      style={{ backgroundColor: Platform.OS === "web" ? colors.primary : "#255CE6", borderRadius: 22 }}
     >
       <Text className="text-[11px] font-bold uppercase tracking-wider text-blue-50">
         Próxima vaga sugerida
       </Text>
-      <Text className="mt-1 text-4xl font-extrabold text-white">
+      <Text className={Platform.OS === "web" ? "mt-1 text-4xl font-extrabold text-white" : "mt-1 text-3xl font-extrabold text-white"}>
         {sugestao?.vaga?.codigo ?? "—"}
       </Text>
       <Text className="mt-1 text-sm text-blue-50">
@@ -322,6 +323,8 @@ export default function MapaVagas() {
           )}
         </View>
       ) : null}
+
+      {!isWeb ? <View className="mb-4"><Text className="text-lg font-extrabold text-slate-900">Escolha sua vaga</Text><Text className="mt-1 text-xs text-slate-600">Toque em uma vaga livre para reservar</Text></View> : null}
 
       {!isWeb ? (
         <View className="mb-4 flex-row flex-wrap gap-2">
@@ -541,6 +544,7 @@ export default function MapaVagas() {
           ) : null}
           {loading && !mapa ? <EsqueletoMapa /> : conteudo}
         </ScrollView>
+        <MobileBottomNav active="explorar" />
       </View>
     );
   }
