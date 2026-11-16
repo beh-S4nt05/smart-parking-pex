@@ -265,12 +265,22 @@ export default function SimuladorQR() {
                 <Passo numero="2" titulo="Escaneie com o celular" />
                 <View className="mt-5 flex-row flex-wrap items-center gap-5">
                   <View className="items-center rounded-2xl bg-slate-50 p-4">
-                    <Image
-                      source={{ uri: `data:image/png;base64,${sessao.qr_png_base64}` }}
-                      style={{ width: 168, height: 168 }}
-                      resizeMode="contain"
-                      accessibilityLabel="QR Code da sessão do simulador"
-                    />
+                    {sessao.qr_png_base64 ? (
+                      <Image
+                        source={{
+                          uri: sessao.qr_png_base64.startsWith("data:")
+                            ? sessao.qr_png_base64
+                            : `data:image/png;base64,${sessao.qr_png_base64}`,
+                        }}
+                        style={{ width: 168, height: 168 }}
+                        resizeMode="contain"
+                        accessibilityLabel="QR Code da sessão do simulador"
+                      />
+                    ) : (
+                      <Text className="max-w-[168px] text-center text-xs text-slate-600">
+                        QR indisponível. Use o link da sessão ao lado.
+                      </Text>
+                    )}
                   </View>
 
                   <View className="min-w-0 flex-1 gap-3" style={{ flexBasis: 240 }}>
