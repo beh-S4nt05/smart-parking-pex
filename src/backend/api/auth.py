@@ -501,3 +501,79 @@ async def login_apple(request: Request, dados: AppleLoginRequest, db: Session = 
     """
     _social_habilitado()
     return await social_auth_service.autenticar_apple(dados.identity_token, db)
+
+
+# --- Identidade V1 (PR60). E-mail depende de servidor SMTP configurado. ---
+class EmailIdentidade(BaseModel):
+    email: str = Field(min_length=3, max_length=254)
+
+
+class TokenIdentidadeIn(BaseModel):
+    token: str = Field(min_length=24, max_length=128)
+
+
+class RedefinirSenhaIn(TokenIdentidadeIn):
+    nova_senha: str = Field(min_length=6, max_length=72)
+
+    @field_validator("nova_senha")
+    @classmethod
+    def validar_senha(cls, senha: str) -> str:
+        return validar_tamanho_senha(senha)
+
+
+class MFAIniciarIn(BaseModel):
+    senha_atual: str
+
+
+class MFAConfirmarIn(BaseModel):
+    codigo: str = Field(pattern=r"^[0-9]{6}$")
+
+
+@router.post("/email/solicitar", status_code=202)
+@limiter.limit(LIMITS["registro"])
+def solicitar_verificacao_email(request: Request, dados: EmailIdentidade, db: Session = Depends(get_db)):
+    from rules.identity_service import solicitar_desafio
+    solicitar_desafio(db, dados.email, "verificar_email")
+    return {"mensagem": "Se a conta existir e estiver pendente, a mensagem será enviada."}
+
+
+@router.post("/email/confirmar", status_code=204)
+@limiter.limit(LIMITS["auth_escrita"])
+def confirmar_verificacao_email(request: Request, dados: TokenIdentidadeIn, db: Session = Depends(get_db)):
+    from rules.identity_service import confirmar_email
+    confirmar_email(db, dados.token)
+
+
+@router.post("/senha/esqueci", status_code=202)
+@limiter.limit(LIMITS["registro"])
+def solicitar_recuperacao(request: Request, dados: EmailIdentidade, db: Session = Depends(get_db)):
+    from rules.identity_service import solicitar_desafio
+    solicitar_desafio(db, dados.email, "recuperar_senha")
+    return {"mensagem": "Se a conta existir, serão enviadas instruções."}
+
+
+@router.post("/senha/redefinir", status_code=204)
+@limiter.limit(LIMITS["auth_escrita"])
+def recuperar_senha(request: Request, dados: RedefinirSenhaIn, db: Session = Depends(get_db)):
+    from rules.identity_service import redefinir_senha
+    redefinir_senha(db, dados.token, dados.nova_senha)
+
+
+@router.post("/mfa/iniciar")
+@limiter.limit(LIMITS["auth_escrita"])
+def iniciar_mfa(
+    request: Request, dados: MFAIniciarIn, db: Session = Depends(get_db),
+    usuario: Usuario = Depends(get_usuario_logado),
+):
+    from rules.identity_service import iniciar_mfa as _iniciar
+    return _iniciar(db, usuario, dados.senha_atual)
+
+
+@router.post("/mfa/confirmar", status_code=204)
+@limiter.limit(LIMITS["auth_escrita"])
+def confirmar_mfa(
+    request: Request, dados: MFAConfirmarIn, db: Session = Depends(get_db),
+    usuario: Usuario = Depends(get_usuario_logado),
+):
+    from rules.identity_service import confirmar_mfa as _confirmar
+    _confirmar(db, usuario, dados.codigo)
