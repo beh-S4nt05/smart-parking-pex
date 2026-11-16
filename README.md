@@ -82,7 +82,7 @@ Para abrir o QR do simulador em outro aparelho, defina antes de subir a API: `SI
 | Financeiro | Ver dados da sua unidade, gerir preços, tarifas, pagamentos/caixa/cupons pela API; vínculo único |
 | Admin | Todas as unidades, usuários, sensores e sessões do simulador QR |
 
-O backend aplica o escopo em cada rota; ocultar um botão na interface não concede nem revoga acesso. O painel usa `GET /api/admin/estacionamentos` para listar somente os shoppings permitidos. O motorista pode se autodeclarar PCD no cadastro/perfil; vagas PCD exigem essa declaração para reserva. A disponibilidade e a sugestão são dados da API, não números aleatórios da interface.
+O backend aplica o escopo em cada rota; ocultar um botão na interface não concede nem revoga acesso. O painel usa `GET /api/admin/estacionamentos` para listar somente os shoppings permitidos. O acesso às vagas de idoso/PCD exige **credencial validada por um administrador**; a autodeclaração PCD legada não é comprovação nem concede autorização. A disponibilidade e a sugestão são dados da API, não números aleatórios da interface.
 
 ## Jornadas da versão 1
 
@@ -139,9 +139,11 @@ As telas foram preparadas para larguras móveis, tablet, desktop e TV; o CI web 
 - [Mapa da aplicação](src/docs/MAPA_APLICACAO.md): índice técnico e fluxos históricos; em caso de divergência, prevalecem código e SDD v1.
 - [Migrações](src/docs/MIGRACOES.md), [conectividade mobile](src/docs/CONECTIVIDADE_MOBILE.md) e [QA de interface](src/docs/QA_UI_UX.md): operação e investigação detalhada.
 
-### Melhorias previstas para concluir a versão 1
+### Veículos e credenciais — versão 1
 
-O escopo **da própria v1** passa a incluir cadastro de múltiplos veículos por pessoa (carro, moto, versões elétricas/híbridas), data de nascimento, solicitação e conferência de credenciais de idoso/PCD e regras de elegibilidade de vagas aplicadas pelo backend. O cadastro básico seguirá rápido; a validação da credencial ocorrerá somente para quem solicitar acesso às vagas reservadas. Reconhecimento facial **não** será exigido para validar idade. Essas melhorias estão **planejadas para implementação na v1**, ainda não concluídas. Veja [SDD §4.2](src/docs/SDD.md#42-evolução-em-desenvolvimento-na-versão-1--usuários-veículos-e-vagas-especiais) para contratos e aceite.
+A versão 1 inclui cadastro com **veículo opcional** (carro ou moto, combustão/híbrido/elétrico), gerenciamento de **múltiplos veículos** em *Minha conta* e seleção de veículo na reserva. A conta pode solicitar validação para vaga de **idoso (60+)** ou **PCD**, sem reconhecimento facial. A solicitação começa em **pendente** e não dá acesso automático à vaga especial: um administrador precisa conferir uma credencial oficial e registrar a decisão no painel de *Minha conta* (para a função admin). O backend verifica credencial e compatibilidade de veículo antes de confirmar reservas e oferecer vagas especiais como sugestão.
+
+**Limites reais:** a verificação é humana, sem integração automatizada com órgão emissor; a presença do beneficiário no momento do estacionamento exige conferência operacional. O cadastro comum não exige documentação especial. Os campos `usuarios.is_pcd` e `usuarios.placa_veiculo` continuam por compatibilidade, mas a reserva especial **não depende** da autodeclaração legada. O comportamento novo está nesta branch/PR até a integração na `main`. Consulte [SDD §4.2](src/docs/SDD.md#42-evolução-em-desenvolvimento-na-versão-1--usuários-veículos-e-vagas-especiais) e [migrações](src/docs/MIGRACOES.md) para contrato e operação segura.
 
 A v1 ainda tem limites conhecidos, como PIX simulado, sessões QR em memória, bloqueio imediato de reserva futura, TLS não configurado no Compose e validação física não universal.
 
