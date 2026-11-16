@@ -11,7 +11,8 @@ para a apresentação. Com múltiplos workers em produção, mover para Redis/Po
 """
 
 import base64
-import io
+import struct
+import zlib
 import secrets
 from datetime import datetime, timedelta, timezone
 
@@ -73,14 +74,15 @@ def criar_sessao(
         "criada_em": _agora(),
         "expira_em": expira_em,
     }
-    _SESSOES[token] = sessao
-
     url = base_url.rstrip("/") + f"/simulador?sessao={token}" if base_url else None
+    # Gerar o QR antes de publicar o token: falhas não deixam sessões órfãs.
+    qr_png_base64 = _gerar_qr_data_url(url) if url else None
+    _SESSOES[token] = sessao
 
     return {
         **_publicar(sessao),
         "url": url,
-        "qr_png_base64": _gerar_qr_data_url(url) if url else None,
+        "qr_png_base64": qr_png_base64,
     }
 
 
@@ -144,27 +146,55 @@ def revogar_sessao(token: str) -> dict:
     return {"mensagem": "Sessão revogada — o link do celular não funciona mais"}
 
 
-def _gerar_qr_data_url(texto: str) -> str | None:
+def _png_chunk(tipo: bytes, conteudo: bytes) -> bytes:
+    """Um chunk PNG com comprimento e CRC32 (somente biblioteca padrão)."""
+    return (
+        struct.pack("!I", len(conteudo))
+        + tipo
+        + conteudo
+        + struct.pack("!I", zlib.crc32(tipo + conteudo) & 0xFFFFFFFF)
+    )
+
+
+def _gerar_qr_data_url(texto: str) -> str:
     """
-    Desenha o QR Code no backend e devolve um data URL PNG — o app mostra com
-    <Image source={{uri}}> sem precisar de dependência nova no frontend.
+    Gera um PNG RGB válido diretamente da matriz QR, sem depender do Pillow.
+
+    No ambiente local, qrcode pode estar instalado enquanto Pillow não está;
+    chamar qr.make_image() nessa situação levantava ImportError e a rota POST
+    /api/admin/simulador/sessoes devolvia HTTP 500.
     """
     try:
-        import qrcode  # aditivo em requirements.txt; se faltar, o app só não mostra a imagem
-    except ImportError:
-        return None
+        import qrcode
+    except ImportError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Geração de QR indisponível: instale as dependências do backend (qrcode).",
+        ) from exc
 
     qr = qrcode.QRCode(
         version=None,
         error_correction=qrcode.constants.ERROR_CORRECT_M,
-        box_size=10,
-        border=2,
+        box_size=8,
+        border=4,  # zona de silêncio recomendada para leitura pela câmera
     )
     qr.add_data(texto)
     qr.make(fit=True)
-    imagem = qr.make_image(fill_color="#0F172A", back_color="white")
 
-    buffer = io.BytesIO()
-    imagem.save(buffer, format="PNG")
-    b64 = base64.b64encode(buffer.getvalue()).decode("ascii")
-    return f"data:image/png;base64,{b64}"
+    matriz = qr.get_matrix()  # inclui a borda branca
+    escala = 8
+    escuro, claro = b"\x0f\x17\x2a", b"\xff\xff\xff"
+    linhas_png = b"".join(
+        (b"\x00" + b"".join((escuro if modulo else claro) * escala for modulo in linha)) * escala
+        for linha in matriz
+    )
+    largura = len(matriz[0]) * escala
+    altura = len(matriz) * escala
+    cabecalho = struct.pack("!IIBBBBB", largura, altura, 8, 2, 0, 0, 0)
+    png = (
+        b"\x89PNG\r\n\x1a\n"
+        + _png_chunk(b"IHDR", cabecalho)
+        + _png_chunk(b"IDAT", zlib.compress(linhas_png))
+        + _png_chunk(b"IEND", b"")
+    )
+    return "data:image/png;base64," + base64.b64encode(png).decode("ascii")
