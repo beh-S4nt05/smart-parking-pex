@@ -124,7 +124,7 @@ class Usuario(Base):
 
     reservas = relationship("Reserva", back_populates="usuario", cascade="all, delete-orphan")
     veiculos = relationship("Veiculo", back_populates="usuario", cascade="all, delete-orphan")
-    credenciais_estacionamento = relationship("CredencialEstacionamento", back_populates="usuario", cascade="all, delete-orphan")
+    credenciais_estacionamento = relationship("CredencialEstacionamento", back_populates="usuario", foreign_keys="CredencialEstacionamento.usuario_id", cascade="all, delete-orphan")
     historicos = relationship("Historico", back_populates="usuario", foreign_keys="Historico.usuario_id")
     estacionamento_gerenciado = relationship("Estacionamento")
     # Vínculos ADICIONAIS de um gestor (N:N). `estacionamento_id` continua sendo
