@@ -604,7 +604,7 @@ function FiltroPill({
       onPress={onPress}
       accessibilityRole="button"
       accessibilityState={{ selected: ativo }}
-      className={`rounded-full border px-3.5 py-1.5 ${
+      className={`min-h-11 items-center justify-center rounded-full border px-3.5 py-2 ${
         ativo ? "border-blue-600 bg-blue-50" : "border-slate-200 bg-white"
       }`}
     >
