@@ -266,11 +266,19 @@ if settings.ENVIRONMENT == "production":
 # 5. CORS: Web local/LAN em desenvolvimento; origens explícitas em produção.
 app.add_middleware(CORSMiddleware, **opcoes_cors(settings))
 
+# Registra negações e mutações administrativas sem armazenar dados sensíveis.
+from core.security_audit import SecurityAuditMiddleware
+app.add_middleware(SecurityAuditMiddleware)
+
 # Inclui todos os roteadores
 app.include_router(api_router)
 app.include_router(auth_router)
 app.include_router(admin_router)
 app.include_router(sensores_router, prefix="/api")
+
+# Acesso aos eventos é sempre verificado no servidor.
+from api.security_audit import router as security_audit_router
+app.include_router(security_audit_router)
 
 
 # Rota raiz com limite de acesso
