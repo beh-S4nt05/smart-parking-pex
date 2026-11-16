@@ -315,6 +315,25 @@ export const parkingApi = {
     await api.put("/auth/senha", { senha_atual, nova_senha });
   },
 
+  async credenciaisPendentesAdmin(): Promise<Array<{
+    id: string; usuario_id: string; usuario_nome: string;
+    tipo: "idoso" | "pcd"; status: string; criado_em?: string;
+  }>> {
+    const { data } = await api.get("/api/admin/credenciais/pendentes");
+    return data;
+  },
+
+  async avaliarCredencialAdmin(id: string, payload: {
+    decisao: "aprovado" | "rejeitado" | "revogado";
+    justificativa: string;
+    metodo_verificacao: "conferencia_presencial" | "consulta_oficial";
+    referencia_oficial?: string;
+    validade?: string;
+  }): Promise<{ id: string; status: string }> {
+    const { data } = await api.post(`/api/admin/credenciais/${id}/avaliar`, payload);
+    return data;
+  },
+
   // ---- Estacionamentos / vagas ----
   async listarEstacionamentos(): Promise<Estacionamento[]> {
     const { data } = await api.get<Estacionamento[]>("/api/estacionamentos");
