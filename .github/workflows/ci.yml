@@ -5,7 +5,7 @@ name: CI
 
 on:
   push:
-    branches: [main, "arena/**"]
+    branches: [main, "develop/v2"]
   pull_request:
 
 jobs:
@@ -91,3 +91,61 @@ jobs:
           path: src/frontend/smart-parking/test-results/**/preview-*.png
           if-no-files-found: ignore
           retention-days: 5
+
+  ota-v2:
+    name: EAS Update V2 (após CI verde, se habilitado)
+    needs: [backend, frontend, ui]
+    # Publicações somente na develop/v2. Nunca liberar a main por acidente.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/develop/v2'
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: src/frontend/smart-parking } }
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verificar pré-requisitos da publicação OTA
+        id: config
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          API_V2_HTTPS: ${{ vars.V2_API_HTTPS_URL }}
+        run: |
+          if [ -z "$EXPO_TOKEN" ] || [[ "$API_V2_HTTPS" != https://* ]]; then
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "OTA V2 não configurada: adicionar secret EXPO_TOKEN e var V2_API_HTTPS_URL (https://)." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          if ! node - <<'NODE'
+          const fs = require('fs');
+          const pkg = JSON.parse(fs.readFileSync('package.json'));
+          const app = JSON.parse(fs.readFileSync('app.json')).expo;
+          const id = app.extra?.eas?.projectId;
+          const url = app.updates?.url;
+          const valid = Boolean(pkg.dependencies?.['expo-updates'] && id && url === `https://u.expo.dev/${id}` && app.runtimeVersion);
+          if (!valid) {
+            console.error('Faltam expo-updates, projectId/updates.url ou runtimeVersion. Rode eas init e eas update:configure localmente e faça commit.');
+            process.exit(1);
+          }
+          NODE
+          then
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "OTA V2 ainda não inicializada com EAS; ver docs/EXPO_MOBILE_V2.md." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          echo "ready=true" >> "$GITHUB_OUTPUT"
+      - uses: actions/setup-node@v4
+        if: steps.config.outputs.ready == 'true'
+        with:
+          node-version: "24.19.0"
+          cache: npm
+          cache-dependency-path: src/frontend/smart-parking/package-lock.json
+      - name: Instalar dependências travadas
+        if: steps.config.outputs.ready == 'true'
+        run: npm ci --no-audit --no-fund
+      - name: Publicar atualização OTA somente no canal v2
+        if: steps.config.outputs.ready == 'true'
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          EXPO_PUBLIC_API_URL_MOBILE: ${{ vars.V2_API_HTTPS_URL }}
+          EXPO_PUBLIC_API_URL: ${{ vars.V2_API_HTTPS_URL }}
+          CI: "1"
+        run: |
+          npm exec --yes --package=eas-cli -- eas update --branch v2 --platform all --non-interactive --message "CI V2 ${GITHUB_SHA}"
+          echo "EAS Update V2 publicado a partir de ${GITHUB_SHA}" >> "$GITHUB_STEP_SUMMARY"
