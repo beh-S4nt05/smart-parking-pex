@@ -66,7 +66,8 @@ export default function Hero({ shoppings, selecionadoId, onSelect, onBuscar }: P
         </Text>
 
         {/* Cartão de busca elevado: uma decisão por vez, sem elementos flutuantes. */}
-        <View className="sp-busca mt-7 w-full min-w-0 max-w-2xl p-3 sm:mt-9 sm:p-4 3xl:max-w-3xl">
+        <View className="sp-busca mt-7 w-full min-w-0 max-w-2xl p-3 sm:mt-9 sm:p-4 3xl:max-w-3xl"
+          style={Platform.OS === "web" ? undefined : { borderColor: "#E2E8F0", borderWidth: 1 }}>
           <View className="mb-3 flex-row items-center gap-2 px-1">
             <View className="h-5 w-1 rounded-full bg-blue-600" />
             <Text className="text-[13px] font-bold uppercase tracking-wider text-slate-600">
@@ -84,6 +85,7 @@ export default function Hero({ shoppings, selecionadoId, onSelect, onBuscar }: P
                 disabled={vazio}
                 hitSlop={4}
                 onPress={() => setListaAberta((v) => !v)}
+                style={Platform.OS === "web" ? undefined : { borderWidth: 1, borderColor: "#CBD5E1" }}
                 className={`min-h-12 flex-row items-center justify-between rounded-xl border border-slate-200 bg-white px-3 py-2.5 web:transition-colors hover:border-blue-300 active:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 web:motion-reduce:transition-none sm:px-4 sm:py-3 ${
                   vazio ? "opacity-60" : ""
                 }`}
@@ -103,9 +105,10 @@ export default function Hero({ shoppings, selecionadoId, onSelect, onBuscar }: P
                   nativeID="hero-lista-shoppings"
                   accessibilityRole="list"
                   accessibilityLabel="Lista de shoppings"
-                  className={`mt-2 rounded-xl bg-white p-2 ${Platform.OS === "web" ? "border border-slate-200" : "border border-slate-100"}`}
+                  className={`mt-2 rounded-xl bg-white p-2 ${Platform.OS === "web" ? "border border-slate-200" : ""}`}
+                  style={Platform.OS === "web" ? undefined : { borderWidth: 1, borderColor: "#E2E8F0" }}
                 >
-                  <ScrollView
+                  {Platform.OS === "web" ? <ScrollView
                     style={{ maxHeight: listaMaxHeight, flexGrow: 0 }}
                     nestedScrollEnabled={Platform.OS !== "web"}
                     scrollEnabled
@@ -121,7 +124,12 @@ export default function Hero({ shoppings, selecionadoId, onSelect, onBuscar }: P
                         setListaAberta(false);
                       }}
                     />
-                  </ScrollView>
+                  </ScrollView> : <ShoppingList
+                    shoppings={shoppings}
+                    variante="lista"
+                    selecionadoId={selecionado?.id ?? null}
+                    onPress={(est) => { onSelect(est.id); setListaAberta(false); }}
+                  />}
                 </View>
               ) : null}
             </View>
