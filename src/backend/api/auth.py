@@ -277,7 +277,9 @@ def _reservas_ativas_do_veiculo(db: Session, veiculo_id: str) -> bool:
 
 
 def _fixar_principal(db: Session, usuario: Usuario, escolhido: Veiculo) -> None:
-    # Uma única transação troca o principal e atualiza a placa legada.
+    # O projeto configura autoflush=False. Persistir alterações pendentes
+    # antes de consultar veículos ativos/principal na mesma transação.
+    db.flush()
     for veiculo in db.query(Veiculo).filter(
         Veiculo.usuario_id == usuario.id, Veiculo.ativo.is_(True)
     ).all():
@@ -404,6 +406,7 @@ def remover_veiculo(
     era_principal = veiculo.principal
     veiculo.principal = False
     veiculo.ativo = False  # remoção lógica: preserva vínculos históricos
+    db.flush()  # SessionLocal.autoflush=False: não selecionar o removido como sucessor
     if era_principal:
         proximo = db.query(Veiculo).filter(
             Veiculo.usuario_id == usuario.id, Veiculo.ativo.is_(True)
