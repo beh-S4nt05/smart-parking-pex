@@ -51,13 +51,12 @@ def test_driver_cannot_change_spots_or_admin_roles(client, db, fab):
 
 
 def test_admin_cannot_update_absent_spot_in_bulk(client, db, fab):
-    from core.escopo import garantir_vagas_no_escopo
     admin = fab.usuario(role=TipoUsuario.ADMIN)
     est = fab.est()
     vaga = fab.vaga(fab.andar(est))
     from fastapi import HTTPException
     try:
         garantir_vagas_no_escopo(db, admin, [vaga.id, "nao-existe"])
-        assert False, "expected HTTPException"
+        raise AssertionError("expected HTTPException")
     except HTTPException as exc:
         assert exc.status_code == 404
