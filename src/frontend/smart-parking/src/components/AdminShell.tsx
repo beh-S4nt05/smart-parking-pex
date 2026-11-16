@@ -269,9 +269,9 @@ export default function AdminShell({
           })}
         </View>
       </View>
-      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
-        <View className="gap-4">
-          {direita}
+      <ScrollView style={{ flex: 1 }} nestedScrollEnabled contentContainerStyle={{ padding: 16, paddingBottom: 48 }}>
+        <View className="min-w-0 gap-4">
+          {direita ? <View className="min-w-0 flex-row flex-wrap gap-2">{direita}</View> : null}
           {children}
         </View>
       </ScrollView>
