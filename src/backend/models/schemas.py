@@ -95,6 +95,7 @@ class LoginRequest(BaseModel):
 
     email: str = Field(..., min_length=3, max_length=120)
     senha: str = Field(..., min_length=1)
+    mfa_codigo: str | None = Field(None, pattern=r"^[0-9]{6}$")
 
 
 class TokenResponse(BaseModel):
