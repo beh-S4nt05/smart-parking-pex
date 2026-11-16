@@ -139,6 +139,10 @@ As telas foram preparadas para larguras móveis, tablet, desktop e TV; o CI web 
 - [Mapa da aplicação](src/docs/MAPA_APLICACAO.md): índice técnico e fluxos históricos; em caso de divergência, prevalecem código e SDD v1.
 - [Migrações](src/docs/MIGRACOES.md), [conectividade mobile](src/docs/CONECTIVIDADE_MOBILE.md) e [QA de interface](src/docs/QA_UI_UX.md): operação e investigação detalhada.
 
-A v1 não inclui gateway de pagamento real, 3D, câmeras com visão computacional nem integração com sistemas terceiros. As **quatro frentes propostas para a v2**, com critérios iniciais, estão no [SDD §12](src/docs/SDD.md#12-direção-da-versão-2-fora-do-aceite-da-v1). Também permanecem como limites da v1 o PIX simulado, sessões QR em memória, reserva futura com bloqueio imediato, TLS não configurado no Compose e validação física não universal.
+### Melhorias previstas para concluir a versão 1
+
+O escopo **da própria v1** passa a incluir cadastro de múltiplos veículos por pessoa (carro, moto, versões elétricas/híbridas), data de nascimento, solicitação e conferência de credenciais de idoso/PCD e regras de elegibilidade de vagas aplicadas pelo backend. O cadastro básico seguirá rápido; a validação da credencial ocorrerá somente para quem solicitar acesso às vagas reservadas. Reconhecimento facial **não** será exigido para validar idade. Essas melhorias estão **planejadas para implementação na v1**, ainda não concluídas. Veja [SDD §4.2](src/docs/SDD.md#42-evolução-em-desenvolvimento-na-versão-1--usuários-veículos-e-vagas-especiais) para contratos e aceite.
+
+A v1 ainda tem limites conhecidos, como PIX simulado, sessões QR em memória, bloqueio imediato de reserva futura, TLS não configurado no Compose e validação física não universal.
 
 **Equipe PEX:** Breno Santos (autor/liderança), Gabriel Almeida (desenvolvimento) e Jonas Almeida (UI).

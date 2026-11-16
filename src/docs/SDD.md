@@ -86,6 +86,23 @@ O frontend é Expo Router, React Native e NativeWind. Web e mobile compartilham 
 6. Relatórios interpretam o período em `America/Manaus` e persistem datas em UTC. Ocupação não usa vagas `inativa` no denominador. Ocupação histórica é derivada das estadias, sem snapshots próprios.
 7. Uma chave revogada não autoriza novos eventos de sensor; retransmissão `(sensor, seq)` não duplica a transição. QR expira em 1–48 horas ou é revogado manualmente.
 
+### 4.2 Evolução em desenvolvimento na versão 1 — usuários, veículos e vagas especiais
+
+**Situação: planejada para conclusão da V1, não implementada integralmente.** A funcionalidade atual utiliza `usuarios.is_pcd` como autodeclaração, e as vagas existentes são `comum`, `idoso`, `pcd`, `moto` e `eletrico`. A evolução abaixo deve integrar a própria versão 1, sem ser classificada como V2 nem descrita como pronta.
+
+| ID | Requisito V1 | Critério de aceite |
+|---|---|---|
+| RF-13 | Perfil do usuário com data de nascimento e indicação de benefício especial | Cadastro básico continua rápido; idade calculada no backend; informar 60+ não concede automaticamente acesso a vaga de idoso |
+| RF-14 | Garagem com múltiplos veículos por conta | Cadastrar/editar/excluir carro ou moto, placa normalizada e motorização combustão/híbrido/elétrico; diferenciar carro elétrico de moto elétrica |
+| RF-15 | Verificação de credencial de idoso/PCD | Solicitação sob demanda; estados pendente/aprovada/rejeitada/vencida/revogada; análise por responsável autorizado com registro de decisão e validade; beneficiário pode ser motorista ou passageiro |
+| RF-16 | Elegibilidade de vaga verificada no backend | Avaliar tipo da vaga, veículo, motorização e eventual carregador, credencial e regras do beneficiário antes da confirmação de reserva; negar com mensagem explicativa quando incompatível |
+| RF-17 | Interface mobile/web de veículos e credenciais | Acesso por perfil, seleção do veículo na reserva, consulta da situação de validação e fluxo comum sem exigência de documentos especiais |
+| RF-18 | Segurança e privacidade das credenciais | Coleta mínima de documentos, acesso restrito, histórico de decisões e política de retenção; sem reconhecimento facial ou estimativa de idade como comprovação automática |
+
+**Modelo técnico da V1:** separar `vehicles` (pertencentes ao usuário, tipo, placa e motorização), `parking_credentials` (beneficiário, espécie, validade e estado da avaliação) e um serviço `parking_eligibility` para autorização transacional. Adaptar as referências de reserva quando necessário. Migrar o esquema com Alembic, atualizar contratos de API, testes de concorrência, autorização e mensagens de erro. A conferência automatizada por fonte oficial só deverá ser adicionada caso exista integração viável e autorizada; a simples leitura de imagem/QR não substitui verificação.
+
+**Sequência da V1:** (1) modelos, migrações e CRUD de veículos; (2) credenciais e revisão administrativa; (3) regras de elegibilidade e integração com reserva; (4) telas e testes de fluxo ponta a ponta. Preservar a autorização para vagas comuns durante todo o processo. A autodeclaração PCD vigente exige transição controlada, sem conceder privilégios como se já houvesse comprovação.
+
 ## 5. Arquitetura e dados
 
 ```mermaid
