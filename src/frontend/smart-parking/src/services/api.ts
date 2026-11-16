@@ -19,6 +19,7 @@ import Constants from "expo-constants";
 import { storage } from "./storage";
 import { addRequestSignerInterceptor } from "./requestSigner";
 import type {
+  CadastroPayload,
   DashboardAdmin,
   Estacionamento,
   EventoVaga,
@@ -237,15 +238,7 @@ export const parkingApi = {
     return data;
   },
 
-  async registrar(payload: {
-    nome: string;
-    email: string;
-    senha: string;
-    telefone?: string;
-    placa_veiculo?: string;
-    /** RF-47: autodeclaração PCD colhida no cadastro (opcional). */
-    is_pcd?: boolean;
-  }): Promise<Usuario> {
+  async registrar(payload: CadastroPayload): Promise<Usuario> {
     const { data } = await api.post<Usuario>("/auth/registrar", payload);
     return data;
   },
