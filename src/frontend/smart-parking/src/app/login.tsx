@@ -109,7 +109,7 @@ export default function Login() {
         keyboardType="number-pad"
         maxLength={6}
         value={codigoMfa}
-        onChangeText={(valor) => setCodigoMfa(valor.replace(/\\D/g, "").slice(0, 6))}
+        onChangeText={(valor) => setCodigoMfa(valor.replace(/\D/g, "").slice(0, 6))}
         opcional
       />
 
