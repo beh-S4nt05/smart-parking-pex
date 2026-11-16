@@ -399,7 +399,7 @@ export function Card({
   return (
     <View
       className={`${cartao} ${className}`}
-      style={style}
+      style={Platform.OS === "web" ? style : [{ borderWidth: 1, borderColor: "#E2E8F0" }, style]}
     >
       {children}
     </View>
