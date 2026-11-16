@@ -140,3 +140,23 @@ def test_moto_e_eletrico_sao_dimensionados_independentemente(client, db, fab):
     assert _reserva(client, h, vaga_carro_ev.id, moto).status_code == 422
     assert _reserva(client, h, vaga_moto.id, moto).status_code == 201
     assert _reserva(client, h, vaga_carro_ev.id, carro).status_code == 201
+
+
+def test_credencial_expirada_nao_autoriza_e_pode_ser_renovada(client, db, fab):
+    from datetime import date
+
+    est = fab.est()
+    vaga = fab.vaga(fab.andar(est), codigo="PCD-VENCIDA", tipo=TipoVaga.PCD)
+    u = fab.usuario()
+    db.add(CredencialEstacionamento(
+        usuario_id=u.id, tipo="pcd", status="aprovado", validade=date(2020, 1, 1)
+    ))
+    db.commit()
+    h = fab.token(u)
+    assert _reserva(client, h, vaga.id).status_code == 403
+    lista = client.get("/auth/credenciais", headers=h)
+    assert lista.status_code == 200
+    assert lista.json()[0]["status"] == "expirado"
+    pedido = client.post("/auth/credenciais/solicitar", json={"tipo": "pcd"}, headers=h)
+    assert pedido.status_code == 201, pedido.text
+    assert pedido.json()["status"] == "pendente"
