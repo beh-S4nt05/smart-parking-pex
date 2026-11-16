@@ -86,7 +86,7 @@ def calcular_tarifa_estadia(db: Session, historico_id: str, cupom_codigo: str | 
         raise HTTPException(status_code=400, detail="Este ticket já está pago")
 
     if not historico.tempo_permanencia_minutos:
-        tempo = int((historico.saida_em - historico.entrada_em).total_seconds() / 60)
+        tempo = int((normalizar(historico.saida_em) - normalizar(historico.entrada_em)).total_seconds() / 60)
         historico.tempo_permanencia_minutos = tempo
     else:
         tempo = historico.tempo_permanencia_minutos

@@ -3,7 +3,7 @@ from fastapi import HTTPException, status
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from core.timeutils import utc_agora
+from core.timeutils import normalizar, utc_agora
 from models.db_models import Andar, Historico, StatusVaga, Usuario, Vaga
 from models.schemas import VagaAtualizaStatus, VagaCreate, VagaLoteStatusUpdate
 
@@ -139,8 +139,10 @@ def _registrar_transicao(
 
         if ultimo_registro:
             ultimo_registro.saida_em = utc_agora()
+            # PostgreSQL (timestamptz) pode devolver aware; utc_agora() escreve naive-UTC.
+            # O contrato do backend normaliza ambos os operandos antes do cálculo.
             tempo_perm = int(
-                (ultimo_registro.saida_em - ultimo_registro.entrada_em).total_seconds() / 60
+                (normalizar(ultimo_registro.saida_em) - normalizar(ultimo_registro.entrada_em)).total_seconds() / 60
             )
             ultimo_registro.tempo_permanencia_minutos = tempo_perm
 
