@@ -4,7 +4,7 @@ services:
     container_name: smartparking-nginx
     restart: always
     ports:
-      - "8080:80"
+      - "${SMARTPARKING_WEB_BIND_IP:-0.0.0.0}:8080:80"
     # Sem bind mount de config: a configuração é COPIADA no build (Dockerfile).
     # Editou src/nginx/*.conf? rebuild obrigatório: docker compose up -d --build
     depends_on:
@@ -20,11 +20,12 @@ services:
     environment:
       # driver +psycopg2 explícito: com SQLAlchemy>=2.1 a URL sem sufixo
       # procura psycopg v3 e o container morria em "unhealthy" (visto na V-02)
-      - DATABASE_URL=postgresql+psycopg2://postgres:postgres@postgres:5432/smartparking
+      - DATABASE_URL=postgresql+psycopg2://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/smartparking
       # "staging" desliga exigência de assinatura HMAC e mantém o resto — ideal
       # para demo/banca por IP na LAN. Produção real: ENVIRONMENT=production +
       # TRUSTED_HOSTS='["seu.dominio"]' e APP_SIGNING_SECRET fortes.
-      - ENVIRONMENT=staging
+      - ENVIRONMENT=${ENVIRONMENT:-staging}
+      - SECURITY_PILOT_HARDENED=${SECURITY_PILOT_HARDENED:-false}
       # ACH-02/M2-02 + ACH-03/M2-01: segredos e URL do QR passam por env do
       # host (padrão mantém a demo local funcionando; produção: exportar ANTES do up).
       - SECRET_KEY=${SECRET_KEY:-mude_efta_chave_secreta_em_producao}
@@ -38,7 +39,7 @@ services:
       # Estado do simulador/QR é memória por processo -> 1 worker (gunicorn_config.py)
       - GUNICORN_WORKERS=1
     ports:
-      - "8000:8000"
+      - "${SMARTPARKING_API_BIND_IP:-0.0.0.0}:8000:8000"
     expose:
       - "8000"
     depends_on:
@@ -60,10 +61,10 @@ services:
     container_name: smartparking-postgres
     restart: always
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       POSTGRES_DB: smartparking
     volumes:
       - postgres_data:/var/lib/postgresql/data
@@ -80,10 +81,10 @@ services:
     container_name: smartparking-pgadmin
     restart: always
     ports:
-      - "5050:80"
+      - "127.0.0.1:5050:80"
     environment:
       PGADMIN_DEFAULT_EMAIL: admin@admin.com
-      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-admin}
     volumes:
       - pgadmin_data:/var/lib/pgadmin
     depends_on:

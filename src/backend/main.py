@@ -178,8 +178,8 @@ def popular_dados_demo() -> None:
 
 # ACH-02 (M2-02): em PRODUÇÃO o admin padrão NÃO nasce com senha sabida —
 # crie via `python -c "..."`/script interno ou defina DEMO_ADMIN_FIXTURE.
-if settings.ENVIRONMENT.lower() == "production":
-    print("🔒 production: admin padrão e seed demo desabilitados")
+if settings.ENVIRONMENT.lower() == "production" or settings.SECURITY_PILOT_HARDENED:
+    print("🔒 proteção de ambiente: não criar admin com senha conhecida nem inserir dados demo")
 else:
     garantir_admin_padrao()
     popular_dados_demo()

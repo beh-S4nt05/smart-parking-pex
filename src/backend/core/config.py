@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     APP_DESCRIPTION: str = "Backend em FastAPI para gerenciamento inteligente de vagas"
     APP_VERSION: str = "1.0.0"
     ENVIRONMENT: str = "development"
+    SECURITY_PILOT_HARDENED: bool = False  # modo piloto fechado; fail-closed para segredos demo
     DEBUG: bool = True
     API_V2_PREFIX: str = "/api"
 
@@ -128,6 +129,24 @@ class Settings(BaseSettings):
                 )
             if len(self.APP_SIGNING_SECRET.strip().encode("utf-8")) < 32:
                 raise ValueError("APP_SIGNING_SECRET de produção exige ao menos 32 bytes")
+        # Opt-in explícito para pilotar com dados reais na rede privada.
+        # Rejeita segredos demonstrativos, sem alterar tokens, senhas ou dados.
+        if self.SECURITY_PILOT_HARDENED:
+            from urllib.parse import urlsplit, unquote
+            chave = self.SECRET_KEY.strip()
+            if len(chave.encode("utf-8")) < 32 or chave in {
+                "mude_efta_chave_secreta_em_producao",
+                "sua_chave_secreta_de_producao_aqui",
+            }:
+                raise ValueError("Piloto protegido requer SECRET_KEY forte e exclusiva")
+            try:
+                pwd = unquote(urlsplit(self.DATABASE_URL).password or "")
+            except ValueError:
+                pwd = ""
+            if not pwd or pwd == "postgres" or len(pwd) < 12:
+                raise ValueError("Piloto protegido exige senha PostgreSQL não padrão (12+ caracteres)")
+            # APP_SIGNING_SECRET no cliente não constitui prova de app oficial.
+            # Nunca usar seu valor como critério de autorização.
         return self
 
 
