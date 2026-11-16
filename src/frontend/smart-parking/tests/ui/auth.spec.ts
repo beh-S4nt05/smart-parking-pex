@@ -141,3 +141,59 @@ test("next externo não vira open redirect depois do login", async ({ page }) =>
   await expect(page).toHaveURL(/\/dashboard$/);
   expect(new URL(page.url()).origin).toBe("http://127.0.0.1:8000");
 });
+
+
+test("garagem permite gerenciar carros e motos e alterar principal em viewport mobile web", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const email = `garagem.${Date.now()}@teste.dev`;
+  const cadastro = await page.request.post("/auth/registrar", {
+    data: {
+      nome: "Conta Garagem QA",
+      email,
+      senha: "senha-forte123",
+      veiculo: {
+        placa: "ABC1D23", categoria: "moto", motorizacao: "eletrico",
+        modelo: "Moto de teste",
+      },
+    },
+  });
+  expect(cadastro.status()).toBe(201);
+
+  await login(page, email, "senha-forte123");
+  await page.goto("/perfil");
+  await expect(page.getByText("Meus veículos")).toBeVisible();
+  await expect(page.getByText("ABC1D23", { exact: true })).toBeVisible();
+
+  await page.getByRole("button", { name: "Adicionar veículo" }).click();
+  await page.getByRole("radio", { name: "Carro" }).click();
+  await page.getByLabel("Placa", { exact: true }).fill("DEF2E34");
+  await page.getByLabel("Modelo", { exact: true }).fill("Sedan QA");
+  await page.getByRole("button", { name: "Salvar veículo", exact: true }).click();
+  await expect(page.getByText("DEF2E34", { exact: true })).toBeVisible();
+
+  await page.getByRole("button", { name: "Definir DEF2E34 como principal" }).click();
+  await expect(page.getByText("Principal", { exact: true })).toHaveCount(1);
+  const token = await page.evaluate(() => localStorage.getItem("smartparking_access_token"));
+  expect(token).toBeTruthy();
+  const headers = { Authorization: `Bearer ${token}` };
+  const garagem = await page.request.get("/auth/veiculos", { headers });
+  expect(garagem.ok()).toBeTruthy();
+  const lista = await garagem.json() as Array<{ placa: string; principal: boolean }>;
+  expect(lista.find((v) => v.placa === "DEF2E34")?.principal).toBe(true);
+  expect(lista.find((v) => v.placa === "ABC1D23")?.principal).toBe(false);
+
+  await page.getByRole("button", { name: "Editar veículo DEF2E34" }).click();
+  await page.getByLabel("Modelo", { exact: true }).fill("Sedan QA atualizado");
+  await page.getByRole("radio", { name: "Híbrido" }).click();
+  await page.getByRole("button", { name: "Salvar alterações do veículo" }).click();
+  await expect(page.getByText(/Sedan QA atualizado/)).toBeVisible();
+  const atualizados = (await (await page.request.get("/auth/veiculos", { headers })).json()) as Array<{
+    placa: string; motorizacao: string; modelo: string;
+  }>;
+  expect(atualizados.find((v) => v.placa === "DEF2E34")?.motorizacao).toBe("hibrido");
+
+  page.once("dialog", async (dialog) => { await dialog.accept(); });
+  await page.getByRole("button", { name: "Remover veículo ABC1D23" }).click();
+  await expect(page.getByText("ABC1D23", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("DEF2E34", { exact: true })).toBeVisible();
+});
