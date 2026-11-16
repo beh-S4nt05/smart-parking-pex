@@ -391,6 +391,7 @@ export const parkingApi = {
 
   // ---- Reservas ----
   async criarReserva(payload: {
+    veiculo_id?: string;
     vaga_id: string;
     horario_inicio: string;
     horario_fim: string;
