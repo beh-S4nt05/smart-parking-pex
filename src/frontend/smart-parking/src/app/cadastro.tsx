@@ -14,6 +14,7 @@ import {
   View,
 } from "react-native";
 import { useRouter } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../hooks/useAuth";
 import { apiErrorMessage } from "../services/api";
 import { Botao, Campo, Checkbox, IconeCheck, IconeVoltar, Logo } from "../components/ui";
@@ -134,29 +135,45 @@ export default function Cadastro() {
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : undefined}
       className={pagina}
+      style={Platform.OS === "web" ? undefined : { backgroundColor: "#F3F7FD" }}
     >
-      <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: "center" }}>
-        <View className="w-full max-w-[440px] self-center px-5 py-10 3xl:max-w-[520px] 3xl:py-14">
+      <ScrollView contentContainerStyle={Platform.OS === "web" ? { flexGrow: 1, justifyContent: "center" } : { flexGrow: 1, paddingBottom: 32 }} keyboardShouldPersistTaps="handled">
+        <View className="w-full max-w-[440px] self-center px-5 py-10 3xl:max-w-[520px] 3xl:py-14" style={Platform.OS === "web" ? undefined : { paddingTop: 20, maxWidth: 500 }}>
           <Pressable
             onPress={() => router.replace("/")}
             accessibilityRole="button"
             accessibilityLabel="Voltar ao início sem criar conta"
             className="mb-5 min-h-11 flex-row items-center gap-2 self-start rounded-lg px-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+            style={Platform.OS === "web" ? undefined : { borderWidth: 0, paddingHorizontal: 0, marginBottom: 15 }}
           >
             <IconeVoltar />
             <Text className="text-sm font-semibold text-blue-700">Início</Text>
           </Pressable>
-          <View className="mb-6 items-center">
-            <Logo size={48} />
-            <Text className="mt-3 text-2xl font-extrabold text-slate-900">
-              Criar conta
-            </Text>
-            <Text className="mt-1 text-center text-sm text-slate-600">
-              {step === 1
-                ? "Vamos começar com seus dados pessoais"
-                : "Se quiser, cadastre seu veículo agora"}
-            </Text>
-          </View>
+          {Platform.OS === "web" ? (
+            <View className="mb-6 items-center">
+              <Logo size={48} />
+              <Text className="mt-3 text-2xl font-extrabold text-slate-900">Criar conta</Text>
+              <Text className="mt-1 text-center text-sm text-slate-600">
+                {step === 1 ? "Vamos começar com seus dados pessoais" : "Se quiser, cadastre seu veículo agora"}
+              </Text>
+            </View>
+          ) : (
+            <View style={{ backgroundColor: "#0F1E38", padding: 20, borderRadius: 23, marginBottom: 22 }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 11, marginBottom: 16 }}>
+                <View style={{ width: 43, height: 43, borderRadius: 13, backgroundColor: "#2563EB", justifyContent: "center", alignItems: "center" }}>
+                  <Ionicons name="car-sport" size={25} color="#FFFFFF" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: "#FFFFFF", fontSize: 17, fontWeight: "800" }}>Smart Parking</Text>
+                  <Text style={{ color: "#ADC3E0", fontSize: 11 }}>Sua jornada começa aqui</Text>
+                </View>
+              </View>
+              <Text style={{ color: "#FFFFFF", fontSize: 25, fontWeight: "900" }}>Criar conta</Text>
+              <Text style={{ color: "#C0D0E8", fontSize: 13, marginTop: 6, lineHeight: 19 }}>
+                {step === 1 ? "Primeiro, precisamos conhecer você." : "Agora, personalize sua experiência."}
+              </Text>
+            </View>
+          )}
 
           {/* Gradiente de objetivo: etapa explícita + barra preenchida.
               O usuário vê o quanto falta e não abandona no meio. */}
@@ -174,7 +191,7 @@ export default function Cadastro() {
               style={{ width: step === 1 ? "50%" : "100%" }}
             />
           </View>
-          <View className="mb-2 flex-row items-center gap-2 px-1">
+          {Platform.OS === "web" ? <View className="mb-2 flex-row items-center gap-2 px-1">
             <PassoEtapa numero={1} ativo={step === 1} concluido={step > 1} />
             <View
               className={`h-0.5 flex-1 ${step > 1 ? "bg-blue-600" : "bg-slate-200"}`}
@@ -192,9 +209,14 @@ export default function Cadastro() {
             >
               Seu veículo (opcional)
             </Text>
-          </View>
+          </View> : (
+            <View style={{ marginBottom: 17, flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+              <Text style={{ color: "#15233B", fontWeight: "800", fontSize: 15 }}>{step === 1 ? "Dados pessoais" : "Dados do veículo"}</Text>
+              <Text style={{ color: "#64748B", fontSize: 12 }}>{step === 1 ? "1/2" : "2/2"}</Text>
+            </View>
+          )}
 
-          <View className="rounded-2xl border border-slate-200 bg-white p-6">
+          <View className="rounded-2xl border border-slate-200 bg-white p-6" style={Platform.OS === "web" ? undefined : { borderWidth: 0, borderRadius: 21, padding: 19 }}>
             {step === 1 ? (
               <>
                 <Campo
