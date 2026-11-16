@@ -3,13 +3,13 @@
 O cadastro/edição legados continuam compatíveis, mas a autorização e a sugestão
 usam somente credencial oficial aprovada e não vencida.
 """
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from models.db_models import CredencialEstacionamento, TipoUsuario, TipoVaga, Usuario
 
 
 def _reserve(client, h, vaga_id, minutos=60):
-    agora = datetime.utcnow()
+    agora = datetime.now(timezone.utc)
     return client.post(
         "/api/reservas",
         json={
@@ -26,14 +26,14 @@ class TestDeclaracaoNoCadastro:
         base = {"nome": "QA PCD Um", "senha": "senha123"}
         r1 = client.post(
             "/auth/registrar",
-            json={**base, "email": f"qa-pcd-{datetime.utcnow().timestamp()}@t.dev",
+            json={**base, "email": f"qa-pcd-{datetime.now(timezone.utc).timestamp()}@t.dev",
                   "is_pcd": True},
         )
         assert r1.status_code == 201, r1.text
         assert r1.json()["is_pcd"] is True
         r2 = client.post(
             "/auth/registrar",
-            json={**base, "email": f"qa-pcd2-{datetime.utcnow().timestamp()}@t.dev"},
+            json={**base, "email": f"qa-pcd2-{datetime.now(timezone.utc).timestamp()}@t.dev"},
         )
         assert r2.status_code == 201
         assert r2.json()["is_pcd"] is False  # omissão = comum (RF-47)
@@ -118,7 +118,7 @@ class TestMotorDeAtribuicao:
         fab.vaga(fab.andar(est), codigo="X1", tipo=TipoVaga.PCD)
         r = client.get(f"/api/estacionamentos/{est.id}/proxima-vaga")
         assert r.json()["vaga"] is None
-        assert "comuns" in r.json()["mensagem"]
+        assert "Não há vagas disponíveis" in r.json()["mensagem"]
         # mas para o PCD declarado ela É a sugestão
         u = fab.usuario()
         u.is_pcd = True
@@ -145,7 +145,7 @@ class TestLegadoSemDeclaracao:
     def test_usuarios_antigos_sao_comuns(self, client, db, fab):
         # linha criada antes da coluna (migração usa server_default False)
         u = Usuario(
-            nome="Legado QA", email=f"legado-{datetime.utcnow().timestamp()}@t.dev",
+            nome="Legado QA", email=f"legado-{datetime.now(timezone.utc).timestamp()}@t.dev",
             senha_hash="x", role=TipoUsuario.USUARIO.value, is_ativo=True,
         )
         db.add(u)
