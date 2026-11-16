@@ -13,7 +13,13 @@ depends_on = None
 
 def upgrade():
     bind = op.get_bind()
-    if "ultimo_seq" not in {col["name"] for col in sa.inspect(bind).get_columns("sensores")}:
+    inspector = sa.inspect(bind)
+    # Bancos legados podem não conter a integração IoT. Não inventar sensores
+    # nem falhar a migração de veículos/contas só pela ausência desta tabela.
+    # Se o modelo do sensor for criado depois, o ORM já define ultimo_seq.
+    if "sensores" not in inspector.get_table_names():
+        return
+    if "ultimo_seq" not in {col["name"] for col in inspector.get_columns("sensores")}:
         op.add_column("sensores", sa.Column("ultimo_seq", sa.Integer(), nullable=False, server_default="-1"))
     # Preserve previous event history when adding monotonic ordering.
     op.execute(sa.text("""
