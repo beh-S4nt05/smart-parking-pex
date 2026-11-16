@@ -148,6 +148,13 @@ def autenticar_usuario(db: Session, dados: LoginRequest) -> TokenResponse:
             detail="Usuário desativado. Contate o suporte."
         )
 
+    from core.config import settings
+    from rules import identity_service
+
+    if settings.SECURITY_VERIFIED_EMAIL_REQUIRED and not usuario.email_verificado_em:
+        raise HTTPException(status_code=403, detail="Confirme o e-mail cadastrado antes de entrar")
+    identity_service.exigir_mfa_no_login(db, usuario, dados.mfa_codigo)
+
     access_token = criar_token(subject=usuario.id, tipo_token="access")
     refresh_token = criar_token(subject=usuario.id, tipo_token="refresh")
 
