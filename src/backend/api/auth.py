@@ -67,7 +67,7 @@ async def login(request: Request, dados: LoginRequest, db: Session = Depends(get
     Endpoint de login (e-mail OU telefone + senha).
     Retorna access_token, refresh_token e os dados do usuário autenticado.
     """
-    return auth_service.autenticar_usuario(db, dados)
+    return auth_service.autenticar_usuario(db, dados, request.headers.get('User-Agent'))
 
 
 @router.post("/refresh", response_model=TokenResponse)
@@ -140,6 +140,10 @@ def logout(
         ))
 
     _revogar(token, "logout")
+    from rules import session_service
+    payload = _dec(token)
+    if payload.get("sid"):
+        session_service.revogar(db, usuario.id, payload["sid"])
     if refresh_token:
         _revogar(refresh_token, "logout_refresh")
     # faxina: linhas já vencidas não servem mais para nada
