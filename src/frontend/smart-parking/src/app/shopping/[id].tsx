@@ -544,7 +544,7 @@ export default function MapaVagas() {
           ) : null}
           {loading && !mapa ? <EsqueletoMapa /> : conteudo}
         </ScrollView>
-        <MobileBottomNav active="explorar" />
+        {Platform.OS !== "web" ? <MobileBottomNav active="explorar" /> : null}
       </View>
     );
   }
