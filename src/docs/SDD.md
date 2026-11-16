@@ -145,10 +145,11 @@ Da raiz do repositório:
 
 ```bash
 ./scripts/docker.sh up
+npm --prefix src/frontend/smart-parking ci
 ./scripts/dev-front.sh
 ```
 
-O primeiro comando recria as imagens e executa o smoke do MVP; o segundo atualiza a URL mobile da API pela LAN e inicia Expo com cache limpo. Em terminais separados. Para subir somente serviços sem smoke: `docker compose -f src/docker-compose.yml up -d --build backend nginx`; para conferir: `docker compose -f src/docker-compose.yml ps`, `curl -i http://localhost:8000/api/admin/estacionamentos` (esperado 401 sem token) e `curl -i http://localhost:8080/api/health` (esperado 200 com banco funcional). `docker compose down` mantém volumes; `down -v` apaga os dados.
+O primeiro comando recria as imagens e executa o smoke do MVP; `npm ci` instala as dependências do frontend; o último atualiza a URL mobile da API pela LAN e inicia Expo com cache limpo. Execute backend e Expo em terminais separados. Para subir somente serviços sem smoke: `docker compose -f src/docker-compose.yml up -d --build backend nginx`; para conferir: `docker compose -f src/docker-compose.yml ps`, `curl -i http://localhost:8000/api/admin/estacionamentos` (esperado 401 sem token) e `curl -i http://localhost:8080/api/health` (esperado 200 com banco funcional). `docker compose down` mantém volumes; `down -v` apaga os dados.
 
 Uma imagem antiga pode continuar saudável e responder `405` em uma rota nova. Após atualizar o `main`, é necessário reconstruir o backend. QR aberto em outro aparelho exige `SIMULADOR_BASE_URL=http://IP_DO_PC:8081` no ambiente antes de subir o Compose. `localhost` dentro do celular refere-se ao próprio aparelho.
 

@@ -35,7 +35,8 @@ O **Smart Parking** conecta esses dois lados. O motorista escolhe um shopping, v
 # Terminal 1: constrói e sobe Postgres, API, Nginx e pgAdmin; executa o smoke
 ./scripts/docker.sh up
 
-# Terminal 2: detecta o IP da máquina, configura a URL mobile e inicia o Expo
+# Terminal 2: instala as dependências uma vez, detecta o IP e inicia o Expo
+npm --prefix src/frontend/smart-parking ci
 ./scripts/dev-front.sh
 ```
 
