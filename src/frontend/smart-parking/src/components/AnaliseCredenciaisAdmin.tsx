@@ -61,7 +61,7 @@ export default function AnaliseCredenciaisAdmin() {
       <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
         <View style={{ flex: 1 }}>
           <Text style={{ fontSize: 18, fontWeight: "800", color: "#15233B" }}>Credenciais pendentes</Text>
-          <Text style={{ fontSize: 12, color: "#64748B", marginTop: 4 }}>Acesso administrativo: validação com evidência oficial</Text>
+          <Text style={{ fontSize: 12, color: "#475569", marginTop: 4 }}>Acesso administrativo: validação com evidência oficial</Text>
         </View>
         <Pressable onPress={() => void carregar()} accessibilityRole="button"
           style={{ backgroundColor: "#EAF1FF", padding: 11, borderRadius: 12, minHeight: 44, justifyContent: "center" }}>
@@ -69,7 +69,7 @@ export default function AnaliseCredenciaisAdmin() {
         </Pressable>
       </View>
       {erro ? <Text style={{ color: "#BE123C" }}>{erro}</Text> : null}
-      {pedidos.length === 0 ? <Text style={{ color: "#64748B" }}>Não há solicitações pendentes.</Text> : null}
+      {pedidos.length === 0 ? <Text style={{ color: "#475569" }}>Não há solicitações pendentes.</Text> : null}
       {pedidos.map((p) => (
         <View key={p.id} style={{ backgroundColor: "#F3F7FD", padding: 13, borderRadius: 14, gap: 10 }}>
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
@@ -86,7 +86,7 @@ export default function AnaliseCredenciaisAdmin() {
           </View>
           {selecionado === p.id ? (
             <View style={{ paddingTop: 9, borderTopWidth: 1, borderColor: "#E2E8F0" }}>
-              <Text style={{ color: "#64748B", fontSize: 12, lineHeight: 18, marginBottom: 12 }}>
+              <Text style={{ color: "#475569", fontSize: 12, lineHeight: 18, marginBottom: 12 }}>
                 Confira o documento/credencial por procedimento oficial. A referência será armazenada somente como hash.
               </Text>
               <Campo label="Referência oficial conferida" placeholder="Número ou referência verificada"
