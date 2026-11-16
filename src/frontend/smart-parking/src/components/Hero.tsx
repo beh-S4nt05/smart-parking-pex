@@ -73,7 +73,7 @@ export default function Hero({ shoppings, selecionadoId, onSelect, onBuscar }: P
             </Text>
           </View>
           <View className="flex w-full min-w-0 flex-col gap-3 md:flex-row md:items-start md:gap-3">
-            <View className={minW0Flex1} style={Platform.OS === "web" ? { position: "relative", zIndex: 30 } : undefined}>
+            <View className={minW0Flex1}>
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel={`Selecionar shopping: ${nomeSelecionado} — Manaus, AM`}
@@ -103,15 +103,7 @@ export default function Hero({ shoppings, selecionadoId, onSelect, onBuscar }: P
                   nativeID="hero-lista-shoppings"
                   accessibilityRole="list"
                   accessibilityLabel="Lista de shoppings"
-                  className="rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl"
-                  style={{
-                    position: "absolute",
-                    top: "100%",
-                    left: 0,
-                    right: 0,
-                    zIndex: 100,
-                    marginTop: 6,
-                  }}
+                  className="mt-2 rounded-xl border border-slate-200 bg-white p-1.5"
                 >
                   <ScrollView style={{ maxHeight: 280 }} keyboardShouldPersistTaps="always">
                     {shoppings.map((est) => {
