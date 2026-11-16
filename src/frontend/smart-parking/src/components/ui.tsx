@@ -359,7 +359,7 @@ export function Botao({
       } ${ehWeb
         ? "web:transition-all web:duration-150 web:ease-out active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 web:motion-reduce:transform-none web:motion-reduce:transition-none web:motion-reduce:hover:transform-none web:motion-reduce:active:transform-none"
         : ""} ${className}`}
-      style={ehWeb || reduzido ? style : [style, { transform: [{ scale: escala }] }]}
+      style={ehWeb ? style : [variant === "contorno" ? { borderWidth: 1, borderColor: "#CBD5E1" } : { borderWidth: 0 }, style, ...(reduzido ? [] : [{ transform: [{ scale: escala }] }])]}
     >
       <View
         className={`flex-row items-center justify-center gap-2 ${loading ? "opacity-0" : ""}`}
@@ -399,7 +399,7 @@ export function Card({
   return (
     <View
       className={`${cartao} ${className}`}
-      style={style}
+      style={Platform.OS === "web" ? style : [{ borderWidth: 1, borderColor: "#E2E8F0" }, style]}
     >
       {children}
     </View>
@@ -600,6 +600,7 @@ export function Campo({
         className={`${campo} ${
           erro ? "sp-field--erro border-red-300 bg-red-50" : "border-slate-200"
         }`}
+        style={Platform.OS === "web" ? undefined : { borderWidth: 1, borderColor: erro ? "#FCA5A5" : "#CBD5E1" }}
       >
         <TextInput
           accessibilityLabel={label}

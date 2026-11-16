@@ -5,7 +5,7 @@ import { meta, minW0Flex1, tituloCard, tituloCardShopping } from "../styles/reci
  * variante "lista" = cards empilhados de cima para baixo (Home, como pedido);
  * "auto" = grade responsiva no web e lista no mobile (Explorar).
  */
-import { Pressable, Text, View } from "react-native";
+import { Platform, Pressable, Text, View } from "react-native";
 import { AnimarEntrada, Card, Chip, IconeChevron, Logo } from "./ui";
 import type { Estacionamento } from "../types/api";
 import { useLarguraResponsiva } from "../hooks/useLarguraResponsiva";
@@ -61,7 +61,7 @@ export default function ShoppingList({
             className={colunas > 1 ? "min-w-0 flex-grow" : "w-full min-w-0"}
             style={colunas > 1 ? { flexBasis: `${100 / colunas - 2}%` } : undefined}
           >
-            <AnimarEntrada delay={i * 60}>
+            <AnimarEntrada delay={Platform.OS === "web" ? i * 60 : 0}>
             <Pressable
               onPress={() => onPress(est)}
               accessibilityRole="button"
@@ -73,8 +73,9 @@ export default function ShoppingList({
             >
               <Card
                 className="p-4 3xl:p-5"
-                style={
-                  selecionado
+                style={Platform.OS !== "web"
+                  ? { borderColor: selecionado ? "#93C5FD" : "#E2E8F0", borderWidth: 1, backgroundColor: selecionado ? "#EFF6FF" : "#FFFFFF" }
+                  : selecionado
                     ? { borderColor: "#2563EB", borderWidth: 2, backgroundColor: "#EFF6FF" }
                     : undefined
                 }

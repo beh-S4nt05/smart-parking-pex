@@ -12,7 +12,7 @@ import { minW0Flex1, subtituloHero } from "../styles/recipes";
  * com hierarquia real — a primeira dobra agora se parece com um produto.
  */
 import { useEffect, useState } from "react";
-import { Platform, Pressable, ScrollView, Text, View, useWindowDimensions } from "react-native";
+import { FlatList, Modal, Platform, Pressable, ScrollView, Text, View, useWindowDimensions } from "react-native";
 import { colors } from "../theme";
 import { Botao, IconeChevron } from "./ui";
 import ShoppingList from "./ShoppingList";
@@ -28,7 +28,6 @@ interface Props {
 export default function Hero({ shoppings, selecionadoId, onSelect, onBuscar }: Props) {
   const [listaAberta, setListaAberta] = useState(false);
   const { height: alturaTela } = useWindowDimensions();
-  const listaMaxHeight = Platform.OS === "web" ? 360 : Math.max(160, Math.min(320, alturaTela * 0.38));
   const selecionado =
     shoppings.find((s) => s.id === selecionadoId) ?? shoppings[0];
   const vazio = shoppings.length === 0;
@@ -66,7 +65,8 @@ export default function Hero({ shoppings, selecionadoId, onSelect, onBuscar }: P
         </Text>
 
         {/* Cartão de busca elevado: uma decisão por vez, sem elementos flutuantes. */}
-        <View className="sp-busca mt-7 w-full min-w-0 max-w-2xl p-3 sm:mt-9 sm:p-4 3xl:max-w-3xl">
+        <View className="sp-busca mt-7 w-full min-w-0 max-w-2xl p-3 sm:mt-9 sm:p-4 3xl:max-w-3xl"
+          style={Platform.OS === "web" ? undefined : { borderColor: "#E2E8F0", borderWidth: 1 }}>
           <View className="mb-3 flex-row items-center gap-2 px-1">
             <View className="h-5 w-1 rounded-full bg-blue-600" />
             <Text className="text-[13px] font-bold uppercase tracking-wider text-slate-600">
@@ -84,6 +84,7 @@ export default function Hero({ shoppings, selecionadoId, onSelect, onBuscar }: P
                 disabled={vazio}
                 hitSlop={4}
                 onPress={() => setListaAberta((v) => !v)}
+                style={Platform.OS === "web" ? undefined : { borderWidth: 1, borderColor: "#CBD5E1" }}
                 className={`min-h-12 flex-row items-center justify-between rounded-xl border border-slate-200 bg-white px-3 py-2.5 web:transition-colors hover:border-blue-300 active:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 web:motion-reduce:transition-none sm:px-4 sm:py-3 ${
                   vazio ? "opacity-60" : ""
                 }`}
@@ -98,20 +99,14 @@ export default function Hero({ shoppings, selecionadoId, onSelect, onBuscar }: P
                 <IconeChevron aberto={listaAberta} />
               </Pressable>
 
-              {listaAberta && !vazio ? (
+              {Platform.OS === "web" && listaAberta && !vazio ? (
                 <View
                   nativeID="hero-lista-shoppings"
                   accessibilityRole="list"
                   accessibilityLabel="Lista de shoppings"
-                  className={`mt-2 rounded-xl bg-white p-2 ${Platform.OS === "web" ? "border border-slate-200" : "border border-slate-100"}`}
+                  className="mt-2 rounded-xl border border-slate-200 bg-white p-2"
                 >
-                  <ScrollView
-                    style={{ maxHeight: listaMaxHeight, flexGrow: 0 }}
-                    nestedScrollEnabled={Platform.OS !== "web"}
-                    scrollEnabled
-                    keyboardShouldPersistTaps="always"
-                    showsVerticalScrollIndicator={Platform.OS !== "web"}
-                  >
+                  <ScrollView style={{ maxHeight: 360 }} keyboardShouldPersistTaps="handled">
                     <ShoppingList
                       shoppings={shoppings}
                       variante="lista"
@@ -123,6 +118,73 @@ export default function Hero({ shoppings, selecionadoId, onSelect, onBuscar }: P
                     />
                   </ScrollView>
                 </View>
+              ) : null}
+
+              {Platform.OS !== "web" ? (
+                <Modal
+                  visible={listaAberta && !vazio}
+                  transparent
+                  animationType="fade"
+                  statusBarTranslucent
+                  onRequestClose={() => setListaAberta(false)}
+                >
+                  <View style={{ flex: 1, justifyContent: "center", padding: 20, backgroundColor: "rgba(15,23,42,0.45)" }}>
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel="Fechar seleção"
+                      onPress={() => setListaAberta(false)}
+                      style={{ position: "absolute", top: 0, bottom: 0, left: 0, right: 0 }}
+                    />
+                    <View style={{ width: "100%", maxHeight: Math.max(260, alturaTela * 0.72), backgroundColor: "#FFFFFF", borderRadius: 18, padding: 16 }}>
+                      <View className="mb-3 flex-row items-center justify-between">
+                        <Text className="text-lg font-bold text-slate-900">Selecionar shopping</Text>
+                        <Pressable
+                          accessibilityRole="button"
+                          accessibilityLabel="Fechar lista de shoppings"
+                          onPress={() => setListaAberta(false)}
+                          style={{ paddingVertical: 8, paddingHorizontal: 12 }}
+                        >
+                          <Text className="text-sm font-semibold text-blue-700">Fechar</Text>
+                        </Pressable>
+                      </View>
+                      <FlatList
+                        data={shoppings}
+                        keyExtractor={(item) => item.id}
+                        nestedScrollEnabled
+                        keyboardShouldPersistTaps="always"
+                        showsVerticalScrollIndicator
+                        contentContainerStyle={{ paddingBottom: 8 }}
+                        ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
+                        renderItem={({ item }) => {
+                          const ativo = item.id === selecionado?.id;
+                          return (
+                            <Pressable
+                              accessibilityRole="button"
+                              accessibilityLabel={item.nome}
+                              accessibilityState={{ selected: ativo }}
+                              onPress={() => {
+                                onSelect(item.id);
+                                setListaAberta(false);
+                              }}
+                              style={{
+                                minHeight: 60, padding: 12, borderRadius: 12,
+                                borderWidth: 1, borderColor: ativo ? "#93C5FD" : "#E2E8F0",
+                                backgroundColor: ativo ? "#EFF6FF" : "#F8FAFC",
+                                flexDirection: "row", alignItems: "center",
+                              }}
+                            >
+                              <View style={{ flex: 1 }}>
+                                <Text className="text-[14px] font-semibold text-slate-900" numberOfLines={2}>{item.nome}</Text>
+                                <Text className="mt-1 text-xs text-slate-600">{item.vagas_disponiveis_total ?? 0} vagas livres</Text>
+                              </View>
+                              <Text className="text-sm font-bold text-blue-700">{ativo ? "Selecionado" : "Escolher"}</Text>
+                            </Pressable>
+                          );
+                        }}
+                      />
+                    </View>
+                  </View>
+                </Modal>
               ) : null}
             </View>
 
