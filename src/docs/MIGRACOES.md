@@ -89,3 +89,61 @@ Efeito prático:
   `ON CONSTRAINT`).
 - Banco de produção da equipe: **stamp-only até 02/11** (política da
   disciplina) — este parágrafo é o registro do porquê.
+
+
+---
+
+## V1 — Veículos, credenciais e compatibilidade de vagas (d8f3a91c6e40)
+
+A revisão `d8f3a91c6e40` acrescenta `veiculos`,
+`credenciais_estacionamento`, `auditoria_credenciais`,
+`usuarios.data_nascimento`, detalhes opcionais de compatibilidade em
+`vagas` e duas referências opcionais em `reservas`. **Não remove**
+`usuarios.placa_veiculo`, `usuarios.is_pcd` nem reservas antigas.
+O backfill copia placas legadas para um veículo do tipo `carro` com
+motorização `nao_informada` (não deduz elétrico pela placa).
+
+### Executar de forma segura no banco existente
+
+1. **Backup obrigatório:** confirme o `DATABASE_URL` que o backend usa e faça
+   `pg_dump` do banco PostgreSQL correspondente. Não use `docker compose down -v`
+   ou o comando `reset`.
+2. Execute a migração **antes de iniciar a nova imagem do backend**, para que
+   `create_all` não antecipe parte do esquema; utilize Python do host com
+   dependências de `requirements-dev.txt` e conexão válida ao PostgreSQL.
+3. Em `src/backend`, com `DATABASE_URL` apontando para o mesmo banco:
+
+```bash
+python -m alembic current
+python -m alembic heads
+python -m alembic upgrade head
+python -m alembic current
+```
+
+Se `current` estiver vazio, mas o banco já contiver toda a versão anterior
+(`usuarios.is_pcd`, `usuario_estacionamentos` etc.), **confira antes de fazer stamp**.
+Só nesse caso execute `python -m alembic stamp c4e8b1d2f9a0` e, em seguida,
+`python -m alembic upgrade head`. Não dê `stamp head` às cegas: isso
+registraria a revisão nova sem aplicar sua migração. Bancos vazios devem
+receber `upgrade head` diretamente, sem `stamp`.
+
+O boot atual possui reparo limitado de colunas ausentes (compatibilidade com
+volumes antigos). Ele não substitui a migração Alembic: as chaves estrangeiras,
+índices e backfill devem ser validados no banco real. A aplicação da migração
+não ativa por si só o fluxo de credenciais e o motor de elegibilidade; esses
+continuam como etapas de implementação da V1.
+
+### Validações após migração
+
+```sql
+SELECT version_num FROM alembic_version;
+SELECT COUNT(*) FROM usuarios;
+SELECT COUNT(*) FROM reservas;
+SELECT COUNT(*) FROM veiculos;
+SELECT id, usuario_id, placa, categoria, motorizacao
+FROM veiculos ORDER BY criado_em DESC LIMIT 10;
+```
+
+A quantidade de reservas/usuários não deve diminuir; reservas legadas
+continuam com `veiculo_id = NULL`. Nunca executar `downgrade` em dados reais
+sem backup, pois remove as novas tabelas e seus registros.
