@@ -20,6 +20,7 @@ import { useAuth } from "../hooks/useAuth";
 import { apiErrorMessage, parkingApi } from "../services/api";
 import { Botao, Card, Campo, Checkbox, Chip } from "../components/ui";
 import Header from "../components/Header";
+import { MobileBottomNav, MobileScreenHeader } from "../components/MobileChrome";
 import Footer from "../components/Footer";
 import { colors } from "../theme";
 
@@ -131,8 +132,12 @@ export default function Perfil() {
   }
 
   return (
-    <View className={pagina}>
-      <Header />
+    <View className={pagina} style={Platform.OS === "web" ? undefined : { backgroundColor: "#F3F7FD" }}>
+      {Platform.OS === "web" ? (
+        <Header />
+      ) : (
+        <MobileScreenHeader title="Minha conta" subtitle={user.email} />
+      )}
       <ScrollView className="flex-1" contentContainerStyle={{ paddingVertical: 20 }}>
         <View className="mx-auto w-full max-w-3xl gap-4 px-4 sm:px-6 3xl:gap-6 3xl:px-8">
           <View className="flex-row flex-wrap items-center justify-between gap-3">
@@ -221,8 +226,9 @@ export default function Perfil() {
             (balcão) — ele gera em Painel / Usuários / “Reset senha”.
           </Text>
         </View>
-        <Footer />
+        {Platform.OS === "web" ? <Footer /> : null}
       </ScrollView>
+      {Platform.OS !== "web" ? <MobileBottomNav active="conta" /> : null}
     </View>
   );
 }

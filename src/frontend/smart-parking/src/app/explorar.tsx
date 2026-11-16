@@ -6,6 +6,7 @@ import { minW0Flex1, pagina, textoApoio, tituloExplorar } from "../styles/recipe
  */
 import { useMemo, useState } from "react";
 import {
+  Platform,
   RefreshControl,
   ScrollView,
   Text,
@@ -15,6 +16,7 @@ import {
 import { useRouter } from "expo-router";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
+import { MobileBottomNav, MobileScreenHeader } from "../components/MobileChrome";
 import ShoppingList from "../components/ShoppingList";
 import { Botao } from "../components/ui";
 import { useEstacionamentos } from "../hooks/useEstacionamentos";
@@ -38,8 +40,12 @@ export default function Explorar() {
   }, [estacionamentos, busca]);
 
   return (
-    <View className={pagina}>
-      <Header rotaAtual="/explorar" />
+    <View className={pagina} style={Platform.OS === "web" ? undefined : { backgroundColor: "#F3F7FD" }}>
+      {Platform.OS === "web" ? (
+        <Header rotaAtual="/explorar" />
+      ) : (
+        <MobileScreenHeader title="Explorar" subtitle="Shoppings e vagas em tempo real" />
+      )}
       <ScrollView
         refreshControl={
           <RefreshControl refreshing={loading} onRefresh={refresh} tintColor="#2563EB" />
@@ -80,6 +86,7 @@ export default function Explorar() {
             value={busca}
             onChangeText={setBusca}
             className="sp-field mb-2 min-h-12 rounded-xl border-2 border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 focus:border-blue-500 sm:text-base"
+            style={Platform.OS === "web" ? undefined : { borderWidth: 1, borderColor: "#D8E2F0", backgroundColor: "#FFFFFF" }}
           />
           <Text className="mb-5 text-[12px] font-medium text-slate-600">
             {filtrados.length} {filtrados.length === 1 ? "local disponível" : "locais disponíveis"}
@@ -125,8 +132,9 @@ export default function Explorar() {
           </View>
         </View>
 
-        <Footer />
+        {Platform.OS === "web" ? <Footer /> : null}
       </ScrollView>
+      {Platform.OS !== "web" ? <MobileBottomNav active="explorar" /> : null}
     </View>
   );
 }

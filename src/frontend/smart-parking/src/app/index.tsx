@@ -6,6 +6,7 @@ import { pagina, textoApoio, textoApoioCentro, tituloCard, tituloSecao } from ".
  */
 import { useCallback, useEffect, useState } from "react";
 import {
+  Platform,
   RefreshControl,
   ScrollView,
   Text,
@@ -14,6 +15,7 @@ import {
 import { useRouter } from "expo-router";
 import Header from "../components/Header";
 import Hero from "../components/Hero";
+import MobileHome from "../components/MobileHome";
 import StatusPanel from "../components/StatusPanel";
 import ShoppingList from "../components/ShoppingList";
 import Footer from "../components/Footer";
@@ -54,6 +56,22 @@ export default function Index() {
   }, [selecionado?.id, carregarTempoMedio]);
 
   const abrirMapa = (id: string) => router.push(`/shopping/${id}` as never);
+
+  if (Platform.OS !== "web") {
+    return (
+      <MobileHome
+        shoppings={estacionamentos}
+        selecionadoId={selecionado?.id ?? null}
+        onSelect={setSelecionadoId}
+        onBuscar={() => selecionado && abrirMapa(selecionado.id)}
+        tempoMedio={tempoMedio}
+        loading={loading}
+        erro={erro}
+        refresh={refresh}
+        onAbrirShopping={abrirMapa}
+      />
+    );
+  }
 
   return (
     <View className={pagina}>
