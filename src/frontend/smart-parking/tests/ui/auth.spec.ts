@@ -173,7 +173,7 @@ test("garagem permite gerenciar carros e motos e alterar principal em viewport m
   await expect(page.getByText("DEF2E34", { exact: true })).toBeVisible();
 
   await page.getByRole("button", { name: "Definir DEF2E34 como principal" }).click();
-  await expect(page.getByText("Principal", { exact: true })).toHaveCount(1);
+  await expect(page.getByRole("button", { name: "Definir ABC1D23 como principal" })).toBeVisible();
   const token = await page.evaluate(() => localStorage.getItem("smartparking_access_token"));
   expect(token).toBeTruthy();
   const headers = { Authorization: `Bearer ${token}` };
