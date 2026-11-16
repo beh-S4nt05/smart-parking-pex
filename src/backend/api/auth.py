@@ -10,7 +10,7 @@ from core.config import settings
 from core.deps import get_usuario_logado, oauth2_scheme
 from core.rate_limiter import LIMITS, limiter
 from models.database import get_db
-from models.db_models import CredencialEstacionamento, Usuario, Veiculo
+from models.db_models import CredencialEstacionamento, Reserva, StatusReserva, Usuario, Veiculo
 from models.schemas import (
     LoginRequest,
     RefreshRequest,
@@ -251,9 +251,47 @@ class PedidoCredencial(BaseModel):
     tipo: Literal["idoso", "pcd"]
 
 
+def _veiculo_do_usuario(db: Session, usuario_id: str, veiculo_id: str) -> Veiculo:
+    """Evita exposição ou modificação de veículo de outra conta."""
+    veiculo = db.query(Veiculo).filter(
+        Veiculo.id == veiculo_id,
+        Veiculo.usuario_id == usuario_id,
+        Veiculo.ativo.is_(True),
+    ).first()
+    if veiculo is None:
+        raise HTTPException(status_code=404, detail="Veículo não encontrado nesta conta")
+    return veiculo
+
+
+def _bloquear_usuario(db: Session, usuario_id: str) -> Usuario:
+    # Serializa as escolhas de veículo principal (e o cadastro do primeiro)
+    # no PostgreSQL, evitando duas escolhas concorrentes de principal.
+    return db.query(Usuario).filter(Usuario.id == usuario_id).with_for_update().one()
+
+
+def _reservas_ativas_do_veiculo(db: Session, veiculo_id: str) -> bool:
+    return db.query(Reserva.id).filter(
+        Reserva.veiculo_id == veiculo_id,
+        Reserva.status == StatusReserva.CONFIRMADA,
+    ).first() is not None
+
+
+def _fixar_principal(db: Session, usuario: Usuario, escolhido: Veiculo) -> None:
+    # O projeto configura autoflush=False. Persistir alterações pendentes
+    # antes de consultar veículos ativos/principal na mesma transação.
+    db.flush()
+    for veiculo in db.query(Veiculo).filter(
+        Veiculo.usuario_id == usuario.id, Veiculo.ativo.is_(True)
+    ).all():
+        veiculo.principal = veiculo.id == escolhido.id
+    usuario.placa_veiculo = escolhido.placa
+
+
 @router.get("/veiculos", response_model=list[VeiculoResponse])
 def listar_veiculos(usuario: Usuario = Depends(get_usuario_logado), db: Session = Depends(get_db)):
-    return db.query(Veiculo).filter(Veiculo.usuario_id == usuario.id, Veiculo.ativo.is_(True)).all()
+    return db.query(Veiculo).filter(
+        Veiculo.usuario_id == usuario.id, Veiculo.ativo.is_(True)
+    ).order_by(Veiculo.principal.desc(), Veiculo.criado_em.asc(), Veiculo.id.asc()).all()
 
 
 @router.post("/veiculos", response_model=VeiculoResponse, status_code=201)
@@ -262,28 +300,121 @@ def cadastrar_veiculo(
     usuario: Usuario = Depends(get_usuario_logado),
     db: Session = Depends(get_db),
 ):
-    duplicado = db.query(Veiculo).filter(Veiculo.usuario_id == usuario.id, Veiculo.placa == dados.placa).first()
+    dono = _bloquear_usuario(db, usuario.id)
+    duplicado = db.query(Veiculo).filter(
+        Veiculo.usuario_id == usuario.id, Veiculo.placa == dados.placa
+    ).first()
+    if duplicado and duplicado.ativo:
+        raise HTTPException(status_code=409, detail="Placa já cadastrada nesta conta")
+
     if duplicado:
-        raise HTTPException(status_code=409, detail="Veículo já cadastrado nesta conta")
-    primeiro = db.query(Veiculo).filter(Veiculo.usuario_id == usuario.id, Veiculo.ativo.is_(True)).first() is None
-    v = Veiculo(usuario_id=usuario.id, placa=dados.placa, categoria=dados.categoria,
-                motorizacao=dados.motorizacao, modelo=dados.modelo, principal=primeiro)
-    db.add(v)
-    if primeiro:
-        usuario.placa_veiculo = dados.placa  # compatibilidade da V1
+        # Restaura um veículo previamente desativado, respeitando a unique key.
+        # Uma reserva ativa nunca pode apontar para um veículo desativado,
+        # mas bloqueamos o caso por segurança em bancos legados.
+        if _reservas_ativas_do_veiculo(db, duplicado.id):
+            raise HTTPException(status_code=409, detail="Veículo vinculado a uma reserva ativa")
+        duplicado.ativo = True
+        duplicado.categoria = dados.categoria
+        duplicado.motorizacao = dados.motorizacao
+        duplicado.modelo = dados.modelo
+        duplicado.principal = False
+        veiculo = duplicado
+    else:
+        veiculo = Veiculo(
+            usuario_id=usuario.id, placa=dados.placa,
+            categoria=dados.categoria, motorizacao=dados.motorizacao,
+            modelo=dados.modelo, principal=False,
+        )
+        db.add(veiculo)
+        db.flush()
+
+    principal = db.query(Veiculo).filter(
+        Veiculo.usuario_id == usuario.id,
+        Veiculo.ativo.is_(True),
+        Veiculo.principal.is_(True),
+    ).first()
+    if principal is None:
+        _fixar_principal(db, dono, veiculo)
     db.commit()
-    db.refresh(v)
-    return v
+    db.refresh(veiculo)
+    return veiculo
+
+
+@router.put("/veiculos/{veiculo_id}", response_model=VeiculoResponse)
+def atualizar_veiculo(
+    veiculo_id: str,
+    dados: VeiculoCadastro,
+    usuario: Usuario = Depends(get_usuario_logado),
+    db: Session = Depends(get_db),
+):
+    dono = _bloquear_usuario(db, usuario.id)
+    veiculo = _veiculo_do_usuario(db, usuario.id, veiculo_id)
+    existe = db.query(Veiculo).filter(
+        Veiculo.usuario_id == usuario.id, Veiculo.placa == dados.placa,
+        Veiculo.id != veiculo_id,
+    ).first()
+    if existe:
+        raise HTTPException(status_code=409, detail="Placa já cadastrada nesta conta")
+    alteracao_operacional = (
+        veiculo.placa != dados.placa
+        or veiculo.categoria != dados.categoria
+        or veiculo.motorizacao != dados.motorizacao
+    )
+    if alteracao_operacional and _reservas_ativas_do_veiculo(db, veiculo.id):
+        raise HTTPException(
+            status_code=409,
+            detail="Há uma reserva ativa com este veículo. Cancele ou conclua a reserva antes de mudar placa, tipo ou motorização.",
+        )
+    veiculo.placa = dados.placa
+    veiculo.categoria = dados.categoria
+    veiculo.motorizacao = dados.motorizacao
+    veiculo.modelo = dados.modelo
+    if veiculo.principal:
+        dono.placa_veiculo = veiculo.placa
+    db.commit()
+    db.refresh(veiculo)
+    return veiculo
+
+
+@router.put("/veiculos/{veiculo_id}/principal", response_model=VeiculoResponse)
+def definir_principal(
+    veiculo_id: str,
+    usuario: Usuario = Depends(get_usuario_logado),
+    db: Session = Depends(get_db),
+):
+    dono = _bloquear_usuario(db, usuario.id)
+    veiculo = _veiculo_do_usuario(db, usuario.id, veiculo_id)
+    _fixar_principal(db, dono, veiculo)
+    db.commit()
+    db.refresh(veiculo)
+    return veiculo
 
 
 @router.delete("/veiculos/{veiculo_id}", status_code=204)
-def remover_veiculo(veiculo_id: str, usuario: Usuario = Depends(get_usuario_logado), db: Session = Depends(get_db)):
-    v = db.query(Veiculo).filter(Veiculo.id == veiculo_id, Veiculo.usuario_id == usuario.id, Veiculo.ativo.is_(True)).first()
-    if not v:
-        raise HTTPException(status_code=404, detail="Veículo não encontrado nesta conta")
-    v.ativo = False  # preservar histórico/referências
-    if usuario.placa_veiculo == v.placa:
-        usuario.placa_veiculo = None
+def remover_veiculo(
+    veiculo_id: str,
+    usuario: Usuario = Depends(get_usuario_logado),
+    db: Session = Depends(get_db),
+):
+    dono = _bloquear_usuario(db, usuario.id)
+    veiculo = _veiculo_do_usuario(db, usuario.id, veiculo_id)
+    if _reservas_ativas_do_veiculo(db, veiculo.id):
+        raise HTTPException(
+            status_code=409,
+            detail="Veículo vinculado a uma reserva ativa. Cancele ou conclua a reserva antes de removê-lo.",
+        )
+    era_principal = veiculo.principal
+    veiculo.principal = False
+    veiculo.ativo = False  # remoção lógica: preserva vínculos históricos
+    db.flush()  # SessionLocal.autoflush=False: não selecionar o removido como sucessor
+    if era_principal:
+        proximo = db.query(Veiculo).filter(
+            Veiculo.usuario_id == usuario.id, Veiculo.ativo.is_(True)
+        ).order_by(Veiculo.criado_em.asc(), Veiculo.id.asc()).first()
+        if proximo:
+            _fixar_principal(db, dono, proximo)
+        else:
+            dono.placa_veiculo = None
     db.commit()
 
 

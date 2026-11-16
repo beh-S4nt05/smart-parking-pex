@@ -65,6 +65,18 @@ def criar_reserva(db: Session, dados: ReservaCreate, usuario_logado: Usuario) ->
         if not veiculo:
             raise HTTPException(status_code=403, detail="Veículo não pertence à sua conta")
 
+    # Conta com garagem não pode ignorar a seleção para escapar dos
+    # critérios de compatibilidade. Conta legada sem veículos mantém a
+    # possibilidade de reservar vaga comum sem veículo.
+    if not dados.veiculo_id and db.query(Veiculo.id).filter(
+        Veiculo.usuario_id == usuario_logado.id,
+        Veiculo.ativo.is_(True),
+    ).first() is not None:
+        raise HTTPException(
+            status_code=422,
+            detail="Selecione um dos veículos cadastrados para esta reserva.",
+        )
+
     # Vaga especial: documento oficial verificado, não a autodeclaração.
     credencial = None
     if vaga.tipo in {TipoVaga.PCD.value, TipoVaga.IDOSO.value}:
