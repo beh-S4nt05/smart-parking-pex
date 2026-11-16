@@ -72,6 +72,14 @@ def registrar_eventos(db: Session, sensor: Sensor, eventos: list[dict]) -> dict:
     erros: list[str] = []
     agora = utc_agora()
     for i, ev in enumerate(eventos):
+        # Serialize all writes for ONE device. Without a row-level lock,
+        # concurrent HTTP requests can both accept a higher sequence.
+        sensor_atual = db.query(Sensor).filter(
+            Sensor.id == sensor.id, Sensor.ativo.is_(True)
+        ).with_for_update().first()
+        if sensor_atual is None:
+            db.rollback()
+            raise HTTPException(status_code=401, detail="Sensor revogado durante a transmissão")
         seq = ev.get("seq")
         codigo_vaga = (ev.get("codigo_vaga") or "").strip().upper()
         novo_status = ev.get("status")
@@ -83,13 +91,13 @@ def registrar_eventos(db: Session, sensor: Sensor, eventos: list[dict]) -> dict:
             erros.append(f"evento {i}: status '{novo_status}' inválido (use livre|ocupada)")
             ignorados += 1
             continue
-        # idempotência: mesmo (sensor, seq) já registrado → skip silencioso
-        if db.query(SensorEvento.id).filter(
+        # Não basta detectar seq DUPLICADO: recusar também um seq inferior
+        # que ainda não foi registrado. Eventos antigos não revertem estado.
+        if int(seq) <= sensor_atual.ultimo_seq or db.query(SensorEvento.id).filter(
             SensorEvento.sensor_id == sensor.id, SensorEvento.seq == int(seq)
         ).first():
-            # a constraint (sensor_id, seq) É a idempotência: registramos o
-            # 1º evento e só contamos o reenvio — reinserir violaria a chave.
             duplicados += 1
+            db.rollback()  # Libera bloqueio de linha para outros eventos.
             continue
         # resolve a vaga pelo código DENTRO do estacionamento do sensor
         vagas = (
@@ -116,7 +124,8 @@ def registrar_eventos(db: Session, sensor: Sensor, eventos: list[dict]) -> dict:
         vaga = vagas[0]
         try:
             vaga_service.atualizar_status_vaga(
-                db, vaga.id, VagaAtualizaStatus(status=novo_status, origem="sensor")
+                db, vaga.id, VagaAtualizaStatus(status=novo_status, origem="sensor"),
+                commit=False,
             )
         except HTTPException as exc:
             erros.append(f"evento {i}: {exc.detail}")
@@ -127,7 +136,8 @@ def registrar_eventos(db: Session, sensor: Sensor, eventos: list[dict]) -> dict:
             continue
         db.add(SensorEvento(sensor_id=sensor.id, vaga_id=vaga.id, seq=int(seq),
                            status_enviado=novo_status, aplicado=True, ocorrido_em=agora))
-        db.commit()
+        sensor_atual.ultimo_seq = int(seq)
+        db.commit()  # status, histórico, evento e último seq na mesma transação
         aceitos += 1
     sensor.ultimo_evento_em = agora
     db.commit()
