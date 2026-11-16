@@ -11,7 +11,7 @@ from core.security import (
     decodificar_token,
     verificar_senha,
 )
-from models.db_models import Usuario
+from models.db_models import CredencialEstacionamento, Usuario, Veiculo
 from models.schemas import LoginRequest, TokenResponse, UsuarioCreate, UsuarioResponse
 
 
@@ -67,10 +67,28 @@ def criar_usuario(db: Session, dados: UsuarioCreate) -> Usuario:
         senha_hash=senha_hash,
         role="usuario",  # Usuários cadastrados publicamente são sempre comuns
         is_ativo=True,
-        is_pcd=dados.is_pcd,  # RF-47: declaração colhida no cadastro
+        is_pcd=dados.is_pcd,  # campo legado: solicitação de credencial não concede elegibilidade
+        data_nascimento=dados.data_nascimento,
     )
 
     db.add(novo_usuario)
+    db.flush()  # gerar id do novo usuário; gravar usuário, veículo e solicitação na mesma transação
+    if dados.veiculo:
+        db.add(Veiculo(
+            usuario_id=novo_usuario.id,
+            placa=dados.veiculo.placa,
+            categoria=dados.veiculo.categoria,
+            motorizacao=dados.veiculo.motorizacao,
+            modelo=dados.veiculo.modelo,
+            principal=True,
+        ))
+        novo_usuario.placa_veiculo = dados.veiculo.placa
+    if dados.beneficio_solicitado:
+        db.add(CredencialEstacionamento(
+            usuario_id=novo_usuario.id,
+            tipo=dados.beneficio_solicitado,
+            status="pendente",  # exige verificação oficial posterior; não libera a vaga
+        ))
     db.commit()
     db.refresh(novo_usuario)
     return novo_usuario
