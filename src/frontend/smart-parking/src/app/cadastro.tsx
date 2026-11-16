@@ -191,7 +191,8 @@ export default function Cadastro() {
               style={{ width: step === 1 ? "50%" : "100%" }}
             />
           </View>
-          {Platform.OS === "web" ? <View className="mb-2 flex-row items-center gap-2 px-1">
+          {Platform.OS === "web" ? <>
+            <View className="mb-2 flex-row items-center gap-2 px-1">
             <PassoEtapa numero={1} ativo={step === 1} concluido={step > 1} />
             <View
               className={`h-0.5 flex-1 ${step > 1 ? "bg-blue-600" : "bg-slate-200"}`}
@@ -209,7 +210,8 @@ export default function Cadastro() {
             >
               Seu veículo (opcional)
             </Text>
-          </View> : (
+          </View>
+          </> : (
             <View style={{ marginBottom: 17, flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
               <Text style={{ color: "#15233B", fontWeight: "800", fontSize: 15 }}>{step === 1 ? "Dados pessoais" : "Dados do veículo"}</Text>
               <Text style={{ color: "#64748B", fontSize: 12 }}>{step === 1 ? "1/2" : "2/2"}</Text>
