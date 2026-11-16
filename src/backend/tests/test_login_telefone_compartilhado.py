@@ -1,6 +1,4 @@
 """Regressão V1: duas contas podem compartilhar telefone sem trocar identidades."""
-from models.db_models import Usuario
-
 
 def _login(client, credencial: str, senha: str):
     return client.post("/auth/login", json={"email": credencial, "senha": senha})
