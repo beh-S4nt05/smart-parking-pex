@@ -1,493 +1,204 @@
-# SDD — Smart Parking · Monitoramento Inteligente de Vagas
+# SDD — Smart Parking, versão 1
 
-| Campo | Valor |
+| Campo | Definição |
 |---|---|
-| Projeto | `smart-parking-pex` (InteliParking) — extensão PEX, FMM, Manaus/AM |
-| Tipo de documento | SDD: *Software Design Document* e especificação executável (*Spec-Driven*) |
-| Versão | **0.2 — aprovada pelo autor (22/10) e em execução; itens ✅ com evidência no apêndice §12** |
-| Data | 22/10/2026 |
-| Equipe | Breno Santos (autor, liderança, desenvolvimento) · Gabriel Almeida (desenvolvimento) · Jonas Almeida (UI) |
-| Base de análise | Leitura do repositório: backend, frontend, nginx, docker, scripts e `src/docs/` |
-| Não analisado | Arquivo do Figma (sem link), `PLANO_DO_PROJETO.md`, `VALIDACAO_E_CONFORMIDADE.md` e `scripts/validacao/*` (não enviados) |
-| Substitui (após aprovação) | `CLAUDE.md` (briefing de 12/10) como fonte da verdade |
-| Documentos irmãos | `MAPA_APLICACAO.md` (mapa do sistema + fluxo de acesso, rodada 22/10) · `MARCAS_ENTREGA.md` (rubrica) · `INTEGRACAO_FRONTEND.md` (contrato de rotas) · `VALIDACAO_E_CONFORMIDADE.md` (matriz) — os nomes citados no rascunho (MATRIZ_RASTREABILIDADE/RELATORIO_MVP/APRESENTACAO_MVP) não existem no repositório |
+| Projeto | `smart-parking-pex`, projeto PEX da Faculdade Matias Machline, Manaus/AM |
+| Documento | Software Design Document (SDD), contrato funcional e técnico da versão 1 |
+| Revisão | 1.0 — 16/11/2026; base: `main` após correção do filtro e dos alvos de toque (`a9f390f`) |
+| Equipe | Breno Santos, Gabriel Almeida e Jonas Almeida |
+| Fonte da verdade | Código em `src/backend/`, `src/frontend/smart-parking/`, `src/nginx/`, `src/docker-compose.yml` e scripts versionados |
 
-## Como ler este documento
+Este documento descreve a implementação observada no repositório. **Implementado** significa presente no código; não significa que foi verificado em todo aparelho ou ambiente. A seção 10 separa verificações automatizadas, observação de execução e limites. Mudanças posteriores no código exigem atualizar esta revisão.
 
-| Marca | Significado |
+## 1. Problema, objetivo e escopo
+
+O Smart Parking permite encontrar vagas em estacionamentos de shoppings, acompanhar sua disponibilidade por andar e reservar uma vaga. Uma equipe autorizada gerencia unidades, vagas e relatórios. Um simulador e uma rota de ingestão de sensores alimentam as alterações de ocupação.
+
+A versão 1 inclui consulta pública, cadastro e autenticação, reserva e cancelamento, painel de administração/gestão, relatórios, configuração financeira por API, simulador QR e ingestão por chave de dispositivo. A cobrança PIX é **simulada**; a interface não oferece o fluxo financeiro completo. Não há integração comprovada com sensores físicos, gateway de pagamento, câmera para check-in, push, publicação nas lojas nem implantação pública com TLS.
+
+### 1.1 Termos e dados
+
+| Termo | Significado |
 |---|---|
-| ✅ | Implementado — **visto no código** (não foi executado) |
-| 🟡 | Parcial |
-| ⬜ | Pendente |
-| 🔶 | **Decisão proposta — aguarda validação do autor** (todas as ADR-01..11 foram ✅ validadas pelo autor em 22/10 ao adotar este documento como contrato de execução) |
-| `[VERIFICAR]` | Inferência de leitura que precisa de confirmação rodando o sistema |
+| Estacionamento | Unidade de um shopping, com andares e preços próprios |
+| Vaga | Posição de um andar; tipo `comum`, `pcd`, `idoso`, `moto` ou `eletrico`; status `livre`, `ocupada`, `reservada` ou `inativa` |
+| Reserva | Direito de um motorista a uma vaga por intervalo; estado `confirmada`, `cancelada`, `concluida` ou `expirada` |
+| Histórico | Estadia aberta na entrada e encerrada na saída, base dos relatórios de fluxo |
+| Escopo | Conjunto de estacionamentos que um papel de painel pode consultar ou operar |
+| Sessão QR | Token temporário do simulador, mantido em memória do único processo backend |
 
-> **Regra de honestidade do documento:** nenhum status "✅" significa "testado". Significa "existe no código". O que foi realmente executado fica na seção 12 (evidências) — **desde 22/10 ela não está mais vazia**: suíte pytest (25 testes), smokes 10/10+27/27 e `tsc`/`expo export` rodados de fato constam lá.
->
-> **Aviso de integridade:** o arquivo enviado em 22/10 termina no ADR-11 (§5.6) — as seções §6–§11 do original (plano de marcas, rastreabilidade) não foram reanexadas ainda; nada foi inventado no lugar delas. O apêndice §12 abaixo é a evidência desta rodada.
+## 2. Usuários e autorização
 
----
+O backend é a barreira de acesso. O frontend oculta ações conforme o papel, mas uma requisição direta também passa pelas dependências em `core/deps.py` e pelo escopo em `core/escopo.py`.
 
-## 1. Introdução
+| Capacidade | Visitante | Motorista (`usuario`) | Gestor | Financeiro | Admin |
+|---|---|---|---|---|---|
+| Vitrine, mapa, sugestão e fluxo público | Sim | Sim | Apenas unidades vinculadas quando autenticado | Sua unidade quando autenticado | Todas |
+| Reservar, cancelar e consultar as próprias reservas | Não | Sim | Não | Não | Sim pelas dependências de motorista; cancelamento exige propriedade |
+| Ver dashboard, eventos e relatórios do painel | Não | Não | Unidades vinculadas | Sua unidade | Todas |
+| Editar estacionamento, andares e vagas; operar status | Não | Não | Unidades vinculadas, sem alterar `taxa_hora` | Não | Todas |
+| Criar/excluir estacionamento, andar ou vaga; administrar usuários | Não | Não | Não | Não | Sim |
+| Ver preços, pagamentos, caixa e cupons | Não | Não | Unidades vinculadas | Sua unidade | Todas |
+| Configurar preços, calcular/cobrar, caixa e cupons | Não | Não | Não | Sua unidade | Todas |
+| Criar/revogar sensor e sessão do simulador QR | Não | Não | Não | Não | Sim |
 
-### 1.1 Propósito
-Descrever **o que o sistema é, como está construído e o que falta** para concluir as marcas de entrega do PEX, de forma que a equipe (e agentes de código) possa executar sem ambiguidade e a banca possa avaliar com rastreabilidade.
+O gestor pode ter vários vínculos em `usuario_estacionamentos`; o financeiro fica limitado ao vínculo principal e a regra de usuários limita uma conta financeira por unidade. Sem seleção explícita, uma operação de gestor/financeiro usa o vínculo principal, nunca um agregado global. Um ID de outra unidade retorna 403. O admin pode usar o agregado de todas as unidades onde a rota o permite. A emissão de PIX também aceita o motorista proprietário da estadia; gestor não cobra. Fonte: `core/escopo.py`, `api/api.py`, `api/admin.py`, `rules/admin_service.py`.
 
-### 1.2 Escopo
+## 3. Jornadas da interface
 
-| Dentro (esta entrega) | Fora (fase 2 / documentado) |
-|---|---|
-| Consulta pública de vagas por shopping/andar (tempo quase real) | Pagamento de estadia pelo app (PIX/cartão reais) |
-| Dashboard e painel administrativo (admin, gestor, financeiro) | Integração com gateway de pagamento |
-| Simulador de sensores por QR Code (somente admin) | Sensores IoT físicos em produção |
-| Relatórios de fluxo, ocupação e financeiro (leitura + CSV) | Login social operacional (Google/Facebook/Apple) |
-| Reservas básicas já existentes no app | Notificações push |
-| Seed de 8 shoppings de Manaus; Docker; scripts de smoke | App nas lojas (Play/App Store) |
-
-🔶 **Reservas e financeiro:** o backend de ambos já existe. Proposta: manter reservas funcionando (já têm UI), acrescentar expiração, e entregar financeiro **somente leitura** (relatório) até 12/11; caixa/PIX seguem como fase 2.
-
-### 1.3 Público
-Equipe de desenvolvimento, banca/orientação (FMM) e agentes de código (Claude Code). Cada seção traz critérios verificáveis para uso como especificação.
-
-### 1.4 Glossário
-
-| Termo | Definição |
-|---|---|
-| Estacionamento | Unidade operacional (um shopping). Tabela `estacionamentos` |
-| Andar | Piso do estacionamento; aceita negativo (subsolo) |
-| Vaga | Posição física com `status` e `tipo` |
-| Histórico | Registro de uma estadia (entrada → saída) |
-| Simulador / Sessão QR | Sessão tokenizada e revogável que abre a tela de operação no celular do admin |
-| HMAC | Assinatura de requisição de escrita (anti-replay; **não** é barreira de acesso — ver §8) |
-| Marca | Entrega avaliada da rubrica PEX (5 marcas) |
-
-### 1.5 Referências
-`README.md` (raiz) · `src/docs/*.md` · `src/docs/MARCAS_ENTREGA.md` · `CLAUDE.md` · Figma (frames citados nos comentários do código) · RFC 7519 (JWT) · RFC 2104 (HMAC) · OWASP API Security Top 10 (2023).
-
----
-
-## 2. Visão do produto
-
-**Problema:** perder tempo procurando vaga em shopping; o estacionamento não tem visão de ocupação em tempo real.
-**Solução:** monitoramento de vagas por shopping/andar, com mapa, sugestão de próxima vaga e painel de gestão; os dados vêm de um **simulador de sensores** (QR) hoje e de sensores reais no futuro, pela **mesma API**.
-
-### 2.1 Perfis (papéis)
-
-| Papel (`role`) | Quem é | Pode |
+| Tela/rota Expo | Jornada e estado principal | Serviço/rota HTTP |
 |---|---|---|
-| `publico` (sem login) | Visitante | Ver shoppings, mapa, próxima vaga, agregados do fluxo |
-| `usuario` | Motorista | Tudo do público + reservar/cancelar + ver as próprias reservas |
-| `financeiro` | Funcionário (1 estacionamento) | Relatórios e financeiro do **seu** estacionamento |
-| `gestor` | Gerente (1 estacionamento) | Financeiro + operar status de vagas + preços do **seu** estacionamento |
-| `admin` | Administrador global | Tudo, incluindo usuários e **simulador QR** (exclusivo) |
-| Dispositivo (🔶) | Sensor IoT | Enviar eventos de vaga com chave própria (§10) |
+| `/` | Escolher shopping e abrir vagas; estado vazio e atualização | `GET /api/estacionamentos` |
+| `/explorar` | Buscar shopping por nome/endereço | Lista pública, filtro no cliente |
+| `/shopping/[id]` | Andar, status, filtro `Todas/Comum/PCD/Idoso/Moto/Elétrico`, sugestão, reserva/cancelamento | `GET /api/estacionamentos/{id}/vagas`, `.../proxima-vaga`, reservas |
+| `/cadastro` | Duas etapas, veículo opcional, autodeclaração PCD, voltar ao início, login após criar | `POST /auth/registrar`, `/auth/login` |
+| `/login` e `/perfil` | Acesso, sessão, dados pessoais, senha e saída | `/auth/login`, `/auth/me`, `/auth/senha`, `/auth/logout` |
+| `/reservas` | Histórico das reservas próprias e cancelamento permitido | `GET /api/reservas/minhas`, `DELETE /api/reservas/{id}` |
+| `/dashboard` | KPIs, seletor por escopo, unidades, andares/vagas, relatórios e usuários conforme papel | `/api/admin/*`, `/api/relatorios/*` |
+| `/simulador-qr`, `/simulador` | Admin cria/revoga QR; sessão tokenizada abre operação de vagas no aparelho | `/api/admin/simulador/sessoes`, `/api/vagas/*` |
 
-### 2.2 Objetivos mensuráveis (propostos 🔶)
+O frontend é Expo Router, React Native e NativeWind. Web e mobile compartilham a navegação; o painel usa barra lateral em larguras a partir de 1024 px e navegação adaptada abaixo disso. `useLarguraResponsiva`, receitas em `styles/recipes.ts`, áreas seguras, rolagem e componentes comuns dão suporte aos tamanhos de tela. Existe automação de UI web no CI; não há evidência de validação física para toda TV, tablet, celular e orientação.
 
-| ID | Objetivo | Meta |
+## 4. Requisitos e regras da versão 1
+
+| ID | Contrato | Situação e fonte |
 |---|---|---|
-| OBJ-1 | Latência de leitura pública (lista e mapa) | p95 < 300 ms com o seed (1.760 vagas) |
-| OBJ-2 | Atualização percebida do mapa | ≤ 20 s (polling) |
-| OBJ-3 | Cadeia Docker→Nginx→API→DB reproduzível | `./scripts/docker.sh up` verde, sem ajuste manual |
-| OBJ-4 | Controle de acesso | Matriz rota × perfil 100% conforme (`smoke_acesso.sh`) |
-| OBJ-5 | Cobertura de regras de negócio | ≥ 70% de `rules/` com pytest |
-| OBJ-6 | Dados do relatório coerentes com o fuso local | "Hoje" = dia em `America/Manaus` |
+| RF-01 | Consultar shoppings, mapa, andares, disponibilidade e sugestão | Implementado: `api/api.py`, `rules/estacionamento_service.py`, `shopping/[id].tsx` |
+| RF-02 | Buscar e filtrar por tipo de vaga, inclusive `comum`, na web e no celular | Implementado no frontend: `explorar.tsx`, `shopping/[id].tsx` |
+| RF-03 | Cadastro, login, refresh, logout com revogação, perfil e troca de senha | Implementado: `api/auth.py`, `AuthContext`, `services/api.ts` |
+| RF-04 | Reservar, cancelar e listar reservas próprias | Implementado: `rules/reserva_service.py`, `api/api.py`, telas de mapa/reservas |
+| RF-05 | Expirar reservas vencidas e concluir a reserva ao ocupar a vaga | Implementado: varredura na leitura e no lifespan de 60 s; `rules/reserva_service.py`, `rules/vaga_service.py` |
+| RF-06 | CRUD de unidades, andares/vagas e gestão de usuários segundo papel | Implementado: `api/admin.py`, `rules/admin_service.py`, `dashboard.tsx` |
+| RF-07 | Relatórios de fluxo, ocupação atual/histórica, rotação e financeiro; CSV | Implementado: `api/api.py`, `api/admin.py`, `rules/relatorio_service.py`, `rules/financeiro_service.py` |
+| RF-08 | Preços, tarifa, pagamentos presenciais/PIX simulado, caixa e cupons | Implementado por API: `api/admin.py`, `rules/pagamento_service.py`; UI financeira completa fora da v1 |
+| RF-09 | Simulador QR com expiração/revogação; atualização de vaga e eventos | Implementado com sessão em memória: `rules/simulador_service.py`, `api/admin.py` |
+| RF-10 | Ingestão de sensor por `X-Device-Key` com sequência idempotente | Implementado por API: `api/sensores.py`, `rules/sensor_service.py`; dispositivo físico não validado |
+| RF-11 | Acesso isolado por papel e unidade, inclusive na leitura autenticada da vitrine | Implementado: `core/deps.py`, `core/escopo.py`, `tests/test_matriz_papeis.py` e `test_vinculos_shopping.py` |
+| RF-12 | Última leitura em cache, feedback de erro/carregamento e reconexão | Implementado no cliente: hooks e componentes; cache não é fonte transacional |
 
-### 2.3 Não-objetivos
-Cobrança real, reconhecimento de placa, múltiplas cidades/idiomas, app nativo publicado, alta disponibilidade multi-nó.
+### 4.1 Invariantes
 
----
+1. `reservar` exige vaga livre; a reserva muda seu status para `reservada` imediatamente, mesmo que o início seja futuro. Só o proprietário cancela; se a vaga ainda está reservada, o cancelamento libera. Reservas vencidas mudam para `expirada`.
+2. Vaga PCD só pode ser reservada por conta com `is_pcd=true`; o motor não atribui PCD a anônimo/não declarado. Para declarado, prioriza PCD quando disponível. A declaração é editável no cadastro/perfil.
+3. Mudança `livre → ocupada` abre histórico e `ocupada → livre` encerra a estadia; uma reserva ocupada é concluída. O histórico sustenta métricas por período.
+4. O tipo de vaga pode ser `comum`, `idoso`, `pcd`, `moto` ou `eletrico`; o filtro do mapa compara o tipo real da vaga. A sugestão de próxima vaga prioriza o tipo pedido e pode recorrer a outra vaga elegível quando não houver do tipo.
+5. Preço/cupom/caixa/pagamento são escopados pela unidade. A tarifa considera tolerância, fração/hora, diária, mínimo e desconto; calcular não consome cupom. Caixa aberto é único por estacionamento.
+6. Relatórios interpretam o período em `America/Manaus` e persistem datas em UTC. Ocupação não usa vagas `inativa` no denominador. Ocupação histórica é derivada das estadias, sem snapshots próprios.
+7. Uma chave revogada não autoriza novos eventos de sensor; retransmissão `(sensor, seq)` não duplica a transição. QR expira em 1–48 horas ou é revogado manualmente.
 
-## 3. Estado atual (baseline)
-
-### 3.1 Inventário (por leitura do código)
-
-| Item | Valor |
-|---|---|
-| Rotas HTTP | ≈ 60 (contagem manual; confirmar em `/openapi.json`) |
-| Tabelas | 10 |
-| Telas (rotas Expo) | 9 + abas do painel |
-| Seed | 8 shoppings · 19 andares · **1.760 vagas** (`seed_demo.py`) |
-| Scripts de teste | `smoke_mvp.sh` (10 checagens) · `smoke_acesso.sh` (27 checagens) · `docker.sh` |
-| Testes automatizados (pytest/jest) | **nenhum** |
-
-### 3.2 Status dos problemas P1–P20 do `CLAUDE.md` (revalidados no código atual)
-
-| ID | Situação hoje | Observação |
-|---|---|---|
-| P1 | ✅ | HMAC com `crypto-js`. **Resta** `expo-crypto` no `package.json` e o `expo-crypto.d.ts` falso |
-| P2 | ✅ | Componentes em RN puro (não há `Reserve.tsx`) |
-| P3 | ✅ | `index.tsx` renderiza Hero + StatusPanel + ShoppingList |
-| P4 | ✅ | Login devolve `user`; `AuthContext` usa `role` |
-| P5 | ✅ | `useMapaVagas` usa `/api/estacionamentos/{id}/vagas` |
-| P6 | ✅ | `storage.ts` unificado (SecureStore nativo / AsyncStorage web) |
-| P7 | `[VERIFICAR]` | `app.json` aponta `./src/assets/imgs/*.png`; só `Logo.svg` apareceu na análise |
-| P8 | ✅ | NativeWind v4 suporta prefixos `sm:`/`md:` e `hidden` |
-| P9 | ✅ | `RequestValidationMiddleware` está registrado em `main.py` |
-| P10 | 🟡 | HMAC real nos dois lados, **mas** o path assinado inclui a query (o `CLAUDE.md` manda sem query) — ver ADR-06 |
-| P11 | ✅ | O validador não tem blocklist de User-Agent (a doc afirma que tem) |
-| P12 | ✅ | `.env-sample` virou apontador para o `.env.example` canônico; produção recusa chaves de exemplo no boot (guard em `core/config.py`) |
-| P13 | ✅ | duplicação removida de `schemas.py` (22/10) |
-| P14 | ✅ | `registrar_pagamento` saiu de `financeiro_service` (prova: `test_financeiro_service_sem_registrar_quebrado`); pagamento é só em `pagamento_service` |
-| P15 | ✅ | Gunicorn faz bind em `0.0.0.0:8000` |
-| P16 | ✅ | resumo soma `cartao_credito + cartao_debito` (`test_resumo_soma_credito_e_debito_como_cartao`) |
-| P17 | ✅ | `tokenUrl="/auth/login"` |
-| P18 | ✅ | Front usa o modelo Estacionamento → Andar → Vaga |
-| P19 | ✅ | Não há mais `Math.random` de vagas |
-| P20 | 🟡 | Existem smokes automatizados; E2E em dispositivo real é manual |
-
-### 3.3 Achados da revisão (novos)
-
-Severidade: **A** = corrigir antes de expor; **M** = corrigir nas marcas 3–4; **B** = higiene.
-
-| ID | Sev. | Achado | Evidência | Tarefa |
-|---|---|---|---|---|
-| ACH-01 | A | **Fuso:** relatórios usam `datetime.utcnow()` (o "dia" vira às 20h em Manaus); `vaga_service` usa `datetime.now()` sem fuso | `relatorio_service.py`, `financeiro_service.py`, `vaga_service.py` | M3-01 |
-| ACH-02 | A | **Credenciais:** `admin@smartparking.com / admin123` é criado em qualquer ambiente; o login mostra atalhos de demo sempre; `SECRET_KEY` fraca no compose | `main.py`, `login.tsx`, `docker-compose.yml` | M2-02 |
-| ACH-03 | A (demo) | **QR aponta para `localhost`:** o compose não define `SIMULADOR_BASE_URL`; o QR escaneado no celular abriria o `localhost` do celular | `config.py`, `docker-compose.yml` | M2-01 |
-| ACH-04 | M | **Rate limit:** handler registrado para o status `429` (não para `RateLimitExceeded` → provável 500); chave = 32 primeiros chars do JWT (iguais para todos); só `/auth/*` tem decorator — os `LIMITS` de reserva/sensor/pagamento/relatório não são aplicados | `main.py`, `rate_limiter.py`, `api/*.py` | M2-03 |
-| ACH-05 | M | **Filtro anti-SQLi** (produção) bloqueia `'`, `"`, `;` e palavras como *select/create/update* em qualquer campo → falsos positivos (senha com `;`, nome com apóstrofo). O SQLAlchemy já parametriza | `security_middleware.py` | M3-03 |
-| ACH-06 | A (fase 2 ativa) | **Rotas financeiras sem escopo por estacionamento (BOLA):** gestor/financeiro de A consegue ler/gravar preços, pagamentos, caixas e cupons de B | `admin.py`, `pagamento_service.py`, `financeiro_service.py` | M3-06 |
-| ACH-07 | M | **Financeiro duplicado e quebrado** (P13/P14/P16); `calcular-tarifa` consome 1 uso de cupom a cada chamada; `gerar-pix` cria um pagamento novo a cada chamada; seed sem preço para PCD/idoso | `financeiro_service.py`, `pagamento_service.py`, `seed_demo.py` | M3-05 |
-| ACH-08 | M | **Login social:** Apple passa um JWKS ao PyJWT como chave (não funciona); Facebook não valida o app; contas se vinculam por e-mail | `social_auth_service.py` | M2-04 |
-| ACH-09 | M | **Sensor real** não consegue se autenticar (rota exige JWT de admin/gestor de 15 min); docs ainda dizem "pública" | `api.py`, `DOCUMENTACAO_BACKEND.md` | H-02 |
-| ACH-10 | M | **Histórico incompleto:** `RESERVADA→OCUPADA` não cria entrada; reserva não expira; vaga reservada para horário futuro já fica bloqueada | `vaga_service.py`, `reserva_service.py` | M2-05, M3-07 |
-| ACH-11 | M | **Exclusão:** `usuarios.estacionamento_id` sem `ondelete`; ciclo `historicos.pagamento_id ↔ pagamentos.historico_id` pode impedir o DELETE com pagamentos `[VERIFICAR em Postgres]` | `db_models.py`, `admin_service.py` | M3-08 |
-| ACH-12 | M | **Estado em memória** (sessões QR, nonces, limiter) obriga 1 worker | `simulador_service.py`, `request_validator.py` | H-01 |
-| ACH-13 | M | **Sem Alembic:** a coluna `origem` (histórico) não aparece em bancos criados antes dela | `main.py` (`create_all`) | M4-02 |
-| ACH-14 | M | **Sem pytest e sem CI** | repositório | M4-01 |
-| ACH-15 | M | **HMAC no web é ofuscação** (segredo no bundle JS); docs prometem "99%" e SSL pinning (não implementado; não funciona no Expo Go/web) | `requestSigner.ts`, `PROTECAO_*.md`, `SEGURANCA_TLS_*.md` | M4-04 |
-| ACH-16 | B | `eventos` e `ocupacao-andares` sem escopo para gestor | `admin.py` | M3-06 |
-| ACH-17 | B | Lote cria só vagas `comum` e não atualiza `capacidade`/`total_vagas` | `admin_service.py` | M3-09 |
-| ACH-18 | B | Ocupação % conta vagas `inativa` no denominador; relatório de ocupação é **snapshot atual**, não histórico | `relatorio_service.py` | M3-02 |
-| ACH-19 | B | `rules/` importa `HTTPException` e `Session` (a doc afirma independência de framework) | `rules/*.py` | — (documentar) |
-| ACH-20 | B | Higiene: venv `meu_server_pex/` versionado; `src/.gitignore` ignora a si mesmo; `AGENTS.md`/`metro.config.js` citam SDK 54 (projeto é SDK 57); `run-dev.sh` sobe o stack completo e depois o backend local (conflito na 8000); `.env-sample` × `.env.example`; `.npmrc engine-strict` + npm exato; tipos TS (`ocupacaoHoje`, `image.d.ts`, `*.css` 3×); texto do simulador diz "admin ou gestor" — ✅ 22/10: `run-dev.sh` reescrito (âncora dirname, só banco no Docker, venv, timeout no pg_isready, DB_AUTO_SQLITE=false), `start_dev.sh` virou delegação, `.gitignore` cobre `.venv/`+`*.db` | vários | M2-06 |
-| ACH-21 | B | Conexão front↔back quebrava fora do mesmo-host: `.env.example` vinha com `EXPO_PUBLIC_API_URL=http://localhost:8000` **ativa** (copiar = congelar localhost em todas as plataformas — no celular, localhost é o próprio celular) e a auto-detecção existia só na web. Fix: `resolverApiURL()` — override manual → web same-origin/`:8000` → Expo Go via `hostUri` do Metro → Android emu `10.0.2.2`; `.env.example` 100% comentado; mensagem ERR_NETWORK com checklist de 3 passos; docs README/INTEGRACAO/MAPA alinhadas ("uma API, resolução por plataforma") | front `services/api.ts`+docs | M2-06 |
-| ACH-22 | B | **Expo SDK 58 (fixado)** — upgrade 57→58 com versões exatas sem `^`/`~` no ecossistema Expo (expo 58.0.17, RN 0.88.0, React 19.3.0, worklets 0.13.0, router 58.0.25 etc. — mapa `bundledNativeModules.json` do próprio pacote expo), lockfile commitado; troca exigida por 58: Strict TypeScript API default (codebase já limpa: zero deep-import/Touchable/InteractionManager), remoção de `newArchEnabled`+`edgeToEdgeEnabled` do app.json (58: únicos/sempre ligados), CLI agora define NODE_ENV antes de carregar .env (não afeta nosso fluxo), R8 default em Android release (só CNG/prebuild — nada a fazer), Expo Go 58 nas lojas ~pós-15/10 (ver README). Node floor 22.13/24.3+ (engines 24.19 ✓). Gates: tsc 0, export web+android 0, E2E --full 0 | front `package.json`+`app.json`+configs+docs | M2-06 |
-| ACH-23 | B | **Recuperação de dependências após `--force` (23/10):** `expo install --check` executado com `node_modules` antigo identificou SDK 57; em seguida `npm audit fix --force` propôs downgrades majeures (Expo 44/RN 0.72/NativeWind 2), deixando a árvore mista. Correção documentada: `git restore` apenas de `package.json`+`package-lock.json`, `npm ci`, remoção de `node_modules`/`.expo` e verificação de `require('expo/package.json').version === 58.0.17`; `audit fix --force` não é procedimento de compatibilidade do SDK | front `package.json`, `package-lock.json`, README | M2-06 |
-| ACH-24 | B | **Diagnóstico Android + `.env` (23/10):** `/health` comprova apenas Uvicorn; `/api/health` e `/api/estacionamentos` é que verificam banco. Na ocorrência real, login/`/auth/me`/leituras passaram, mas o app usava IP mobile antigo (`10.112.192.15` × LAN `192.168.1.14`) e `_WEB=http://localhost:8081` (Metro). `check_conexao --fix` já corrigia IP/global, mas só detectava `:8081` sem corrigir e sugeria `dev-front.sh` (que não escreve `_WEB`). Agora `--fix` comenta qualquer override em `:8081` (WEB/MOBILE/global), preserva backup e devolve a auto-detecção para `:8000`; validado em harness com as três chaves | `scripts/check_conexao.sh` | M2-06 |
-| ACH-25 | A | **Nonce HMAC sem WebCrypto (26/10):** `CryptoJS.lib.WordArray.random()` depende de `globalThis.crypto.getRandomValues` ou do `crypto` do Node; em Hermes sem polyfill, a exceção ocorre no interceptor antes de qualquer POST e `apiErrorMessage()` a anunciava incorretamente como rede. Corrigido com `expo-crypto.getRandomBytes` já presente no SDK 58, mantendo nonce de 16 bytes + timestamp e HMAC inalterados; erros locais agora preservam sua mensagem e falha de `SecureStore` é identificada como pós-autenticação. Harness sem WebCrypto/Node crypto validou nonce+HMAC; `tsc` e exports Android/Web passaram. **Export/CI não é validação física: confirmação no Android e teste em iOS continuam pendentes.** | `requestSigner.ts`, `services/api.ts` | M2-06 |
-| ACH-21 | B | Seed: dois shoppings com o mesmo endereço (`Av. Camapuã, 1480`); nomes da decisão D8 (`CLAUDE.md`) diferem do seed | `seed_demo.py` | M4-05 |
-
-### 3.4 Divergências documentação × código
-
-| Documento | Diz | Código |
-|---|---|---|
-| `README.md`, `CLAUDE.md` | MVP em 12/10 | `MARCAS_ENTREGA.md`: MVP 22/10, Relatórios 02/11, Testes & Docs 09/11, Integrada 12/11 |
-| `CLAUDE.md` §1.2 | P1–P20 não corrigidos | Maioria corrigida (§3.2) |
-| `CLAUDE.md` §3.4 | Assinar path **sem** query | Código assina **com** query nos dois lados |
-| `DOCUMENTACAO_BACKEND.md` | Sensor sem autenticação; 26 rotas; workers = 2×CPU+1 | Rota exige admin/gestor; ≈60 rotas; 1 worker |
-| `SEGURANCA_E_PERFORMANCE.md` | Limites por rota (reserva 30/min, pagamento 15/min…) | Só `/auth/*` tem decorator |
-| `PROTECAO_REQUISICOES.md` | Bloqueia User-Agent de navegador/Postman | Não há blocklist de UA no validador |
-| `SEGURANCA_TLS_WIRESHARK.md` | SSL Pinning "adicionado ao projeto" | Não implementado |
-| `NGINX_EXPLICADO.md` | `nginx.conf` + `conf.d/smartparking.conf` + `ssl-strong.conf`; upstream `backend_pool` | Existe só `src/nginx/default.conf` (upstream `backend_smartparking`) |
-| `MODULO_PAGAMENTOS_FATURAMENTO.md` | Fluxo completo e seguro | Sem escopo por estacionamento; duplicado com `financeiro_service` |
-| `INTEGRACAO_FRONTEND.md`, `schemas.py` (`RegistrarPagamentoRequest`) | `metodo_pagamento`: `pix\|cartao\|dinheiro` | Enum é `cartao_credito`/`cartao_debito` |
-
----
-
-## 4. Requisitos
-
-### 4.1 Requisitos funcionais
-
-Status vem de leitura de código. Coluna **Marca** indica onde o item fecha.
-
-**M1 — Consulta pública**
-
-| ID | Requisito | Status | Onde | Marca |
-|---|---|---|---|---|
-| RF-01 | Listar shoppings com vagas livres/total e selo de disponibilidade | ✅ | `GET /api/estacionamentos`; `ShoppingList` | 2 |
-| RF-02 | Buscar shopping por nome/endereço | ✅ | cliente (`explorar.tsx`) | 2 |
-| RF-03 | Mapa de vagas por andar, com status, tipo e filtro por tipo | ✅ | `GET /api/estacionamentos/{id}/vagas`; `VagaMapa` | 2 |
-| RF-04 | Sugerir a próxima vaga (prioriza o tipo pedido; senão qualquer livre) | ✅ | `.../proxima-vaga` | 2 |
-| RF-05 | Atualização automática (polling 8–25 s conforme a tela) | ✅ | hooks `useEstacionamentos`, `useMapaVagas` | 2 |
-| RF-06 | Última leitura disponível offline (cache persistido) | ✅ 22/10 noite: Home e mapa gravam a última leitura no AsyncStorage e reabrem com banner de horário | 4 |
-| RF-07 | "Como chegar" (abrir mapas com lat/long do seed) | ✅ 22/10 — botão 📍 no shopping (Google Maps; cai para o endereço sem coordenada) | 5 |
-
-**M2 — Conta e acesso**
-
-| ID | Requisito | Status | Marca |
-|---|---|---|---|
-| RF-10 | Cadastro em 2 etapas (dados + veículo opcional) com auto-login | ✅ | 2 |
-| RF-11 | Login por e-mail **ou** telefone | ✅ | 2 |
-| RF-12 | Refresh transparente do access token (fila de requisições) | ✅ | 2 |
-| RF-13 | Logout (limpa tokens localmente; sem revogação no servidor) | ✅ 22/10 — `POST /auth/logout` revoga jti (access) + cadeia de refresh; `revogacoes_token` no banco | 5 |
-| RF-14 | Recuperar senha (hoje `mailto:`) | ✅ 22/10 (sem SMTP por decisão) — "Reset senha" do admin gera temporária de balcão e derruba sessões; login mostra o fluxo | 5 |
-| RF-15 | Perfil: editar nome, telefone, placa, trocar senha | ✅ 22/10 — tela /perfil (Header → Minha conta) + PUT /auth/me e /auth/senha; troca de senha religa a sessão atual | 5 |
-| RF-16 | RBAC com 5 papéis e vínculo gestor/financeiro → estacionamento | ✅ | 2 |
-| RF-17 | Login social | ✅ (flag `LOGIN_SOCIAL_ENABLED=false` por padrão; rotas → 404) | 2 |
-
-**M3 — Reservas** (existem; fase 2 no escopo original)
-
-| ID | Requisito | Status | Marca |
-|---|---|---|---|
-| RF-20 | Reservar vaga livre (UI fixa: início +15 min, 2 h) | ✅ | 2 |
-| RF-21 | Cancelar reserva e liberar vaga | ✅ | 2 |
-| RF-22 | Listar minhas reservas | ✅ | 2 |
-| RF-23 | Expirar reserva vencida e liberar a vaga | ✅ (sweep na leitura + `ZapeadorReservas` 60 s no lifespan; status `expirada`) | 3 |
-| RF-24 | Reserva futura não bloqueia a vaga antes do horário `[decisão Q-08]` | ⬜ | 3 |
-| RF-25 | Chegada em vaga reservada gera Histórico de entrada | ✅ (RESERVADA→OCUPADA abre estadia e conclui a reserva) | 2 |
-
-**M4 — Painel**
-
-| ID | Requisito | Status | Marca |
-|---|---|---|---|
-| RF-30 | Dashboard: KPIs, ocupação por andar, fluxo por hora, últimos eventos | ✅ | 2 |
-| RF-31 | Estacionamento: criar ✅ · excluir ✅ · editar (API ✅ · UI ✅ 22/10) | ✅ | 3 |
-| RF-32 | Andar: criar ✅ · excluir ✅ · **editar nº/capacidade (API+UI ✅ 22/10)** | ✅ | 3 |
-| RF-33 | Vagas: lote ✅ · editar tipo/código ✅ · excluir ✅ · criar avulsa ✅ · tipo no lote ✅ — tudo na aba Andares e Vagas | ✅ | 3 |
-| RF-34 | Usuários: criar/listar/ativar-desativar ✅ · editar nome/nível/vínculo ✅ (modal 22/10) · reset de senha ✅ | ✅ | 3 |
-
-**M5 — Simulador e sensores**
-
-| ID | Requisito | Status | Marca |
-|---|---|---|---|
-| RF-40 | Gerar sessão QR por estacionamento/andar, validade 1–48 h | ✅ | 2 |
-| RF-41 | Listar e revogar sessões | ✅ | 2 |
-| RF-42 | Operar vagas: alternar, selecionar, ações rápidas, lote | ✅ | 2 |
-| RF-43 | Acesso exclusivo do admin (login + `role=admin`) | ✅ | 2 |
-| RF-44 | Feed de eventos com origem (sensor/simulador/app/manual) | ✅ | 2 |
-| RF-45 | Sensor real: chave por dispositivo + contrato idempotente (§10) | ✅ 22/10 — `sensores`+`sensor_eventos`, `X-Device-Key` (SHA-256 no banco), `POST /api/sensores/eventos` com (sensor,seq), emissão/revogação só admin | 5 |
-| RF-46 | Check-in/out por QR com a câmera do celular | ⬜ | 5 |
-| RF-47 | Elegibilidade PCD: vaga PCD só para quem se declara no cadastro; os demais recebem sempre vaga Comum (nunca PCD) | ✅ 22/10 — coluna `usuarios.is_pcd` (migração `a7e41c9d0b52`), guarda 403 na reserva explícita, motor de atribuição ignora PCD p/ anônimo/não-declarado e prioriza p/ declarado, `aviso` em /proxima-vaga, checkbox no cadastro+perfil | 5 |
-
-**M6 — Relatórios**
-
-| ID | Requisito | Status | Marca |
-|---|---|---|---|
-| RF-50 | Fluxo: entradas, saídas, tempo médio (diário/semanal/mensal) | ✅ API · ✅ UI (aba Relatórios) | 3 |
-| RF-51 | Ocupação atual por andar | ✅ API · ✅ UI (KPIs da aba) | 3 |
-| RF-52 | Ocupação **histórica** (hora × andar, mapa de calor) | ✅ (`/ocupacao-historica` + heat 24×andares na aba) | 3 |
-| RF-53 | Financeiro: faturamento, ticket médio, por método, por dia | ✅ API (`/relatorios/financeiro/resumo` read-only + admin) · ✅ UI | 3 |
-| RF-54 | Rotação: tempo médio e giro por andar/vaga | ✅ (`/relatorios/rotacao` + card de giro) | 3 |
-| RF-55 | Exportar CSV (fluxo e financeiro) | ✅ (`/relatorios/fluxo/csv`, `/relatorios/financeiro/csv`; BOM+`;` Excel pt-BR) | 3 |
-| RF-56 | Escopo por papel (financeiro/gestor só no seu estacionamento) | ✅ (fluxo/ocupação) | 3 |
-
-**M7 — Financeiro** (backend existe; UI = fase 2 exceto relatório)
-
-| ID | Requisito | Status | Marca |
-|---|---|---|---|
-| RF-60 | Preço por tipo de vaga (hora, diária, tolerância, mínimo, fração 15 min) | ✅ (schema expõe `valor_fracao_15min`/`cobrar_valor_minimo`/`valor_minimo` via aliases) | 3 |
-| RF-61 | Cálculo de tarifa (tolerância → hora cheia/fração → diária ≥ 9 h → mínimo → cupom) | ✅ API | 3 |
-| RF-62 | Pagamento presencial (dinheiro/cartão) com troco | ✅ API | fase 2 |
-| RF-63 | PIX (simulado) com confirmação | ✅ API | fase 2 |
-| RF-64 | Cupons (porcentagem, valor fixo, isenção) | ✅ API | fase 2 |
-| RF-65 | Caixa por turno (abrir/fechar; 1 aberto por estacionamento) | ✅ API | fase 2 |
-
-### 4.2 Requisitos não funcionais
-
-| ID | Categoria | Requisito | Verificação |
-|---|---|---|---|
-| RNF-01 | Desempenho | OBJ-1 e OBJ-2 | k6/`curl -w` no seed |
-| RNF-02 | Segurança | RBAC + escopo por estacionamento em toda rota com `estacionamento_id`; segredos só por env; HTTPS na marca 5 | `smoke_acesso.sh` + pytest |
-| RNF-03 | Confiabilidade | `/health` no compose; nginx só sobe com API saudável | `docker compose ps` |
-| RNF-04 | Portabilidade | Android, iOS e Web com o mesmo código (Expo SDK 58, RN 0.88 — versões exatas pinadas no `package.json`) | `expo export` android/web |
-| RNF-05 | Usabilidade | Layout responsivo (`useWindowDimensions` + prefixos NativeWind); estados vazio/erro/carregando em toda tela | Checklist §12.4 |
-| RNF-06 | Acessibilidade | `accessibilityRole`/`accessibilityLabel` em ações; contraste AA nos tokens | revisão manual |
-| RNF-07 | Manutenibilidade | Rotas finas (`api/`), regras em `rules/`, schemas em `models/` | revisão de PR |
-| RNF-08 | Observabilidade | Logs estruturados do gunicorn/nginx; `X-Request-Id` 🔶 | `docker compose logs` |
-| RNF-09 | Idioma/fuso | pt-BR; datas em UTC no banco e exibidas em `America/Manaus` | pytest (T-REL-01) |
-
-### 4.3 Regras de negócio
-
-| ID | Regra |
-|---|---|
-| RN-01 | `status` da vaga ∈ {`livre`, `ocupada`, `reservada`, `inativa`}; `tipo` ∈ {`comum`, `idoso`, `pcd`, `moto`, `eletrico`} |
-| RN-02 | `livre→ocupada` cria `Historico` (entrada, `origem`); `ocupada→livre` fecha o `Historico` aberto e grava `tempo_permanencia_minutos` (inteiro) |
-| RN-03 | Reserva só em vaga `livre`; `horario_fim > horario_inicio`; a vaga passa a `reservada`; cancelar libera se ainda `reservada`; só o dono cancela |
-| RN-04 | `gestor` e `financeiro` exigem `estacionamento_id`; o painel é escopado a ele |
-| RN-05 | Tarifa: até a tolerância (padrão 15 min) = R$ 0; depois, hora cheia (ou fração de 15 min); ≥ 9 h cobra diária; aplica mínimo; depois cupom |
-| RN-06 | Cupom: código único; validade; limite de usos; tipos porcentagem/valor fixo/isenção total |
-| RN-07 | No máximo 1 caixa aberto por estacionamento |
-| RN-08 | Admin não pode ser desativado |
-| RN-09 | Próxima vaga: primeira `livre` do tipo pedido; se não houver, qualquer `livre` |
-| RN-10 | Taxa de ocupação = (`ocupada` + `reservada`) ÷ total. ✅ Adotado: **`inativa` fora do denominador** (`test_ocupacao_snapshot_exclui_inativas_do_denominador`) |
-| RN-11 | Sessão QR: validade clampada em 1–48 h; token `secrets.token_urlsafe(8)` (~11 caracteres, 64 bits); revogável |
-| RN-12 | "Dia", "semana" e "mês" dos relatórios são calculados em `America/Manaus` ✅ (`core/timeutils.py`, `test_dia_local_de_manaus_vira_0400_utc`) |
-
----
-
-## 5. Arquitetura
-
-### 5.1 Visão de containers
+## 5. Arquitetura e dados
 
 ```mermaid
 flowchart LR
-  subgraph Clientes
-    APP["App Expo<br/>Android · iOS · Web"]
-    ADM["Admin no celular<br/>rota /simulador via QR"]
-    IOT["Sensores IoT<br/>futuro"]
-  end
-  subgraph Docker["Docker Compose · rede smartparking-network"]
-    NGX["Nginx :80<br/>proxy reverso · rate limit"]
-    API["FastAPI + Gunicorn/Uvicorn :8000<br/>1 worker"]
-    DB[("PostgreSQL 15")]
-    PGA["PgAdmin :5050"]
-  end
-  APP -->|"HTTP JSON · JWT · HMAC nas escritas"| NGX
-  ADM -->|"HTTP JSON · JWT admin"| NGX
-  IOT -.->|"X-Device-Key · proposto"| NGX
-  NGX --> API
-  API --> DB
-  PGA --> DB
+  C["Expo Web / Android / iOS"] -->|"JSON + Bearer"| N["Nginx :8080 ou API :8000"]
+  S["Sensor com X-Device-Key"] --> N
+  N --> A["FastAPI + Gunicorn/Uvicorn"]
+  A --> P[("PostgreSQL 15")]
+  A --> M["Sessões QR e nonces em memória"]
 ```
 
-### 5.2 Camadas do backend (Arquitetura Limpa adaptada)
+O frontend resolve a URL em `services/apiBaseUrl.ts`: variável específica web/mobile, variável global, host do navegador no web, host do Metro no nativo e `10.0.2.2` no emulador Android. `services/api.ts` centraliza o Bearer, refresh e assinatura das escritas. Em caso de 401, o cliente tenta refresh único e reconduz ao login quando a sessão não pode ser restaurada.
 
-```mermaid
-flowchart TB
-  subgraph Apresentacao["api/ · HTTP"]
-    R1["api.py · público, reservas, vagas, relatórios"]
-    R2["auth.py · registro, login, refresh, social"]
-    R3["admin.py · painel, simulador, financeiro"]
-  end
-  subgraph Regras["rules/ · regras de negócio"]
-    S1["estacionamento · vaga · reserva"]
-    S2["relatorio · eventos · simulador"]
-    S3["auth · admin · financeiro · pagamento"]
-  end
-  subgraph Dados["models/ · dados"]
-    M1["db_models.py · ORM"]
-    M2["schemas.py · Pydantic"]
-    M3["database.py · engine e pool"]
-  end
-  subgraph Core["core/ · transversal"]
-    C1["config · security · deps"]
-    C2["security_middleware · request_validator · rate_limiter"]
-  end
-  Apresentacao --> Regras --> Dados
-  Apresentacao -.-> Core
-  Regras -.-> Core
-```
+No backend, `main.py` compõe `api/api.py` (vitrine, reservas, status e relatórios), `api/auth.py`, `api/admin.py` e `api/sensores.py`. `core/` contém autenticação, escopo, CORS, limites e middleware; `rules/` contém operações de negócio; `models/` contém ORM e contratos Pydantic. `rules/` usa SQLAlchemy e algumas `HTTPException`, portanto não é independente do framework. A resposta JSON é modelada em `models/schemas.py`.
 
-> **Nota (ACH-19):** `rules/` importa `HTTPException` e `Session`. A doc diz "independente de framework"; na prática é "independente das rotas". Recomendação: documentar assim; não refatorar agora.
-
-### 5.3 Pipeline de requisição
-
-Ordem de execução em `main.py` (o último `add_middleware` é o mais externo):
-
-```mermaid
-flowchart LR
-  REQ(["Requisição"]) --> CORS["CORS"]
-  CORS --> TH["TrustedHost<br/>só produção"]
-  TH --> SEC["SecurityHeaders<br/>scanner · SQLi · headers<br/>só produção"]
-  SEC --> HMAC["RequestValidation<br/>HMAC + anti-replay<br/>só produção, só escrita"]
-  HMAC --> RT["Roteador FastAPI"]
-  RT --> DEP["deps · JWT + RBAC"]
-  DEP --> RUL["rules/"]
-  RUL --> DB[("PostgreSQL")]
-```
-
-Em `development` e `staging` (o compose usa `staging`), as três camadas "só produção" passam direto.
-
-### 5.4 Arquitetura do frontend
-
-| Camada | Arquivos | Responsabilidade |
+| Grupo de tabelas | Tabelas do ORM | Relação central |
 |---|---|---|
-| Rotas | `src/app/*.tsx` (expo-router) | Telas; layout web/mobile decidido por `useWindowDimensions` |
-| Componentes | `components/ui.tsx`, `VagaMapa`, `AdminShell`, `Header`, `Hero`, `StatusPanel`, `ShoppingList`, `Footer` | Primitivas RN + NativeWind (sem HTML) |
-| Hooks | `useAuth`, `useEstacionamentos`, `useMapaVagas`, `useReservas`, `useAgora` | Estado remoto, polling, helpers |
-| Serviços | `api.ts` (axios + 3 interceptors), `requestSigner.ts`, `storage.ts` | HTTP tipado, refresh, HMAC, tokens |
-| Contexto | `AuthContext` | Sessão (usuário, `canAccessPanel`, `isAdmin`) |
-| Tema | `theme.ts`, `tailwind.config.js` | Tokens (cores, status de vaga) |
+| Acesso | `usuarios`, `usuario_estacionamentos`, `revogacoes_token` | Usuário tem papel, vínculo principal e vínculos adicionais do gestor; token pode ser revogado |
+| Operação | `estacionamentos`, `andares`, `vagas`, `reservas`, `historicos` | Unidade → andares → vagas; reserva aponta para motorista/vaga; histórico registra entrada/saída |
+| Financeiro | `configuracoes_precos`, `cupons_desconto`, `fechamentos_caixa`, `pagamentos` | Preço e caixa por unidade; pagamento relaciona estadia |
+| Dispositivos | `sensores`, `sensor_eventos` | Chave armazenada como hash; evento único por sensor e sequência |
 
-Interceptors do axios, em ordem: (1) anexa `Bearer`; (2) em `401` faz refresh com fila única; (3) assina escritas (HMAC).
+Nomes exatos das tabelas e chaves ficam em `models/db_models.py`. Existem revisões Alembic para o baseline, `usuarios.is_pcd` e vínculos múltiplos. `main.py` ainda executa `create_all` e reparos idempotentes limitados para volumes antigos. Isso **não substitui** aplicar e revisar migrações de futuras mudanças de esquema; ver `MIGRACOES.md`.
 
-### 5.5 Deploy (compose)
+## 6. Contratos HTTP e erros
 
-| Serviço | Imagem | Porta | Observação |
-|---|---|---|---|
-| nginx | build local | 80 | `limit_req` 30 r/s (burst 50); login 5 r/min (burst 3); config **assada na imagem** |
-| backend | build local | 8000 | `ENVIRONMENT=staging`, `DB_AUTO_SQLITE=false`, `GUNICORN_WORKERS=1`; healthcheck TCP |
-| postgres | `postgres:15-alpine` | 5432 | volume `postgres_data`; healthcheck `pg_isready` |
-| pgadmin | `dpage/pgadmin4` | 5050 | credenciais padrão — **remover na marca 5** |
+| Prefixo | Uso | Autorização |
+|---|---|---|
+| `/health`, `/api/health` | Processo e consulta de banco, respectivamente | Pública; `/health` não comprova que o DB atende |
+| `/api/estacionamentos`, `/api/estacionamentos/{id}/vagas`, `.../proxima-vaga` | Vitrine, mapa, sugestão | Pública, mas restringe gestor/financeiro autenticado ao seu escopo |
+| `/auth/*` | Cadastro, login, refresh, logout, perfil, senha | Credenciais ou Bearer conforme rota; login social desligado por padrão |
+| `/api/reservas*` | Reserva e histórico pessoal | Motorista/admin; propriedade validada para cancelar |
+| `/api/admin/*` | Painel, CRUD, finanças e simulador | Dependências por papel e validação da unidade |
+| `/api/relatorios/*` | Agregados e CSV | Público apenas em `/fluxo/publico`; demais por papel/escopo |
+| `/api/sensores/eventos` | Ingestão em lote | Chave `X-Device-Key` emitida/revogada pelo admin |
 
-### 5.6 Decisões de arquitetura (ADRs) — ✅ validadas pelo autor em 22/10 (ordem da sessão: executar conforme explicado)
+A forma usual de erro é `{"detail": "..."}`. `401` exige autenticação válida; `403` indica papel, propriedade ou escopo insuficiente; `404` indica recurso não encontrado; `405` indica método incompatível com a rota; `429` indica limite. Em particular, `GET /api/admin/estacionamentos` **existe** no backend atual: sem Bearer deve responder 401, e com papel de painel válido lista só as unidades permitidas. `scripts/smoke_mvp.sh` cobre esse contrato para detectar uma imagem Docker antiga que só responde ao POST.
 
-Implementadas: ADR-01 (polling mantido), ADR-02 (1 worker no compose já era), ADR-04 ✅ (baseline `3c79cee6fe1f` + `src/docs/MIGRACOES.md` com fluxo de stamp para bancos existentes), ADR-05 ✅, ADR-06 ✅ (SQLi regex
-removido, flag social, admin só fora de produção), ADR-07 ✅ (`garantir_escopo_estacionamento` +
-`garantir_escopo_relatorio`), ADR-08 ✅ (financeiro consolidado em `pagamento_service`), ADR-09 ✅
-(histórico derivado), ADR-10 ✅ (pytest+CI), ADR-11 ✅ (deploy LAN por IP mantido), ADR-03 ⬜
-(sensor `X-Device-Key` ✅ 22/10; check-in por câmera segue ⬜ — ver §12).
+## 7. Segurança e decisões
 
-| ADR | Decisão proposta | Alternativa | Justificativa | Impacto |
-|---|---|---|---|---|
-| ADR-01 | **Manter polling** (8–25 s); avaliar SSE só se sobrar tempo | WebSocket/SSE agora | OBJ-2 atendido; SSE exige estado compartilhado entre workers | Nenhum |
-| ADR-02 | **Sessões QR em tabela Postgres** (`simulador_sessoes`); nonces e rate limit seguem em memória com 1 worker; Redis só se for escalar | Redis para tudo | Princípio de simplicidade; volume baixo | `H-01` |
-| ADR-03 | **Sensor com API key por dispositivo** (`X-Device-Key`, hash no banco) e `POST /api/sensores/eventos` idempotente; HTTP primeiro | MQTT; JWT de longa duração | Sensor não faz login; chave revogável | `H-02` |
-| ADR-04 | **Adotar Alembic** com baseline = esquema atual | Continuar `create_all` | Evolução de esquema sem derrubar volume | `M4-02` |
-| ADR-05 | **UTC no banco** (`datetime.now(timezone.utc)`), **`America/Manaus` na borda** (relatórios e UI) | Fuso local no servidor | Independe do TZ da máquina/container | `M3-01` |
-| ADR-06 | **HMAC permanece como camada extra** (anti-replay/higiene), com path **incluindo query** (como no código), alinhando docs e `validar_assinatura.py`; **remover o filtro regex anti-SQLi**, manter bloqueio de scanners e limite de corpo; desligar login social por flag; admin padrão só fora de produção | Remover HMAC; manter regex | Honestidade técnica (§8); evita falso positivo | `M2-02..04`, `M3-03` |
-| ADR-07 | **Dependência única de escopo** `garantir_escopo_estacionamento(usuario, est_id)` aplicada a toda rota com `estacionamento_id`; gestor continua podendo operar vagas do próprio estacionamento (a D5 restringe o **simulador QR**) | Escopo por rota | Evita novo BOLA | `M3-06` |
-| ADR-08 | **Financeiro:** consolidar em `pagamento_service`; `financeiro_service` fica só com preços e resumo | Manter os dois | Elimina P13/P14/P16 | `M3-05` |
-| ADR-09 | **Ocupação histórica derivada do `Historico`** (sobreposição de intervalos por hora), sem tabela de snapshots | Job de snapshots | Simplicidade; sem novo estado | `M3-02` |
-| ADR-10 | **Testes:** pytest + `TestClient` em SQLite (sem Docker) + smokes shell mantidos; sem E2E automatizado de front até 12/11 | Playwright/Maestro | Prazo | `M4-01` |
-| ADR-11 | **Deploy da apresentação:** Docker na LAN por IP + Expo Go/Web; TLS apenas na marca 5 | Nuvem com domínio | Risco de rede da banca; custo | `H-03` |
-
----
-
-## 12. Evidências de execução — rodada 22/10/2026 (apêndice)
-
-Tudo abaixo foi **executado nesta máquina** contra o código deste commit (SQLite de dev,
-`uvicorn` na 8031, seed demo zerado e recriado do zero):
-
-| Evidência | Resultado |
+| Decisão | Implementação e limite |
 |---|---|
-| `pytest tests -q` (novo, 25 testes) | **25 passed** em 3.6 s — fuso, denominador, heat, giro, tarifa RN-05/06, cupom (não consome no cálculo), P16, expiração RF-23, RF-25, lote ACH-17, matriz BOLA, CSV auth/escopo, flag social 404, guard de produção, chave do limiter |
-| `scripts/smoke_mvp.sh` (API viva) | **10/10** com o código da marca 3 |
-| `scripts/smoke_acesso.sh` (matriz 27 checks) | **27/27** — gating admin/gestor/financeiro/motorista/anônimo intacto |
-| BOLA manual | gestor A → `403` em preços/cupons/eventos/CSV do estacionamento B; no próprio `200` |
-| RF-23 manual | reserva vencida via API → `expirada` na leitura, vaga `livre`; lifespan derruba em ≤ 60 s |
-| CSVs | `fluxo/csv` 200 `text/csv` com 379 linhas (`;`, BOM no topo, CRLF); `financeiro/csv` idem; sem token → 401; fora do escopo → 403 |
-| `/relatorios/ocupacao-historica` + `/rotacao` | 200 com `fuso: America/Manaus`, 4 andares, buckets 24/hora |
-| Rate limit real | `/auth/login` devolve `429 {"detail":..., retry_after}` na 11ª tentativa/min (prova de que o decorator vale) |
-| `tsc --noEmit` | exit 0 (aba Relatórios nova, api.ts com 4 métodos, `__DEV__` no login) |
-| Guard produção | `Settings(ENVIRONMENT="production")` com `SECRET_KEY`/`APP_SIGNING_SECRET` padrão → `ValidationError` no boot (teste dedicado) |
+| Identidade | JWT de acesso/refresh, senha com hash, revogação de sessão e checagem de usuário ativo; senha temporária é gerada por admin para recuperação presencial |
+| Autorização | Papel no backend + escopo por ID de unidade; controles da interface são conveniência, não barreira |
+| Dispositivo | `X-Device-Key` com hash persistido e idempotência; não reutiliza o JWT humano |
+| Escrita em produção | Assinatura HMAC com timestamp/nonce e path incluindo query; segredo no bundle web **não é segredo confiável** e HMAC não substitui HTTPS/controle de acesso |
+| Perímetro | Limite de corpo, rate limit, CORS, headers, filtro de host em produção; Nginx tem limites de requisição e de login |
+| Segredos e deploy | O Compose versionado está em `staging`, com senhas de demonstração e portas expostas; não é perfil pronto de produção. Produção exige segredos próprios, CORS/hosts explícitos e terminação TLS |
 
-**Não executado / não entregue nesta rodada (para não inflar a régua):** E2E de UI (Detox/
-Maestro), Alembic (ADR-04/M4-02), sessões Postgres (H-01), sensores com `X-Device-Key`
-(H-02), check-in por câmera (RF-46), logout com revogação (RF-13), recuperar senha (RF-14),
-perfil (RF-15), cache offline persistido (RF-06), "como chegar" (RF-07), UI de edição
-RF-31..34, RF-24 `[decisão Q-08 — texto da decisão não veio no upload]`, TLS no nginx.
+Decisões mantidas: polling em vez de WebSocket; um worker enquanto estado QR/anti-replay está em memória; UTC no banco e `America/Manaus` na interface de relatórios; Alembic como histórico de esquema junto ao reparo limitado de compatibilidade. Um reinício do backend invalida sessões QR em memória. Escalar workers exige mover esse estado para armazenamento compartilhado.
 
-### Evidências — 22/10 (auditoria QA-101: "permanece sem conexão")
+## 8. Implantação e operação
 
-| Evidência | Resultado |
+`src/docker-compose.yml` define PostgreSQL 15 (`5432`, volume persistente), backend (`8000`, um worker, healthcheck TCP), Nginx (`8080` no host → `80` no container) e pgAdmin (`5050`). Nginx encaminha à API; o frontend Expo é executado **fora** desse Compose. O healthcheck TCP sinaliza processo aceitando conexão, não garante que cada rota/consulta esteja correta.
+
+Da raiz do repositório:
+
+```bash
+./scripts/docker.sh up
+./scripts/dev-front.sh
+```
+
+O primeiro comando recria as imagens e executa o smoke do MVP; o segundo atualiza a URL mobile da API pela LAN e inicia Expo com cache limpo. Em terminais separados. Para subir somente serviços sem smoke: `docker compose -f src/docker-compose.yml up -d --build backend nginx`; para conferir: `docker compose -f src/docker-compose.yml ps`, `curl -i http://localhost:8000/api/admin/estacionamentos` (esperado 401 sem token) e `curl -i http://localhost:8080/api/health` (esperado 200 com banco funcional). `docker compose down` mantém volumes; `down -v` apaga os dados.
+
+Uma imagem antiga pode continuar saudável e responder `405` em uma rota nova. Após atualizar o `main`, é necessário reconstruir o backend. QR aberto em outro aparelho exige `SIMULADOR_BASE_URL=http://IP_DO_PC:8081` no ambiente antes de subir o Compose. `localhost` dentro do celular refere-se ao próprio aparelho.
+
+## 9. Qualidade e critérios de aceitação
+
+| Área | Evidência versionada | Critério para aceitar a v1 |
+|---|---|---|
+| Backend | `tests/`, `ruff`, jobs Python 3.10/3.12 em `.github/workflows/ci.yml` | Rotas, regras, escopo e persistência passam sem regressão |
+| Frontend | Typecheck, Expo Doctor/SDK e testes Playwright web com API real no CI | Navegação e interações principais funcionam sem erro de runtime |
+| Integração local | `scripts/smoke_mvp.sh`, `scripts/smoke_acesso.sh`, `scripts/check_conexao.sh` | Login, GET do painel, reserva e acesso por papel coerentes com o código |
+| Compatibilidade | `scripts/validate_expo_native.sh`, workflow de emulador Android | Configuração nativa conferida; validação de hardware físico ainda é separada |
+| Visual | `tests/ui/`, prévias de CI e revisão manual | Sem cortes, sobreposição e rolagem quebrada nas telas de entrada, mapa, reserva e painel em larguras representativas |
+
+Este SDD foi fechado por **auditoria do código**, não por uma nova rodada completa de testes ou medição de latência. O usuário observou a reconstrução dos containers e `GET /api/admin/estacionamentos → 401` sem token em 16/11/2026. A execução autenticada e a inspeção física em TV, notebook, tablet e celular não foram observadas nesta revisão documental. Não declarar metas de p95, cobertura percentual ou compatibilidade universal como resultados medidos.
+
+## 10. Limites conhecidos e trabalho fora da versão 1
+
+| Item | Consequência / decisão |
 |---|---|
-| Bundle com o `.env` envenenado (build real `expo export`) | PROVA: `API_URL` vira constante `"http://localhost:8000"` e o minificador remove `hostUri` do bundle (0 ocorrências) — o `.env` local do usuário congelava tudo mesmo pós-fix |
-| `app.json` (auditoria minuciosa) | PEÇA FALTANTE achada e posta: `android.usesCleartextTraffic` + iOS ATS `NSAllowsArbitraryLoads` — sem elas, dev build/APK bloqueia `http://` da LAN (Expo Go é isento: por isso "aqui funciona, lá não") |
-| `requestSigner.ts` | chave HMAC era só literal — agora lê `EXPO_PUBLIC_APP_SIGNING_SECRET` (espelho do backend; `tsc` 0, `expo export` ok) |
-| `scripts/check_conexao.sh` (novo) | testado AO VIVO no sandbox: sem backend → exit 1 com "o que fazer"; com backend real → 10 ✔ (login, /me, /estacionamentos, /proxima-vaga anônimo+token, preflight CORS com allow-headers ecoando `x-request-*`); `.env` envenenado de propósito → detecta → `--fix` comenta preservando o nome + backup → re-run 0 crítico/exit 0 |
-| Suspeitos ELIMINADOS com teste | CORS do backend (preflight real 200 + `allow-headers` completo), TrustedHost em dev (200 com Host `10.x`), URLs duras nas telas (zero fora de api.ts), `@expo/metro-runtime` (presente via expo), `global.css` casing ✓, `.dockerignore`/`.gitignore` cobrindo `.env` ✓ |
+| Reserva futura bloqueia a vaga assim que é criada | Planejamento de intervalos sem bloqueio antecipado requer outro modelo de disponibilidade |
+| Sugestão pode recorrer a tipo elegível diferente do solicitado | O mapa filtrado mostra só o tipo selecionado; a sugestão é uma recomendação separada |
+| Sessões QR e alguns controles vivem em memória | Reinício invalida QR; múltiplos workers não são suportados sem estado compartilhado |
+| PIX e pagamento | API simula PIX; não há cobrança bancária real nem UI financeira de ponta a ponta |
+| Câmera e sensores físicos | Check-in pela câmera não implementado; protocolo de sensor existe, instalação física não validada |
+| Produção pública | Compose é staging; TLS, segredos, domínio/hosts, persistência operacional e hardening exigem implantação própria |
+| Migrações | Reparo do boot cobre só casos conhecidos; aplicar Alembic ao mudar esquema é responsabilidade de operação |
+| Plataformas | CI web/emulador não equivale à revisão visual e funcional em todos os dispositivos possíveis |
 
-### Evidências — 22/10 (conexão multi-plataforma, ACH-20/21)
+## 11. Rastreabilidade e manutenção do SDD
 
-| Evidência | Resultado |
+| Se mudar... | Atualizar código e documentação de... |
 |---|---|
-| `tsc --noEmit` / `expo export --platform web` | limpos com `resolverApiURL()` + `expo-constants` (dependência já existente — zero pacote novo) |
-| `bash -n` nos 5 `.sh` | os cinco validados; `run-dev.sh` novo funciona de qualquer cwd (âncora `dirname $0`), sobe só `postgres pgadmin` (8000 livre p/ o backend local) e falha com mensagem em vez de loop infinito |
-| Cadeia .env | `.env.example` sem nenhuma linha ativa — `cp .env.example .env` não muda mais nada; override continua 1-tipo (EXPO_PUBLIC_) |
+| Papel, permissão ou vínculo | `core/deps.py`, `core/escopo.py`, rotas, testes de matriz e §2/§6 deste SDD |
+| Endpoint ou resposta | `api/`, `models/schemas.py`, `services/api.ts`, smoke e §3/§6 |
+| Regra de vaga, reserva ou preço | `rules/`, testes correspondentes e §4 |
+| Tabela ou relacionamento | `models/db_models.py`, revisão Alembic, `MIGRACOES.md` e §5 |
+| Ambiente, porta ou segredo | Compose/Nginx/scripts, exemplos de `.env`, README e §7/§8 |
+| Tela ou breakpoint | Expo, testes UI, README e §3/§9 |
 
-### Evidências — 22/10 (rodada PCD, RF-47)
+Referências complementares: `MIGRACOES.md`, `INTEGRACAO_FRONTEND.md`, `QA_UI_UX.md` e `MARCAS_ENTREGA.md` preservam detalhes operacionais e históricos. Em caso de divergência, conferir o código e corrigir a documentação; os registros antigos de 22/10 permanecem no histórico Git do SDD, não como especificação vigente.
 
-| Evidência | Resultado |
-|---|---|
-| `pytest tests -q` | **48/48** (+10 em `test_pcd.py`: registro persiste `is_pcd`, omissão = comum, declarar/revogar via /me, 403 ao reservar PCD sem declaração, declarado reserva PCD e comum, motor — anônimo nunca recebe PCD / declarado prioriza / `?tipo_vaga=pcd` rebaixa com aviso / PCD isolada não é sugerida a comum / token inválido ≠ 401, legado sem coluna = False) |
-| Alembic | nova revisão `a7e41c9d0b52` sobre a baseline; `upgrade head` em banco vazio ok; `alembic check` = zero divergência; coluna NOT NULL com `server_default false` |
-| `ruff check .` | limpo |
-| `tsc --noEmit` / `expo export --platform web` | limpos — `Checkbox` novo em ui.tsx (padrão Campo, a11y `accessibilityRole/state`), cadastro e perfil com a declaração, `aviso` do rebaixamento no Alert de destaque |
-| Terminologia | varrido: o app **já nomeava tudo como "Comum"**; não existia string "normal" de categoria (só `font-normal`). Sinônimo `tipo_vaga=normal` aceito no motor e mapeado para COMUM — o Figma antigo usava "Vaga Normal" |
+## 12. Direção da versão 2 (fora do aceite da v1)
 
-### Repeteco de evidências — 22/10 (2ª rodada do dia)
+O produto tem **quatro** frentes propostas para a próxima versão. Nenhuma é declarada como pronta por este SDD. Antes da implementação, cada frente precisa de contrato de dados, tratamento de falhas, autorização e evidência de operação.
 
-| Evidência | Resultado |
-|---|---|
-| `pytest tests -q` | **31/31** (+6: revogação access/refresh, compat jti-legado, perfil/senha, reset do admin, PUT andar/vaga, ingestão de sensor com idempotência e revogação de chave) |
-| Runtime httpx contra uvicorn | **15/15**: logout→401 immediate, senha antiga morre no reset, sensor vira vaga `ocupada` de verdade no mapa, reenvio = `duplicados:1`, fluxo diário conta a entrada do sensor |
-| `smoke_mvp` / `smoke_acesso` | **10/10 · 27/27** com revogação/limitadores/sensores no meio do caminho |
-| Alembic (novo) | `revision --autogenerate` → baseline 13 tabelas; `upgrade head` em banco vazio cria as 14 (13+alembic_version); `alembic check` → *no divergence* |
-| `tsc --noEmit` / `expo export --platform web` | limpos — abas novas do painel (editar estacionamento/andar/vaga/usuário), tela /perfil, cache persistido e botão "como chegar" compilando para web |
+| ID | Frente | Contrato inicial e critério de aceite proposto |
+|---|---|---|
+| V2-01 | API/gateway de pagamento | Integrar um provedor real em ambiente de teste e produção; criar intenção com chave idempotente, receber e verificar confirmação assíncrona, conciliar valor/estadia, registrar estorno e tratar indisponibilidade sem marcar como pago antes da confirmação. Nunca expor credenciais do gateway no app. |
+| V2-02 | Modelo 3D simulado do estacionamento | Representar unidade → andar → vaga e estado a partir dos IDs atuais; sincronizar com a mesma API do mapa 2D; preservar uma alternativa 2D acessível e desempenho aceitável nos dispositivos alvo. A representação não deve inventar ocupação. |
+| V2-03 | Sensores com visão computacional e câmeras inteligentes | Criar serviço de inferência que associa detecção a vaga/câmera, indica confiança e publica transições idempotentes; prever calibração, revisão humana de ambiguidade e tratamento de câmera offline. Validar privacidade, retenção e segurança das imagens antes de implantação real. |
+| V2-04 | Integração com sistemas de gerenciamento de estacionamento | Definir adaptadores por fornecedor, identidade externa ↔ IDs internos, autenticação, sincronização inicial/incremental, reconciliação de conflitos e observabilidade. O sistema de origem e a direção de cada dado devem ser definidos por integração. |
 
-Pendências que restam do documento (marca 5): H-01 sessões QR em Postgres, RF-46 câmera
-(exige `expo-camera` no `node_modules` da máquina de demo — adiado para não quebrar o dia),
-RF-24 `[Q-08]` sem texto da decisão, TLS no nginx, pgadmin fora do ar em produção.
+Ordem técnica sugerida: estabilizar contratos de eventos/identidades e observabilidade, integrar pagamentos e sistemas externos por adaptadores, então conectar visão computacional e a visualização 3D aos mesmos estados consolidados. Essa ordem é uma proposta de planejamento, não uma promessa de prazo ou decisão sobre fornecedores.
