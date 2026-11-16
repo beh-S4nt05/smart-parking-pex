@@ -160,6 +160,7 @@ test("garagem permite gerenciar carros e motos e alterar principal em viewport m
   expect(cadastro.status()).toBe(201);
 
   await login(page, email, "senha-forte123");
+  await expect(page).toHaveURL(/\/$/);
   await page.goto("/perfil");
   await expect(page.getByText("Meus veículos")).toBeVisible();
   await expect(page.getByText("ABC1D23", { exact: true })).toBeVisible();
