@@ -475,6 +475,7 @@ class Sensor(Base):
     ativo = Column(Boolean, nullable=False, default=True, index=True)
     criado_em = Column(DateTime(timezone=True), server_default=func.now())
     ultimo_evento_em = Column(DateTime(timezone=True), nullable=True)
+    ultimo_seq = Column(Integer, nullable=False, default=-1, server_default="-1")  # maior seq ACEITO
 
     estacionamento = relationship("Estacionamento", foreign_keys=[estacionamento_id])
 
