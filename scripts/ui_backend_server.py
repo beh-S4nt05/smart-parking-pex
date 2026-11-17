@@ -31,7 +31,7 @@ async def reset_rate_limit(request: Request) -> JSONResponse:
     recebido = request.headers.get("X-UI-Test-Token", "")
     if not hmac.compare_digest(recebido, RESET_TOKEN):
         return JSONResponse(status_code=403, content={"detail": "Controle de teste inválido"})
-    limiter._storage.reset()  # mesmo isolamento usado em conftest.py
+    limiter.reset()  # API pública: limpa as janelas do backend apenas em testes
     return JSONResponse({"ok": True})
 
 
