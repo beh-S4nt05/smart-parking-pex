@@ -5,7 +5,7 @@ from datetime import timezone
 from sqlalchemy.orm import Session
 
 from core.timeutils import normalizar
-from models.db_models import Andar, EventoOperacional, Historico, Usuario, Vaga
+from models.db_models import Andar, EventoOperacional, Usuario, Vaga
 
 
 def registrar_evento(
@@ -59,12 +59,9 @@ def listar_atividades(
     if fim is not None:
         q = q.filter(EventoOperacional.criado_em < fim)
     eventos = q.order_by(EventoOperacional.criado_em.desc(), EventoOperacional.id.desc()).limit(limite).all()
-    usuarios = {
-        uid: nome
-        for uid, nome in db.query(Usuario.id, Usuario.nome).filter(
-            Usuario.id.in_({e.usuario_id for e in eventos if e.usuario_id})
-        ).all()
-    } if any(e.usuario_id for e in eventos) else {}
+    usuarios = dict(db.query(Usuario.id, Usuario.nome).filter(
+        Usuario.id.in_({e.usuario_id for e in eventos if e.usuario_id})
+    ).all()) if any(e.usuario_id for e in eventos) else {}
     codigos = {
         vid: (codigo, andar)
         for vid, codigo, andar in db.query(Vaga.id, Vaga.codigo, Andar.numero_andar)
