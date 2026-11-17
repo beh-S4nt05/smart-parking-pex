@@ -26,6 +26,8 @@ import VagaMapa from "../../components/VagaMapa";
 import { MobileBottomNav } from "../../components/MobileChrome";
 import OptionChips from "../../components/OptionChips";
 import { useMapaVagas } from "../../hooks/useMapaVagas";
+import { useNotificacoes } from "../../components/Notificacoes";
+import IndicadorAtualizacao from "../../components/IndicadorAtualizacao";
 import { useLarguraResponsiva } from "../../hooks/useLarguraResponsiva";
 import { useAgora, desdeAte } from "../../hooks/useAgora";
 import { useAuth } from "../../hooks/useAuth";
@@ -62,11 +64,12 @@ const FILTROS_TIPO: { id: VagaTipo | "todos"; label: string }[] = [
 export default function MapaVagas() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const { avisar } = useNotificacoes();
   const width = useLarguraResponsiva();
   const isWeb = width >= 1024;
 
-  const { mapa, setMapa, loading, erro, atualizadoEm, refresh, resumo } =
-    useMapaVagas(id, { pollingMs: 5000 });
+  const { mapa, setMapa, loading, erro, atualizadoEm, refresh, resumo, sincronizando } =
+    useMapaVagas(id, { pollingMs: 1500 });
   const agora = useAgora(5000);
   const { isAuthenticated } = useAuth();
 
@@ -163,9 +166,9 @@ export default function MapaVagas() {
               );
               setVagaSel(null);
               refresh();
-              Alert.alert("Reserva cancelada", `A vaga ${codigo} foi liberada.`);
+              avisar("Reserva cancelada", `A vaga ${codigo} foi liberada.`, "sucesso");
             } catch (e) {
-              Alert.alert("Não foi possível cancelar", apiErrorMessage(e));
+              avisar("Não foi possível cancelar", apiErrorMessage(e), "erro");
             }
           },
         },
@@ -283,21 +286,9 @@ export default function MapaVagas() {
       );
       setVagaSel(null);
       refresh();
-      Alert.alert(
-        "Vaga reservada",
-        `${v.codigo} reservada por 2 horas.\nConfira em "Minhas reservas".`,
-        isWeb
-          ? [
-              { text: "Fechar", style: "cancel" },
-              {
-                text: "Ver reservas",
-                onPress: () => router.push("/reservas"),
-              },
-            ]
-          : [{ text: "Ok" }],
-      );
+      avisar("Vaga reservada", `${v.codigo} reservada por 2 horas. Veja em Minhas reservas.`, "sucesso");
     } catch (e) {
-      Alert.alert("Não foi possível reservar", apiErrorMessage(e));
+      avisar("Não foi possível reservar", apiErrorMessage(e), "erro");
     } finally {
       setReservando(false);
     }
