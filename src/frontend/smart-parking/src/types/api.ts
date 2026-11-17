@@ -89,6 +89,11 @@ export interface EventoVaga {
   momento: string | null;
 }
 
+export interface AtividadeOperacional extends Omit<EventoVaga, "vaga_status"> {
+  estacionamento_id: string;
+  pagamento_id?: string | null;
+}
+
 export interface ResumoAtividades {
   reservas_criadas: number;
   reservas_canceladas: number;
