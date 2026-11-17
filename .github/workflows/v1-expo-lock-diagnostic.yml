@@ -35,6 +35,21 @@ jobs:
           console.log('SMARTPARKING_LOCK_DELTA_END');
           console.log('Changed:',changed.length,'Removed:',removed.length);
           NODE
+      - name: Avaliar correções de segurança sem forçar alterações de SDK
+        run: |
+          cp package-lock.json /tmp/sp-lock-before-audit.json
+          npm audit fix --package-lock-only --ignore-scripts --no-fund || true
+          node <<'NODE'
+          const fs=require('fs');
+          const old=JSON.parse(fs.readFileSync('/tmp/sp-lock-before-audit.json'));
+          const fresh=JSON.parse(fs.readFileSync('package-lock.json'));
+          const changed=Object.entries(fresh.packages).filter(([k,v])=>JSON.stringify(old.packages[k])!==JSON.stringify(v));
+          const removed=Object.keys(old.packages).filter(k=>!Object.prototype.hasOwnProperty.call(fresh.packages,k));
+          console.log('SMARTPARKING_AUDIT_LOCK_BEGIN');
+          console.log(JSON.stringify({changed,removed,packageJSON:JSON.parse(fs.readFileSync('package.json'))}));
+          console.log('SMARTPARKING_AUDIT_LOCK_END');
+          console.log('Changed after audit fix:',changed.length,'Removed:',removed.length);
+          NODE
       - name: Diagnóstico de vulnerabilidades
         run: |
           npm audit --json >/tmp/sp-audit.json || true
