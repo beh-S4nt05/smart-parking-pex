@@ -26,15 +26,20 @@ test("motorista reserva e cancela pela UI e a vaga volta a ficar livre na API", 
   await page.getByRole("button", { name: "Vaga A-02 — livre" }).click();
   await page.getByRole("button", { name: "Reservar por 2h", exact: true }).click();
 
+  // Sucesso agora usa toast não modal, com navegação explícita.
+  await expect(page.getByText("Vaga reservada", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Ver reservas", exact: true }).click();
   await expect(page).toHaveURL(/\/reservas$/);
   await expect(page.getByText(/Vaga A-02/)).toBeVisible();
   await expect(page.getByText("Confirmada", { exact: true })).toBeVisible();
-  expect(dialogs.some((message) => message.includes("A-02 reservada"))).toBeTruthy();
 
   await page.getByRole("button", { name: "Cancelar", exact: true }).click();
   await expect(page.getByText("Cancelada", { exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Cancelar", exact: true })).toHaveCount(0);
-  expect(dialogs.some((message) => message.includes("voltou a ficar livre"))).toBeTruthy();
+  // Confirmação destrutiva permanece nativa (window.confirm na web);
+  // resultado é exibido como toast discreto, não outro modal.
+  expect(dialogs.some((message) => message.includes("Cancelar reserva"))).toBeTruthy();
+  await expect(page.getByText("Reserva cancelada", { exact: true })).toBeVisible();
 
   const mapa = await page.request.get(`/api/estacionamentos/${centro.id}/vagas`);
   expect(mapa.ok()).toBeTruthy();
