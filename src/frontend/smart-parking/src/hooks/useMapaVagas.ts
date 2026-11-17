@@ -117,17 +117,18 @@ export function useMapaVagas(estacionamentoId?: string, { pollingMs = 0, ativo =
   useEffect(() => {
     mapaRef.current = null;
     atualizadoRef.current = 0;
+    cacheGravadoEm.current = 0;
     setMapa(null);
     setErro(null);
     setLoading(Boolean(estacionamentoId));
-    if (!estacionamentoId) return;
+  }, [estacionamentoId]);
 
-    if (ativo && visivel) {
-      void refresh();
-      if (pollingMs > 0) {
-        const timer = setInterval(() => void refresh(), Math.max(1000, pollingMs));
-        return () => clearInterval(timer);
-      }
+  useEffect(() => {
+    if (!estacionamentoId || !ativo || !visivel) return;
+    void refresh();
+    if (pollingMs > 0) {
+      const timer = setInterval(() => void refresh(), Math.max(1000, pollingMs));
+      return () => clearInterval(timer);
     }
   }, [estacionamentoId, refresh, pollingMs, ativo, visivel]);
 
