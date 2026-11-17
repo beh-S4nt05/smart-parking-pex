@@ -4,6 +4,7 @@ from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 from core.timeutils import normalizar, utc_agora
+from rules.atividade_service import registrar_evento
 from models.db_models import (
     ConfiguracaoPreco,
     CupomDesconto,
@@ -234,6 +235,13 @@ def registrar_pagamento(
     _consumir_cupom(db, historico)
     _cancelar_pagamentos_pendentes(db, historico.id)
     _contabilizar_no_caixa(db, novo_pagamento, historico)
+    registrar_evento(
+        db, estacionamento_id=historico.estacionamento_id,
+        evento="pagamento_confirmado", usuario_id=historico.usuario_id,
+        historico_id=historico.id, vaga_id=historico.vaga_id,
+        pagamento_id=novo_pagamento.id, origem="financeiro",
+        valor=novo_pagamento.valor_total,
+    )
     db.commit()
     db.refresh(novo_pagamento)
 
@@ -321,6 +329,13 @@ def confirmar_pagamento_online(db: Session, pagamento_id: str):
     _consumir_cupom(db, historico)
     _cancelar_pagamentos_pendentes(db, historico.id)
     _contabilizar_no_caixa(db, pagamento, historico)
+    registrar_evento(
+        db, estacionamento_id=historico.estacionamento_id,
+        evento="pagamento_confirmado", usuario_id=historico.usuario_id,
+        historico_id=historico.id, vaga_id=historico.vaga_id,
+        pagamento_id=pagamento.id, origem="financeiro",
+        valor=pagamento.valor_total,
+    )
     db.commit()
     db.refresh(pagamento)
     return pagamento
