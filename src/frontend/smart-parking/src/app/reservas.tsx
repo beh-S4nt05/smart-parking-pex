@@ -4,11 +4,13 @@ import { meta, minW0Flex1, pagina, textoApoio, tituloCardShopping } from "../sty
  * DELETE /api/reservas/{id} (a vaga volta a "livre" no mesmo instante).
  */
 import { Alert, Platform, Pressable, RefreshControl, ScrollView, Text, View } from "react-native";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
+import { useCallback, useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../hooks/useAuth";
 import { useReservas } from "../hooks/useReservas";
 import { useNotificacoes } from "../components/Notificacoes";
+import IndicadorAtualizacao from "../components/IndicadorAtualizacao";
 import { apiErrorMessage } from "../services/api";
 import Header from "../components/Header";
 import { MobileBottomNav, MobileScreenHeader } from "../components/MobileChrome";
@@ -36,9 +38,14 @@ function formatarDataHora(iso: string): string {
 export default function Reservas() {
   const router = useRouter();
   const { avisar } = useNotificacoes();
+  const [emFoco, setEmFoco] = useState(true);
+  useFocusEffect(useCallback(() => {
+    setEmFoco(true);
+    return () => setEmFoco(false);
+  }, []));
   const { isAuthenticated, loading: authLoading } = useAuth();
-  const { reservas, loading, erro, refresh, cancelar } =
-    useReservas(isAuthenticated && !authLoading);
+  const { reservas, loading, sincronizando, erro, refresh, cancelar } =
+    useReservas(isAuthenticated && !authLoading && emFoco);
 
   function pedirCancelamento(id: string, codigo: string) {
     Alert.alert(
@@ -102,6 +109,7 @@ export default function Reservas() {
     return (
       <View style={{ flex: 1, backgroundColor: "#F3F7FD" }}>
         <MobileScreenHeader title="Minhas reservas" subtitle="Suas vagas e seu histórico" />
+        <IndicadorAtualizacao ativo={sincronizando} rotulo="Atualizando reservas" />
         <ScrollView
           style={{ flex: 1 }}
           contentContainerStyle={{ padding: 18, paddingBottom: 36 }}
@@ -156,6 +164,7 @@ export default function Reservas() {
       ) : (
         <MobileScreenHeader title="Reservas" subtitle="Gerencie as vagas que você garantiu" />
       )}
+      <IndicadorAtualizacao ativo={sincronizando} rotulo="Atualizando reservas" />
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 48 }}>
         <View className="mx-auto w-full max-w-3xl">
           <Text className="text-2xl font-extrabold text-slate-900 3xl:text-3xl">
