@@ -1,9 +1,46 @@
-import { expect, login, test } from "./helpers";
+import { expect, test } from "./helpers";
 
 test("XSS armazenado no perfil é renderizado como texto e não executa", async ({ page }) => {
+  // Timeout maior apenas quando o servidor aplica a cota real de login.
+  // NUNCA reduzir/desativar limites da API para obter CI verde.
+  test.setTimeout(140_000);
   const payload = "<svg/onload=window.__smartParkingXss=true>";
-  await login(page, "motorista@smartparking.com", "motor123");
-  await expect(page).toHaveURL(/\/$/);
+
+  // Testa XSS, não o formulário de login (coberto em auth.spec.ts).
+  // A sessão é obtida da API REAL do Playwright, depois injetada ANTES do
+  // bootstrap do React, evitando corrida de hidratação do login entre testes.
+  const autenticar = () => page.request.post("/auth/login", {
+    data: { email: "motorista@smartparking.com", senha: "motor123" },
+  });
+  let respostaLogin = await autenticar();
+  if (respostaLogin.status() === 429) {
+    // Testes E2E usam o MESMO IP local. Respeitar Retry-After real e repetir
+    // uma única vez, sem mascarar erro de senha, conexão, 401, 403 ou 5xx.
+    const segundos = Number(respostaLogin.headers()["retry-after"]);
+    const esperaMs = Number.isFinite(segundos) && segundos > 0
+      ? Math.min(Math.ceil(segundos) * 1000 + 1200, 65_000)
+      : 61_000;
+    await new Promise<void>((resolve) => setTimeout(resolve, esperaMs));
+    respostaLogin = await autenticar();
+  }
+  expect(respostaLogin.status(), "Login QA depois de respeitar rate limit").toBe(200);
+  const sessao = (await respostaLogin.json()) as {
+    access_token: string;
+    refresh_token: string;
+    user: unknown;
+  };
+  expect(sessao.access_token).toBeTruthy();
+  await page.addInitScript(({ acesso, refresh, usuario }) => {
+    localStorage.setItem("smartparking_access_token", acesso);
+    localStorage.setItem("smartparking_refresh_token", refresh);
+    if (usuario) {
+      localStorage.setItem("smartparking_user_cache", JSON.stringify(usuario));
+    }
+  }, {
+    acesso: sessao.access_token,
+    refresh: sessao.refresh_token,
+    usuario: sessao.user,
+  });
 
   try {
     await page.goto("/perfil");

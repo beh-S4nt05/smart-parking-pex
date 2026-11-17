@@ -319,6 +319,27 @@ class Reserva(Base):
     credencial = relationship("CredencialEstacionamento")
 
 
+class EventoOperacional(Base):
+    """Auditoria append-only das ações da V1, independente do estado atual da reserva.
+
+    Sem FKs nas entidades de origem: exclusões operacionais antigas não devem
+    apagar a trilha auditável; o escopo do painel usa estacionamento_id.
+    """
+    __tablename__ = "eventos_operacionais"
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    estacionamento_id = Column(String, nullable=False, index=True)
+    usuario_id = Column(String, nullable=True, index=True)
+    reserva_id = Column(String, nullable=True, index=True)
+    vaga_id = Column(String, nullable=True)
+    historico_id = Column(String, nullable=True)
+    pagamento_id = Column(String, nullable=True)
+    evento = Column(String(40), nullable=False, index=True)
+    origem = Column(String(30), nullable=False, default="sistema")
+    valor = Column(Float, nullable=True)
+    criado_em = Column(DateTime(timezone=True), nullable=False, default=func.now(), server_default=func.now(), index=True)
+
+
 class ConfiguracaoPreco(Base):
     __tablename__ = "configuracoes_precos"
 

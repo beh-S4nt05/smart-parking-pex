@@ -3,7 +3,7 @@ from hashlib import sha256
 import hmac
 from typing import Literal, Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -49,6 +49,7 @@ from models.schemas import EstacionamentoDetalhadoResponse as EstacionamentoResp
 from rules import (
     admin_service,
     eventos_service,
+    atividade_service,
     financeiro_service,
     simulador_service,
 )
@@ -550,6 +551,50 @@ async def validar_sessao_simulador(token: str):
     administrador global — quem criou a sessão, usa o simulador.
     """
     return simulador_service.validar_sessao(token)
+
+
+# ======================================================================
+#  RELATÓRIO DE ATIVIDADES — contagens de ações de usuários na V1
+# ======================================================================
+@router.get("/atividades/resumo")
+async def atividades_resumo(
+    periodo: Literal["diario", "semanal", "mensal"] = "diario",
+    estacionamento_id: str | None = None,
+    db: Session = Depends(get_db),
+    usuario: Usuario = Depends(get_usuario_financeiro),
+):
+    """Reservas criadas/canceladas/expiradas, check-ins e pagamentos efetivos.
+
+    Respeita a mesma matriz de acesso do feed e não confunde reserva com receita.
+    """
+    from core.timeutils import janela_manaus
+
+    escopo = garantir_escopo_estacionamento(
+        usuario, estacionamento_id, "ver resumo de atividades"
+    )
+    inicio, fim = janela_manaus(periodo)
+    return atividade_service.resumo_atividades(db, escopo, inicio, fim)
+
+
+@router.get("/atividades")
+async def atividades_detalhadas(
+    periodo: Literal["diario", "semanal", "mensal"] = "diario",
+    estacionamento_id: str | None = None,
+    limite: int = Query(50, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    db: Session = Depends(get_db),
+    usuario: Usuario = Depends(get_usuario_financeiro),
+):
+    """Histórico auditável paginado com escopo estrito por shopping."""
+    from core.timeutils import janela_manaus
+
+    escopo = garantir_escopo_estacionamento(
+        usuario, estacionamento_id, "ver atividades detalhadas"
+    )
+    inicio, fim = janela_manaus(periodo)
+    return atividade_service.listar_atividades(
+        db, escopo, inicio=inicio, fim=fim, limite=limite, offset=offset,
+    )
 
 
 # ======================================================================

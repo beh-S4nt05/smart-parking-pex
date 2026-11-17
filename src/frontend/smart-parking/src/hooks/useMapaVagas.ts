@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { AppState, Platform } from "react-native";
 import { parkingApi } from "../services/api";
 import type { MapaVagas, Vaga } from "../types/api";
 
 interface Options {
   pollingMs?: number;
+  ativo?: boolean;
 }
 
 function horaCache(ts: number): string {
@@ -12,9 +14,11 @@ function horaCache(ts: number): string {
 }
 
 /** Mapa com atualização automática, cache offline e proteção contra respostas antigas. */
-export function useMapaVagas(estacionamentoId?: string, { pollingMs = 0 }: Options = {}) {
+export function useMapaVagas(estacionamentoId?: string, { pollingMs = 0, ativo = true }: Options = {}) {
   const [mapa, setMapa] = useState<MapaVagas | null>(null);
   const [loading, setLoading] = useState(Boolean(estacionamentoId));
+  const [sincronizando, setSincronizando] = useState(false);
+  const [visivel, setVisivel] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
   const [atualizadoEm, setAtualizadoEm] = useState<number>(Date.now());
   const mounted = useRef(true);
@@ -22,6 +26,7 @@ export function useMapaVagas(estacionamentoId?: string, { pollingMs = 0 }: Optio
   const mapaRef = useRef<MapaVagas | null>(null);
   const atualizadoRef = useRef(0);
   const emCurso = useRef(new Set<string>());
+  const cacheGravadoEm = useRef(0);
   idAtual.current = estacionamentoId;
 
   useEffect(() => {
@@ -35,6 +40,19 @@ export function useMapaVagas(estacionamentoId?: string, { pollingMs = 0 }: Optio
     mapaRef.current = mapa;
   }, [mapa]);
 
+  useEffect(() => {
+    if (Platform.OS === "web" && typeof document !== "undefined") {
+      const verificar = () => setVisivel(document.visibilityState !== "hidden");
+      verificar();
+      document.addEventListener("visibilitychange", verificar);
+      return () => document.removeEventListener("visibilitychange", verificar);
+    }
+    const subscription = AppState.addEventListener("change", (estado) => {
+      setVisivel(estado === "active");
+    });
+    return () => subscription.remove();
+  }, []);
+
   const refresh = useCallback(async () => {
     const idSolicitado = estacionamentoId;
     if (!idSolicitado) {
@@ -43,19 +61,25 @@ export function useMapaVagas(estacionamentoId?: string, { pollingMs = 0 }: Optio
     }
     if (emCurso.current.has(idSolicitado)) return;
     emCurso.current.add(idSolicitado);
+    if (mapaRef.current && mounted.current) setSincronizando(true);
     try {
       const dados = await parkingApi.mapaVagas(idSolicitado);
       if (!mounted.current || idAtual.current !== idSolicitado) return;
+      const mudou = JSON.stringify(dados) !== JSON.stringify(mapaRef.current);
       mapaRef.current = dados;
-      setMapa(dados);
+      if (mudou) setMapa(dados);
       setErro(null);
       const agora = Date.now();
       atualizadoRef.current = agora;
       setAtualizadoEm(agora);
-      AsyncStorage.setItem(
-        `sp:cache:mapa:${idSolicitado}`,
-        JSON.stringify({ ts: agora, dados }),
-      ).catch(() => {});
+      // Gravar cache a cada 10s (ou quando ainda não existe), não 40x/min.
+      if (agora - cacheGravadoEm.current > 10000) {
+        cacheGravadoEm.current = agora;
+        AsyncStorage.setItem(
+          `sp:cache:mapa:${idSolicitado}`,
+          JSON.stringify({ ts: agora, dados }),
+        ).catch(() => {});
+      }
     } catch {
       if (!mounted.current || idAtual.current !== idSolicitado) return;
       if (mapaRef.current) {
@@ -83,24 +107,30 @@ export function useMapaVagas(estacionamentoId?: string, { pollingMs = 0 }: Optio
       }
     } finally {
       emCurso.current.delete(idSolicitado);
-      if (mounted.current && idAtual.current === idSolicitado) setLoading(false);
+      if (mounted.current && idAtual.current === idSolicitado) {
+        setLoading(false);
+        setSincronizando(false);
+      }
     }
   }, [estacionamentoId]);
 
   useEffect(() => {
     mapaRef.current = null;
     atualizadoRef.current = 0;
+    cacheGravadoEm.current = 0;
     setMapa(null);
     setErro(null);
     setLoading(Boolean(estacionamentoId));
-    if (!estacionamentoId) return;
+  }, [estacionamentoId]);
 
+  useEffect(() => {
+    if (!estacionamentoId || !ativo || !visivel) return;
     void refresh();
     if (pollingMs > 0) {
-      const timer = setInterval(() => void refresh(), pollingMs);
+      const timer = setInterval(() => void refresh(), Math.max(1000, pollingMs));
       return () => clearInterval(timer);
     }
-  }, [estacionamentoId, refresh, pollingMs]);
+  }, [estacionamentoId, refresh, pollingMs, ativo, visivel]);
 
   const resumo = useMemo(() => {
     const contar = (lista: Vaga[]) => ({
@@ -117,5 +147,5 @@ export function useMapaVagas(estacionamentoId?: string, { pollingMs = 0 }: Optio
     };
   }, [mapa]);
 
-  return { mapa, setMapa, loading, erro, atualizadoEm, refresh, resumo };
+  return { mapa, setMapa, loading, sincronizando, erro, atualizadoEm, refresh, resumo };
 }

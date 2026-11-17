@@ -32,7 +32,8 @@ jobs:
         with: { node-version: "24.19.0", cache: "npm", cache-dependency-path: "src/frontend/smart-parking/package-lock.json" }
       - run: npm install --global npm@11.17.0
       - run: npm ci --no-audit --no-fund
-      - run: npm audit --audit-level=moderate
+      - name: Verificar TypeScript da V1 antes dos avisos do SDK
+        run: npm run typecheck
       - run: npm run check-deps
       - run: npm run check-sdk
       - name: Expo Doctor
@@ -50,8 +51,14 @@ jobs:
           PY
             exit "$status"
           fi
-      - run: npm run typecheck
       - run: npm run check-native
+      # Executa npm audit REAL (sem --force), falha para novas CVEs e mantém
+      # somente a exceção GHSA-fc5q-39xc-vjpf sem patch upstream até 18/12/2026.
+      # A exceção é temporária, rastreável e expira automaticamente.
+      - name: Testar política de auditoria npm
+        run: node ../../../scripts/audit_npm_v1.cjs --self-test
+      - name: Auditar dependências (gate com exceção temporária)
+        run: node ../../../scripts/audit_npm_v1.cjs
 
   ui:
     name: UI (Chromium, API real)
