@@ -46,11 +46,13 @@ def listar_atividades(
     estacionamento_id: str | None,
     *,
     limite: int = 20,
+    offset: int = 0,
     inicio=None,
     fim=None,
 ) -> list[dict]:
     """Ações registradas, autorizadas exclusivamente pelo escopo do endpoint."""
     limite = max(1, min(limite, 100))
+    offset = max(0, offset)
     q = db.query(EventoOperacional)
     if estacionamento_id:
         q = q.filter(EventoOperacional.estacionamento_id == estacionamento_id)
@@ -58,7 +60,7 @@ def listar_atividades(
         q = q.filter(EventoOperacional.criado_em >= inicio)
     if fim is not None:
         q = q.filter(EventoOperacional.criado_em < fim)
-    eventos = q.order_by(EventoOperacional.criado_em.desc(), EventoOperacional.id.desc()).limit(limite).all()
+    eventos = q.order_by(EventoOperacional.criado_em.desc(), EventoOperacional.id.desc()).offset(offset).limit(limite).all()
     usuarios = dict(db.query(Usuario.id, Usuario.nome).filter(
         Usuario.id.in_({e.usuario_id for e in eventos if e.usuario_id})
     ).all()) if any(e.usuario_id for e in eventos) else {}
