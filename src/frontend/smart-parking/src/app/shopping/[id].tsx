@@ -291,7 +291,10 @@ export default function MapaVagas() {
       );
       setVagaSel(null);
       refresh();
-      avisar("Vaga reservada", `${v.codigo} reservada por 2 horas. Veja em Minhas reservas.`, "sucesso");
+      avisar("Vaga reservada", `${v.codigo} reservada por 2 horas. Veja em Minhas reservas.`, "sucesso", {
+        rotulo: "Ver reservas",
+        onPress: () => router.push("/reservas"),
+      });
     } catch (e) {
       avisar("Não foi possível reservar", apiErrorMessage(e), "erro");
     } finally {
