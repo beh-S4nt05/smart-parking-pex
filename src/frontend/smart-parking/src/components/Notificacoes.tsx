@@ -3,8 +3,11 @@ import { Animated, Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 type Nivel = "sucesso" | "erro" | "info";
-type Mensagem = { id: number; titulo: string; texto?: string; nivel: Nivel };
-type Contexto = { avisar: (titulo: string, texto?: string, nivel?: Nivel) => void };
+type Acao = { rotulo: string; onPress: () => void };
+type Mensagem = { id: number; titulo: string; texto?: string; nivel: Nivel; acao?: Acao };
+type Contexto = {
+  avisar: (titulo: string, texto?: string, nivel?: Nivel, acao?: Acao) => void;
+};
 
 const Context = createContext<Contexto>({ avisar: () => {} });
 
@@ -35,10 +38,10 @@ export function NotificacoesProvider({ children }: { children: React.ReactNode }
     if (timer.current) clearTimeout(timer.current);
   }, []);
 
-  const avisar = useCallback((titulo: string, texto?: string, nivel: Nivel = "info") => {
+  const avisar = useCallback((titulo: string, texto?: string, nivel: Nivel = "info", acao?: Acao) => {
     if (timer.current) clearTimeout(timer.current);
     const id = ++contador.current;
-    setMensagem({ id, titulo, texto, nivel });
+    setMensagem({ id, titulo, texto, nivel, acao });
     opacidade.setValue(0);
     deslocamento.setValue(-8);
     Animated.parallel([
@@ -88,6 +91,22 @@ export function NotificacoesProvider({ children }: { children: React.ReactNode }
                 </Text>
               ) : null}
             </Pressable>
+            {mensagem.acao ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={mensagem.acao.rotulo}
+                onPress={() => {
+                  const executar = mensagem.acao?.onPress;
+                  dispensar();
+                  executar?.();
+                }}
+                style={{ alignSelf: "flex-start", paddingHorizontal: 15, paddingBottom: 12 }}
+              >
+                <Text style={{ fontSize: 12, fontWeight: "800", color: "#2563EB" }}>
+                  {mensagem.acao.rotulo}
+                </Text>
+              </Pressable>
+            ) : null}
           </Animated.View>
         </View>
       ) : null}
