@@ -27,6 +27,7 @@ import type {
   DashboardAdmin,
   Estacionamento,
   EventoVaga,
+  ResumoAtividades,
   LoteVagasResultado,
   MapaVagas,
   OcupacaoAndar,
@@ -522,6 +523,16 @@ export const parkingApi = {
         limite,
         ...(estacionamentoId ? { estacionamento_id: estacionamentoId } : {}),
       },
+    });
+    return data;
+  },
+
+  async resumoAtividades(
+    periodo: "diario" | "semanal" | "mensal",
+    estacionamentoId?: string,
+  ): Promise<ResumoAtividades> {
+    const { data } = await api.get<ResumoAtividades>("/api/admin/atividades/resumo", {
+      params: { periodo, ...(estacionamentoId ? { estacionamento_id: estacionamentoId } : {}) },
     });
     return data;
   },
