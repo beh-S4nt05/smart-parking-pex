@@ -48,6 +48,7 @@ import type {
   Estacionamento,
   OcupacaoAndar,
   ResumoAtividades,
+  AtividadeOperacional,
   Usuario,
   Vaga,
 } from "../types/api";
@@ -1207,6 +1208,10 @@ function AbaRelatorios({ estSel }: { estSel: string | null }) {
   const [rot, setRot] = useState<Awaited<ReturnType<typeof parkingApi.rotacao>> | null>(null);
   const [fin, setFin] = useState<Awaited<ReturnType<typeof parkingApi.financeiroResumo>> | null>(null);
   const [atividades, setAtividades] = useState<ResumoAtividades | null>(null);
+  const [historicoAcoes, setHistoricoAcoes] = useState<AtividadeOperacional[]>([]);
+  const [temMaisAcoes, setTemMaisAcoes] = useState(false);
+  const [carregandoMais, setCarregandoMais] = useState(false);
+  const navegouHistorico = useRef(false);
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [baixando, setBaixando] = useState<"fluxo" | "financeiro" | null>(null);
@@ -1220,17 +1225,21 @@ function AbaRelatorios({ estSel }: { estSel: string | null }) {
     setRot(null);
     setFin(null);
     setAtividades(null);
+    setHistoricoAcoes([]);
+    setTemMaisAcoes(false);
+    navegouHistorico.current = false;
     const buscar = async () => {
       if (emCurso) return;
       emCurso = true;
       const id = estSel ?? undefined;
       try {
-        const [f, h, r, n, a] = await Promise.allSettled([
+        const [f, h, r, n, a, lista] = await Promise.allSettled([
           parkingApi.relatorioFluxo(periodo, id),
           parkingApi.ocupacaoHistorica(periodo, id),
           parkingApi.rotacao(periodo, id),
           parkingApi.financeiroResumo(periodo, id),
           parkingApi.resumoAtividades(periodo, id),
+          parkingApi.listarAtividades(periodo, id, 0, 30),
         ] as const);
         if (!alive) return;
         setErro(null);
@@ -1239,7 +1248,11 @@ function AbaRelatorios({ estSel }: { estSel: string | null }) {
         if (r.status === "fulfilled") setRot(r.value);
         if (n.status === "fulfilled") setFin(n.value);
         if (a.status === "fulfilled") setAtividades(a.value);
-        if ([f, h, r, n, a].every((x) => x.status === "rejected")) {
+        if (lista.status === "fulfilled" && !navegouHistorico.current) {
+          setHistoricoAcoes(lista.value);
+          setTemMaisAcoes(lista.value.length === 30);
+        }
+        if ([f, h, r, n, a, lista].every((x) => x.status === "rejected")) {
           setErro(apiErrorMessage(
             (f as PromiseRejectedResult).reason,
             "Sem acesso aos relatórios neste estacionamento (painel: gestor/financeiro/admin).",
@@ -1258,6 +1271,26 @@ function AbaRelatorios({ estSel }: { estSel: string | null }) {
       clearInterval(timer);
     };
   }, [periodo, estSel]);
+
+  async function carregarMaisAcoes() {
+    if (carregandoMais || !temMaisAcoes) return;
+    setCarregandoMais(true);
+    try {
+      const novas = await parkingApi.listarAtividades(
+        periodo, estSel ?? undefined, historicoAcoes.length, 30,
+      );
+      setHistoricoAcoes((anteriores) => {
+        const ids = new Set(anteriores.map((a) => a.id));
+        return [...anteriores, ...novas.filter((a) => !ids.has(a.id))];
+      });
+      navegouHistorico.current = true;
+      setTemMaisAcoes(novas.length === 30);
+    } catch (e) {
+      setErro(apiErrorMessage(e, "Não foi possível carregar mais movimentações."));
+    } finally {
+      setCarregandoMais(false);
+    }
+  }
 
   async function exportar(tipo: "fluxo" | "financeiro") {
     setBaixando(tipo);
@@ -1419,6 +1452,54 @@ function AbaRelatorios({ estSel }: { estSel: string | null }) {
           </View>
         </Card>
       ) : null}
+
+      <Card className="p-5">
+        <Text className="text-[15px] font-bold text-slate-800">Histórico de ações</Text>
+        <Text className="mt-1 text-xs text-slate-600">
+          Reservas, cancelamentos, check-ins e pagamentos confirmados, com hora e usuário.
+        </Text>
+        {historicoAcoes.length === 0 ? (
+          <Text className="mt-3 text-xs text-slate-600">
+            Nenhuma ação auditada neste período.
+          </Text>
+        ) : (
+          <View className="mt-3 gap-2">
+            {historicoAcoes.map((acao) => (
+              <View
+                key={acao.id}
+                className="flex-row flex-wrap items-center gap-2 rounded-xl bg-slate-50 px-3 py-2.5"
+              >
+                <View className="min-w-[160px] flex-1">
+                  <Text className="text-[13px] font-bold text-slate-800">
+                    {NOME_ACAO[acao.evento] ?? acao.evento}
+                  </Text>
+                  <Text className="mt-0.5 text-[11px] text-slate-600">
+                    {acao.usuario_nome ?? "Operação do sistema"} · Vaga {acao.vaga_codigo}
+                  </Text>
+                </View>
+                {acao.valor != null ? (
+                  <Text className="text-[12px] font-semibold text-slate-700">
+                    {formatarMoedaBR(acao.valor)}
+                  </Text>
+                ) : null}
+                <Text className="text-[11px] text-slate-500">
+                  {acao.momento ? new Date(acao.momento).toLocaleString("pt-BR") : "—"}
+                </Text>
+              </View>
+            ))}
+          </View>
+        )}
+        {temMaisAcoes ? (
+          <View className="mt-3 self-start">
+            <Botao
+              label="Carregar mais movimentações"
+              variant="contorno"
+              loading={carregandoMais}
+              onPress={carregarMaisAcoes}
+            />
+          </View>
+        ) : null}
+      </Card>
 
       {/* RF-53 · financeiro do período (só leitura — fase 2 mantém o caixa) */}
       {fin ? (
