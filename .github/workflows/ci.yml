@@ -32,7 +32,6 @@ jobs:
         with: { node-version: "24.19.0", cache: "npm", cache-dependency-path: "src/frontend/smart-parking/package-lock.json" }
       - run: npm install --global npm@11.17.0
       - run: npm ci --no-audit --no-fund
-      - run: npm audit --audit-level=moderate
       - run: npm run check-deps
       - run: npm run check-sdk
       - name: Expo Doctor
@@ -52,6 +51,9 @@ jobs:
           fi
       - run: npm run typecheck
       - run: npm run check-native
+      # Manter a auditoria bloqueante, mas executar as validações de código
+      # antes dela, para diagnosticar separadamente regressões e advisories.
+      - run: npm audit --audit-level=moderate
 
   ui:
     name: UI (Chromium, API real)
