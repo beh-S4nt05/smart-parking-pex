@@ -59,6 +59,25 @@ def test_reservar_cancelar_e_relatorio_por_estacionamento(client, db, fab):
         assert all(e["usuario_nome"] == motorista.nome for e in relevantes)
         assert all(e["vaga_codigo"] == vaga.codigo for e in relevantes)
 
+        pagina_um = client.get(
+            "/api/admin/atividades",
+            params={"estacionamento_id": proprio.id, "periodo": "diario", "limite": 1, "offset": 0},
+            headers=headers,
+        )
+        pagina_dois = client.get(
+            "/api/admin/atividades",
+            params={"estacionamento_id": proprio.id, "periodo": "diario", "limite": 1, "offset": 1},
+            headers=headers,
+        )
+        assert pagina_um.status_code == 200, pagina_um.text
+        assert pagina_dois.status_code == 200, pagina_dois.text
+        assert len(pagina_um.json()) == len(pagina_dois.json()) == 1
+        assert pagina_um.json()[0]["id"] != pagina_dois.json()[0]["id"]
+        assert {pagina_um.json()[0]["evento"], pagina_dois.json()[0]["evento"]} == {
+            "reserva_criada", "reserva_cancelada"
+        }
+        assert pagina_um.json()[0]["usuario_nome"] == motorista.nome
+
         resumo = client.get(
             "/api/admin/atividades/resumo",
             params={"estacionamento_id": proprio.id, "periodo": "diario"},
@@ -73,6 +92,7 @@ def test_reservar_cancelar_e_relatorio_por_estacionamento(client, db, fab):
     for headers in (gestor, financeiro):
         assert client.get("/api/admin/eventos", params={"estacionamento_id": alheio.id}, headers=headers).status_code == 403
         assert client.get("/api/admin/atividades/resumo", params={"estacionamento_id": alheio.id}, headers=headers).status_code == 403
+        assert client.get("/api/admin/atividades", params={"estacionamento_id": alheio.id}, headers=headers).status_code == 403
         assert client.get("/api/admin/eventos", headers=headers).status_code == 200
         assert client.get("/api/admin/atividades/resumo", headers=headers).status_code == 200
 
