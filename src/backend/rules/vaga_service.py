@@ -108,6 +108,14 @@ def _registrar_transicao(
         )
         if reserva_ativa:
             reserva_ativa.status = StatusReserva.CONCLUIDA
+            from rules.atividade_service import registrar_evento
+
+            registrar_evento(
+                db, estacionamento_id=estacionamento_id,
+                evento="reserva_concluida", usuario_id=reserva_ativa.usuario_id,
+                reserva_id=reserva_ativa.id, vaga_id=vaga.id,
+                origem=origem or "sensor",
+            )
             usuario_estadia = (
                 db.query(Usuario).filter(Usuario.id == reserva_ativa.usuario_id).first()
             )
