@@ -80,9 +80,21 @@ export interface EventoVaga {
   vaga_codigo: string;
   vaga_status: VagaStatus;
   andar_numero: number | null;
-  origem: "sensor" | "simulador" | "app_motorista" | "manual";
-  evento: "entrada" | "saida" | "reserva";
+  origem: "sensor" | "simulador" | "app_motorista" | "manual" | "financeiro" | "sistema";
+  evento: "entrada" | "saida" | "reserva_criada" | "reserva_cancelada" | "reserva_expirada" | "reserva_concluida" | "pagamento_confirmado";
+  usuario_id?: string | null;
+  usuario_nome?: string | null;
+  reserva_id?: string | null;
+  valor?: number | null;
   momento: string | null;
+}
+
+export interface ResumoAtividades {
+  reservas_criadas: number;
+  reservas_canceladas: number;
+  reservas_expiradas: number;
+  checkins: number;
+  pagamentos_confirmados: number;
 }
 
 export interface OcupacaoAndar {
