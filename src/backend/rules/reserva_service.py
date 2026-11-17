@@ -6,6 +6,7 @@ from core.timeutils import utc_agora
 from models.db_models import Andar, Reserva, StatusReserva, StatusVaga, TipoVaga, Usuario, Vaga, Veiculo
 from models.schemas import ReservaCreate
 from rules.elegibilidade_service import credencial_valida
+from rules.atividade_service import registrar_evento
 
 
 def expirar_reservas_vencidas(db: Session) -> int:
@@ -27,6 +28,12 @@ def expirar_reservas_vencidas(db: Session) -> int:
         if vaga and vaga.status == StatusVaga.RESERVADA:
             vaga.status = StatusVaga.LIVRE
             vaga.ultima_atualizacao = agora
+        if vaga and vaga.andar:
+            registrar_evento(
+                db, estacionamento_id=vaga.andar.estacionamento_id,
+                evento="reserva_expirada", usuario_id=reserva.usuario_id,
+                reserva_id=reserva.id, vaga_id=reserva.vaga_id, origem="sistema",
+            )
 
     if vencidas:
         db.commit()
@@ -131,6 +138,12 @@ def criar_reserva(db: Session, dados: ReservaCreate, usuario_logado: Usuario) ->
     vaga.ultima_atualizacao = utc_agora()
 
     db.add(nova_reserva)
+    db.flush()
+    registrar_evento(
+        db, estacionamento_id=vaga.andar.estacionamento_id,
+        evento="reserva_criada", usuario_id=usuario_logado.id,
+        reserva_id=nova_reserva.id, vaga_id=vaga.id, origem="app_motorista",
+    )
     db.commit()
     db.refresh(nova_reserva)
 
@@ -178,6 +191,12 @@ def cancelar_reserva(db: Session, reserva_id: str, usuario_logado: Usuario) -> R
         vaga.status = StatusVaga.LIVRE
         vaga.ultima_atualizacao = utc_agora()
 
+    if vaga and vaga.andar:
+        registrar_evento(
+            db, estacionamento_id=vaga.andar.estacionamento_id,
+            evento="reserva_cancelada", usuario_id=usuario_logado.id,
+            reserva_id=reserva.id, vaga_id=reserva.vaga_id, origem="app_motorista",
+        )
     db.commit()
     db.refresh(reserva)
 
