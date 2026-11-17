@@ -1,15 +1,29 @@
 import { expect, test } from "./helpers";
 
 test("XSS armazenado no perfil é renderizado como texto e não executa", async ({ page }) => {
+  // Timeout maior apenas quando o servidor aplica a cota real de login.
+  // NUNCA reduzir/desativar limites da API para obter CI verde.
+  test.setTimeout(140_000);
   const payload = "<svg/onload=window.__smartParkingXss=true>";
 
   // Testa XSS, não o formulário de login (coberto em auth.spec.ts).
   // A sessão é obtida da API REAL do Playwright, depois injetada ANTES do
   // bootstrap do React, evitando corrida de hidratação do login entre testes.
-  const respostaLogin = await page.request.post("/auth/login", {
+  const autenticar = () => page.request.post("/auth/login", {
     data: { email: "motorista@smartparking.com", senha: "motor123" },
   });
-  expect(respostaLogin.status(), "Login real do usuário QA").toBe(200);
+  let respostaLogin = await autenticar();
+  if (respostaLogin.status() === 429) {
+    // Testes E2E usam o MESMO IP local. Respeitar Retry-After real e repetir
+    // uma única vez, sem mascarar erro de senha, conexão, 401, 403 ou 5xx.
+    const segundos = Number(respostaLogin.headers()["retry-after"]);
+    const esperaMs = Number.isFinite(segundos) && segundos > 0
+      ? Math.min(Math.ceil(segundos) * 1000 + 1200, 65_000)
+      : 61_000;
+    await new Promise<void>((resolve) => setTimeout(resolve, esperaMs));
+    respostaLogin = await autenticar();
+  }
+  expect(respostaLogin.status(), "Login QA depois de respeitar rate limit").toBe(200);
   const sessao = (await respostaLogin.json()) as {
     access_token: string;
     refresh_token: string;
