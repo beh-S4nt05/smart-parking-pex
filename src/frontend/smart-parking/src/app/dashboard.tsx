@@ -5,17 +5,20 @@ import { linhaAcoes, meta, minW0Flex1, textoApoioCentro, tituloCard } from "../s
  * (Simulador QR leva à rota própria). Web = sidebar escura; mobile = toasts.
  * Dados reais: /api/admin/*, /api/relatorios/*, /api/estacionamentos.
  */
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  AppState,
+  Platform,
   Alert,
   Pressable,
   ScrollView,
   Text,
   View,
 } from "react-native";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import AdminShell, { type AbaPainel } from "../components/AdminShell";
+import IndicadorAtualizacao from "../components/IndicadorAtualizacao";
 import ListaShoppings from "../components/ListaShoppings";
 import VagaMapa from "../components/VagaMapa";
 import { useAuth } from "../hooks/useAuth";
@@ -44,6 +47,7 @@ import type {
   EventoVaga,
   Estacionamento,
   OcupacaoAndar,
+  ResumoAtividades,
   Usuario,
   Vaga,
 } from "../types/api";
@@ -161,6 +165,16 @@ export default function Dashboard() {
   );
 }
 
+const NOME_ACAO: Record<string, string> = {
+  entrada: "Entrada",
+  saida: "Saída",
+  reserva_criada: "Reserva realizada",
+  reserva_cancelada: "Reserva cancelada",
+  reserva_expirada: "Reserva expirada",
+  reserva_concluida: "Check-in da reserva",
+  pagamento_confirmado: "Pagamento confirmado",
+};
+
 // ==================================================== aba dashboard
 function AbaDashboard({
   estacionamentos,
@@ -174,6 +188,22 @@ function AbaDashboard({
   const router = useRouter();
   const width = useLarguraResponsiva();
   const compacto = width < 768;
+  const [emFoco, setEmFoco] = useState(true);
+  useFocusEffect(useCallback(() => {
+    setEmFoco(true);
+    return () => setEmFoco(false);
+  }, []));
+  const [visivel, setVisivel] = useState(true);
+  useEffect(() => {
+    if (Platform.OS === "web" && typeof document !== "undefined") {
+      const v = () => setVisivel(document.visibilityState !== "hidden");
+      v();
+      document.addEventListener("visibilitychange", v);
+      return () => document.removeEventListener("visibilitychange", v);
+    }
+    const subscription = AppState.addEventListener("change", estado => setVisivel(estado === "active"));
+    return () => subscription.remove();
+  }, []);
   const [admin, setAdmin] = useState<DashboardAdmin | null>(null);
   const [gestor, setGestor] = useState<{
     faturamento_hoje: number;
@@ -188,6 +218,8 @@ function AbaDashboard({
   } | null>(null);
   const [andares, setAndares] = useState<OcupacaoAndar[]>([]);
   const [eventos, setEventos] = useState<EventoVaga[]>([]);
+  const [sincronizandoEventos, setSincronizandoEventos] = useState(false);
+  const emCursoEventos = useRef(false);
   const [erro, setErro] = useState<string | null>(null);
 
   const carregar = useCallback(async () => {
@@ -202,16 +234,10 @@ function AbaDashboard({
       const f = await parkingApi.fluxoHoje(estSel ?? undefined);
       setFluxo(f);
       if (estSel) {
-        const [a, ev] = await Promise.all([
-          parkingApi.ocupacaoPorAndar(estSel).catch(() => []),
-          parkingApi.listarEventos(estSel, 8).catch(() => []),
-        ]);
+        const a = await parkingApi.ocupacaoPorAndar(estSel).catch(() => []);
         setAndares(a as OcupacaoAndar[]);
-        setEventos(ev as EventoVaga[]);
       } else {
         setAndares([]);
-        const ev = await parkingApi.listarEventos(undefined, 8).catch(() => []);
-        setEventos(ev as EventoVaga[]);
       }
       setErro(null);
     } catch (e) {
@@ -221,9 +247,36 @@ function AbaDashboard({
 
   useEffect(() => {
     carregar();
-    const t = setInterval(carregar, 25000);
+    const t = setInterval(carregar, 15000);
     return () => clearInterval(t);
   }, [carregar]);
+
+  // Apenas o feed leve atualiza em 1,5s; gráficos/financeiro ficam em 15s.
+  useEffect(() => {
+    if (!emFoco || !visivel) return;
+    let vivo = true;
+    const buscarEventos = async () => {
+      if (emCursoEventos.current) return;
+      emCursoEventos.current = true;
+      setSincronizandoEventos(true);
+      try {
+        const lista = await parkingApi.listarEventos(estSel ?? undefined, 12);
+        if (vivo) setEventos((anterior) =>
+          JSON.stringify(anterior) === JSON.stringify(lista) ? anterior : lista);
+      } catch {
+        // Conserva o último feed quando a rede oscilar.
+      } finally {
+        emCursoEventos.current = false;
+        if (vivo) setSincronizandoEventos(false);
+      }
+    };
+    void buscarEventos();
+    const timer = setInterval(() => void buscarEventos(), 1500);
+    return () => {
+      vivo = false;
+      clearInterval(timer);
+    };
+  }, [estSel, emFoco, visivel]);
 
   // agregado global quando "Todos"
   const agregados = useMemo(() => {
@@ -408,12 +461,12 @@ function AbaDashboard({
       {/* últimos eventos */}
       <Card className="p-5">
         <Text className="mb-3 text-base font-bold text-slate-900">
-          Últimos eventos de vagas
+          Atividade recente de reservas, vagas e pagamentos
         </Text>
+        <IndicadorAtualizacao ativo={sincronizandoEventos} rotulo="Atualizando atividades" />
         {eventos.length === 0 ? (
           <Text className="text-[13px] text-slate-600">
-            Nenhum movimento registrado hoje — altere vagas pelo simulador para
-            popular o feed.
+            Nenhuma movimentação registrada neste estacionamento.
           </Text>
         ) : (
           <View>
@@ -421,7 +474,7 @@ function AbaDashboard({
               <View className="flex-row items-center gap-3 rounded-lg bg-slate-50 px-3 py-2">
                 <HeaderCol w={90} t="Vaga" />
                 <HeaderCol w={70} t="Andar" />
-                <HeaderCol w={110} t="Status" />
+                <HeaderCol w={110} t="Ação" />
                 <HeaderCol w={140} t="Origem" />
                 <HeaderCol w={0} t="Horário" flex />
               </View>
@@ -453,9 +506,11 @@ function AbaDashboard({
                         <Text className="text-xs text-slate-600">{hora}</Text>
                       </View>
                       <View className="flex-row items-center gap-2">
-                        <StatusVagaChip status={ev.vaga_status} />
+                        <Text className="text-xs font-semibold text-slate-700">
+                          {NOME_ACAO[ev.evento] ?? ev.evento}
+                        </Text>
                         <Text className="text-xs text-slate-600">
-                          {ORIGEM_LABEL[ev.origem] ?? ev.origem}
+                          {ev.usuario_nome ?? ORIGEM_LABEL[ev.origem] ?? ev.origem}
                         </Text>
                       </View>
                     </View>
@@ -473,10 +528,12 @@ function AbaDashboard({
                       {ev.andar_numero != null ? `${ev.andar_numero}º` : "—"}
                     </Text>
                     <View className="w-[110px]">
-                      <StatusVagaChip status={ev.vaga_status} />
+                      <Text className="text-xs font-semibold text-slate-700">
+                        {NOME_ACAO[ev.evento] ?? ev.evento}
+                      </Text>
                     </View>
-                    <Text className="w-[130px] text-sm text-slate-600">
-                      {ORIGEM_LABEL[ev.origem] ?? ev.origem}
+                    <Text className="w-[130px] text-sm text-slate-600" numberOfLines={1}>
+                      {ev.usuario_nome ?? ORIGEM_LABEL[ev.origem] ?? ev.origem}
                     </Text>
                     <Text className="flex-1 text-xs text-slate-600">{hora}</Text>
                   </View>
