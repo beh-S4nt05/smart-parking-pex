@@ -8,6 +8,7 @@ import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../hooks/useAuth";
 import { useReservas } from "../hooks/useReservas";
+import { useNotificacoes } from "../components/Notificacoes";
 import { apiErrorMessage } from "../services/api";
 import Header from "../components/Header";
 import { MobileBottomNav, MobileScreenHeader } from "../components/MobileChrome";
@@ -34,6 +35,7 @@ function formatarDataHora(iso: string): string {
 
 export default function Reservas() {
   const router = useRouter();
+  const { avisar } = useNotificacoes();
   const { isAuthenticated, loading: authLoading } = useAuth();
   const { reservas, loading, erro, refresh, cancelar } =
     useReservas(isAuthenticated && !authLoading);
@@ -50,12 +52,9 @@ export default function Reservas() {
           onPress: async () => {
             try {
               await cancelar(id);
-              Alert.alert(
-                "Reserva cancelada",
-                `A vaga ${codigo} voltou a ficar livre no mapa.`,
-              );
+              avisar("Reserva cancelada", `A vaga ${codigo} voltou a ficar livre no mapa.`, "sucesso");
             } catch (e) {
-              Alert.alert("Erro", apiErrorMessage(e));
+              avisar("Erro ao cancelar", apiErrorMessage(e), "erro");
             }
           },
         },
