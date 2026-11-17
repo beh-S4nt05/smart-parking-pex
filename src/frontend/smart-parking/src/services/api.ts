@@ -28,6 +28,7 @@ import type {
   Estacionamento,
   EventoVaga,
   ResumoAtividades,
+  AtividadeOperacional,
   LoteVagasResultado,
   MapaVagas,
   OcupacaoAndar,
@@ -521,6 +522,21 @@ export const parkingApi = {
     const { data } = await api.get<EventoVaga[]>("/api/admin/eventos", {
       params: {
         limite,
+        ...(estacionamentoId ? { estacionamento_id: estacionamentoId } : {}),
+      },
+    });
+    return data;
+  },
+
+  async listarAtividades(
+    periodo: "diario" | "semanal" | "mensal",
+    estacionamentoId?: string,
+    offset = 0,
+    limite = 30,
+  ): Promise<AtividadeOperacional[]> {
+    const { data } = await api.get<AtividadeOperacional[]>("/api/admin/atividades", {
+      params: {
+        periodo, offset, limite,
         ...(estacionamentoId ? { estacionamento_id: estacionamentoId } : {}),
       },
     });
