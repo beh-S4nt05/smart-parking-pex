@@ -45,10 +45,10 @@ function verifyReport(report, now = new Date()) {
     throw new Error("Vulnerabilidade não relacionada à exceção única de picomatch");
   }
 
-  const cache = new Map();
-  function covered(name, seen = new Set()) {
-    if (cache.has(name)) return cache.get(name);
-    if (seen.has(name)) throw new Error("Ciclo no grafo de vulnerabilidades: " + name);
+  // O grafo do npm audit tem ciclos legítimos (metro ⇄ metro-config ⇄
+  // metro-transform-worker). Não tratá-los como erro: validar TODAS as
+  // causas diretas e exigir caminho de cada pacote até o advisory raiz.
+  for (const name of names) {
     const item = entries[name];
     if (!item || !Array.isArray(item.via) || item.via.length === 0) {
       throw new Error("Causa não comprovada para vulnerabilidade em " + name);
@@ -56,14 +56,11 @@ function verifyReport(report, now = new Date()) {
     if (item.severity !== "high") {
       throw new Error("Severidade fora do escopo da exceção em " + name + ": " + item.severity);
     }
-    const visiting = new Set(seen);
-    visiting.add(name);
     for (const via of item.via) {
       if (typeof via === "string") {
         if (!Object.prototype.hasOwnProperty.call(entries, via)) {
           throw new Error("Dependência vulnerável desconhecida: " + name + " → " + via);
         }
-        covered(via, visiting);
       } else if (
         !via || typeof via !== "object" ||
         name !== "picomatch" ||
@@ -74,11 +71,23 @@ function verifyReport(report, now = new Date()) {
         throw new Error("Novo advisory sem exceção explícita em " + name + ": " + JSON.stringify(via));
       }
     }
-    cache.set(name, true);
-    return true;
   }
 
-  for (const name of names) covered(name);
+  function reachesAdvisory(name, seen = new Set()) {
+    if (name === "picomatch") return true;
+    if (seen.has(name)) return false;
+    const next = new Set(seen);
+    next.add(name);
+    return entries[name].via.some(
+      (via) => typeof via === "string" && reachesAdvisory(via, next),
+    );
+  }
+  for (const name of names) {
+    if (!reachesAdvisory(name)) {
+      throw new Error("Pacote sem cadeia até a exceção picomatch: " + name);
+    }
+  }
+
   const meta = report.metadata?.vulnerabilities;
   if (
     !meta || meta.total !== names.length || meta.critical !== 0 ||
