@@ -126,7 +126,20 @@ function test() {
   const noRoot = clone(known);
   delete noRoot.vulnerabilities.picomatch;
   assert.throws(() => verifyReport(noRoot, new Date("2026-11-17T20:00:00Z")), /não relacionada/);
-  console.log("✔ Política de auditoria: 6 cenários aprovados");
+
+  // Reproduz ciclos reais do grafo Metro; são seguros apenas se todos os
+  // pacotes apontarem, por algum caminho, à única causa permitida.
+  const cycle = clone(known);
+  cycle.vulnerabilities.metro = { severity: "high", via: ["metro-config", "picomatch"] };
+  cycle.vulnerabilities["metro-config"] = { severity: "high", via: ["metro"] };
+  cycle.vulnerabilities.expo.via = ["metro"];
+  cycle.metadata.vulnerabilities.total = 4;
+  cycle.metadata.vulnerabilities.high = 4;
+  assert.deepEqual(verifyReport(cycle, new Date("2026-11-17T20:00:00Z")), { clean: false, total: 4 });
+  const unrelatedCycle = clone(cycle);
+  unrelatedCycle.vulnerabilities.metro.via = ["metro-config"];
+  assert.throws(() => verifyReport(unrelatedCycle, new Date("2026-11-17T20:00:00Z")), /sem cadeia/);
+  console.log("✔ Política de auditoria: 8 cenários aprovados");
 }
 
 function main() {
