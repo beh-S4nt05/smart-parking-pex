@@ -19,7 +19,6 @@ def listar_eventos_recentes(
     """
     limite = max(1, min(limite, 50))
     atividades = listar_atividades(db, estacionamento_id, limite=limite * 2)
-    ids_vagas = {a["vaga_codigo"] for a in atividades}
     query = db.query(Historico).join(Vaga, Historico.vaga_id == Vaga.id)
     if estacionamento_id:
         query = query.filter(Historico.estacionamento_id == estacionamento_id)
