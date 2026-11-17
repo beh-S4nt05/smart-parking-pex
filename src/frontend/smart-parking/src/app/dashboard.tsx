@@ -1206,38 +1206,56 @@ function AbaRelatorios({ estSel }: { estSel: string | null }) {
   const [hist, setHist] = useState<Awaited<ReturnType<typeof parkingApi.ocupacaoHistorica>> | null>(null);
   const [rot, setRot] = useState<Awaited<ReturnType<typeof parkingApi.rotacao>> | null>(null);
   const [fin, setFin] = useState<Awaited<ReturnType<typeof parkingApi.financeiroResumo>> | null>(null);
+  const [atividades, setAtividades] = useState<ResumoAtividades | null>(null);
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [baixando, setBaixando] = useState<"fluxo" | "financeiro" | null>(null);
 
   useEffect(() => {
     let alive = true;
+    let emCurso = false;
     setCarregando(true);
-    const id = estSel ?? undefined;
-    Promise.allSettled([
-      parkingApi.relatorioFluxo(periodo, id),
-      parkingApi.ocupacaoHistorica(periodo, id),
-      parkingApi.rotacao(periodo, id),
-      parkingApi.financeiroResumo(periodo, id),
-    ]).then(([f, h, r, n]) => {
-      if (!alive) return;
-      setErro(null);
-      if (f.status === "fulfilled") setDados(f.value);
-      if (h.status === "fulfilled") setHist(h.value);
-      if (r.status === "fulfilled") setRot(r.value);
-      if (n.status === "fulfilled") setFin(n.value);
-      if ([f, h, r, n].every((x) => x.status === "rejected")) {
-        setErro(
-          apiErrorMessage(
+    setDados(null);
+    setHist(null);
+    setRot(null);
+    setFin(null);
+    setAtividades(null);
+    const buscar = async () => {
+      if (emCurso) return;
+      emCurso = true;
+      const id = estSel ?? undefined;
+      try {
+        const [f, h, r, n, a] = await Promise.allSettled([
+          parkingApi.relatorioFluxo(periodo, id),
+          parkingApi.ocupacaoHistorica(periodo, id),
+          parkingApi.rotacao(periodo, id),
+          parkingApi.financeiroResumo(periodo, id),
+          parkingApi.resumoAtividades(periodo, id),
+        ] as const);
+        if (!alive) return;
+        setErro(null);
+        if (f.status === "fulfilled") setDados(f.value);
+        if (h.status === "fulfilled") setHist(h.value);
+        if (r.status === "fulfilled") setRot(r.value);
+        if (n.status === "fulfilled") setFin(n.value);
+        if (a.status === "fulfilled") setAtividades(a.value);
+        if ([f, h, r, n, a].every((x) => x.status === "rejected")) {
+          setErro(apiErrorMessage(
             (f as PromiseRejectedResult).reason,
-            "Sem acesso aos relatórios neste estacionamento (painel: gestor/financeiro/admin)."
-          )
-        );
+            "Sem acesso aos relatórios neste estacionamento (painel: gestor/financeiro/admin).",
+          ));
+        }
+      } finally {
+        emCurso = false;
+        if (alive) setCarregando(false);
       }
-      setCarregando(false);
-    });
+    };
+    void buscar();
+    // Relatórios consolidados: frequência menor que o mapa (cálculos mais caros).
+    const timer = setInterval(() => void buscar(), 15000);
     return () => {
       alive = false;
+      clearInterval(timer);
     };
   }, [periodo, estSel]);
 
@@ -1372,6 +1390,30 @@ function AbaRelatorios({ estSel }: { estSel: string | null }) {
                 <Text className="ml-2 w-16 text-right text-[11px] tabular-nums text-slate-600">
                   {formatarMinutos(a.tempo_medio_min)}
                 </Text>
+              </View>
+            ))}
+          </View>
+        </Card>
+      ) : null}
+
+      {atividades ? (
+        <Card className="p-5">
+          <Text className="text-[15px] font-bold text-slate-800">
+            Atividade dos usuários no período
+          </Text>
+          <Text className="mt-1 text-xs text-slate-600">
+            Eventos de operações concluídas, registrados pelo servidor. Reserva não é pagamento.
+          </Text>
+          <View className="mt-3 flex-row flex-wrap gap-3">
+            {[
+              { rotulo: "Reservas", n: atividades.reservas_criadas },
+              { rotulo: "Cancelamentos", n: atividades.reservas_canceladas },
+              { rotulo: "Expiradas", n: atividades.reservas_expiradas },
+              { rotulo: "Check-ins", n: atividades.checkins },
+              { rotulo: "Pagamentos confirmados", n: atividades.pagamentos_confirmados },
+            ].map((item) => (
+              <View key={item.rotulo} className="min-w-[140px] flex-1">
+                <StatTile rotulo={item.rotulo} valor={String(item.n)} tone="azul" />
               </View>
             ))}
           </View>
