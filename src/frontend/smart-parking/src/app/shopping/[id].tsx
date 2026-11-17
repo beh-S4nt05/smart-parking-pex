@@ -67,9 +67,14 @@ export default function MapaVagas() {
   const { avisar } = useNotificacoes();
   const width = useLarguraResponsiva();
   const isWeb = width >= 1024;
+  const [emFoco, setEmFoco] = useState(true);
+  useFocusEffect(useCallback(() => {
+    setEmFoco(true);
+    return () => setEmFoco(false);
+  }, []));
 
   const { mapa, setMapa, loading, erro, atualizadoEm, refresh, resumo, sincronizando } =
-    useMapaVagas(id, { pollingMs: 1500 });
+    useMapaVagas(id, { pollingMs: 1500, ativo: emFoco });
   const agora = useAgora(5000);
   const { isAuthenticated } = useAuth();
 
@@ -592,6 +597,7 @@ export default function MapaVagas() {
             </Pressable>
           }
         />
+        <IndicadorAtualizacao ativo={sincronizando} rotulo="Atualizando vagas" />
         <ScrollView
           style={{ flex: 1 }}
           nestedScrollEnabled
@@ -617,6 +623,7 @@ export default function MapaVagas() {
   return (
     <View className={pagina}>
       <Header rotaAtual="/" />
+      <IndicadorAtualizacao ativo={sincronizando} rotulo="Atualizando vagas" />
       <ScrollView
         contentContainerStyle={{ padding: 28, paddingBottom: 48 }}
         refreshControl={
