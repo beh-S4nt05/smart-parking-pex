@@ -156,14 +156,6 @@ def _registrar_transicao(
 
     vaga.status = novo_status
     vaga.ultima_atualizacao = utc_agora()
-    if novo_status == StatusVaga.LIVRE and estacionamento_id:
-        from rules.atividade_service import registrar_evento
-
-        registrar_evento(
-            db, estacionamento_id=estacionamento_id,
-            evento="vaga_liberada", vaga_id=vaga.id,
-            origem=origem or "sensor",
-        )
 
 
 def atualizar_status_vaga(
