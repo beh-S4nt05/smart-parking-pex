@@ -52,9 +52,13 @@ jobs:
             exit "$status"
           fi
       - run: npm run check-native
-      # Manter a auditoria bloqueante, mas executar as validações de código
-      # antes dela, para diagnosticar separadamente regressões e advisories.
-      - run: npm audit --audit-level=moderate
+      # Executa npm audit REAL (sem --force), falha para novas CVEs e mantém
+      # somente a exceção GHSA-fc5q-39xc-vjpf sem patch upstream até 18/12/2026.
+      # A exceção é temporária, rastreável e expira automaticamente.
+      - name: Testar política de auditoria npm
+        run: node ../../../scripts/audit_npm_v1.cjs --self-test
+      - name: Auditar dependências (gate com exceção temporária)
+        run: node ../../../scripts/audit_npm_v1.cjs
 
   ui:
     name: UI (Chromium, API real)
