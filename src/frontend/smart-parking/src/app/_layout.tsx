@@ -10,6 +10,7 @@ import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AuthProvider } from "../context/AuthContext";
+import { NotificacoesProvider } from "../components/Notificacoes";
 
 /**
  * Amarração edge-to-edge (rodada UI 22/10): com android.edgeToEdgeEnabled o
@@ -24,6 +25,7 @@ export default function Layout() {
   const base = Platform.OS === "web" ? 0 : Math.max(insets.bottom, 8);
   return (
     <AuthProvider>
+      <NotificacoesProvider>
       <StatusBar style="dark" />
       <Stack
         screenOptions={{
@@ -35,6 +37,7 @@ export default function Layout() {
           },
         }}
       />
+      </NotificacoesProvider>
     </AuthProvider>
   );
 }
