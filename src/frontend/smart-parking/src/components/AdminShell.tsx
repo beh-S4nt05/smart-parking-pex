@@ -15,6 +15,7 @@ import { useRouter } from "expo-router";
 import { useAuth } from "../hooks/useAuth";
 import { useLarguraResponsiva } from "../hooks/useLarguraResponsiva";
 import { IconeVoltar, Logo, SeloAoVivo } from "./ui";
+import SinoNotificacoes from "./SinoNotificacoes";
 
 export type AbaPainel =
   | "dashboard"
@@ -192,6 +193,7 @@ export default function AdminShell({
               </View>
               <View className="flex-row flex-wrap items-center gap-3">
                 <SeloAoVivo />
+                <SinoNotificacoes />
                 {direita}
               </View>
             </View>
@@ -217,6 +219,7 @@ export default function AdminShell({
         <View className="flex-row flex-wrap items-center justify-between gap-2 border-b border-slate-200 px-4 py-1">
             <SeloAoVivo />
             <View className="flex-row items-center gap-1">
+            <SinoNotificacoes />
             <Pressable
               onPress={() => router.push("/" as never)}
               accessibilityRole="button"
