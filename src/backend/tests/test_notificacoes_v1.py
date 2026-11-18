@@ -3,8 +3,7 @@ from datetime import timedelta
 
 from core.timeutils import utc_agora
 from models.db_models import (
-    AcompanhamentoVaga, Andar, EventoOperacional, Notificacao, PreferenciaNotificacao,
-    Reserva, StatusReserva, TipoUsuario, Vaga,
+    AcompanhamentoVaga, EventoOperacional, Notificacao, TipoUsuario,
 )
 from models.schemas import ReservaCreate
 from rules import notificacoes_service as notify, reserva_service
