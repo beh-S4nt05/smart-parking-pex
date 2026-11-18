@@ -1,18 +1,29 @@
-/** Registro opt-in de Expo Push Token. Nunca executado no Expo Go como pré-requisito. */
+/** Registro opt-in de Expo Push Token; requer build nativo e credenciais FCM/APNs. */
 import { Platform } from "react-native";
 import Constants from "expo-constants";
 import { notificacoesApi } from "./notificacoesApi";
 import { storage } from "./storage";
 
-export async function habilitarPushMobile(): Promise<string> {
+export function diagnosticoBuildPush(): string | null {
   if (Platform.OS === "web") {
-    throw new Error("Push remoto está disponível apenas no aplicativo Android/iOS instalado.");
+    return "O push do dispositivo precisa de um aplicativo Android/iOS instalado, não do navegador.";
+  }
+  if (Constants.appOwnership === "expo") {
+    return "O Expo Go não suporta push remoto no Android SDK 58. Instale um APK de preview (EAS Build).";
   }
   const projectId = Constants.easConfig?.projectId ??
     (Constants.expoConfig?.extra?.eas as { projectId?: string } | undefined)?.projectId;
   if (!projectId) {
-    throw new Error("Falta configurar o EAS projectId no build próprio do Smart Parking.");
+    return "O aplicativo não tem um EAS projectId. Execute 'eas init' e gere um novo APK de preview.";
   }
+  return null;
+}
+
+export async function habilitarPushMobile(): Promise<string> {
+  const problema = diagnosticoBuildPush();
+  if (problema) throw new Error(problema);
+  const projectId = (Constants.easConfig?.projectId ??
+    (Constants.expoConfig?.extra?.eas as { projectId?: string } | undefined)?.projectId)!;
   const Notifications = await import("expo-notifications");
   if (Platform.OS === "android") {
     await Notifications.setNotificationChannelAsync("reservas", {
@@ -30,7 +41,14 @@ export async function habilitarPushMobile(): Promise<string> {
   if (!permissao.granted) {
     throw new Error("Permissão de notificações negada nas configurações do celular.");
   }
-  const { data: token } = await Notifications.getExpoPushTokenAsync({ projectId });
+  let token: string;
+  try {
+    token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
+  } catch {
+    throw new Error(
+      "Não foi possível obter o token do aparelho. Verifique conexão, Google Play Services e as credenciais Firebase FCM/APNs do build EAS.",
+    );
+  }
   if (!token) throw new Error("O dispositivo não retornou um token de notificações.");
   const id = await notificacoesApi.registrarDispositivo(token, Platform.OS as "android" | "ios");
   try {
