@@ -376,8 +376,6 @@ def fechar_caixa(db: Session, caixa_id: str, valor_sangria: float, observacoes: 
     caixa.observacoes = observacoes
     caixa.fechado = True
     caixa.valor_total = round(caixa.valor_pix + caixa.valor_cartao_credito + caixa.valor_cartao_debito + caixa.valor_dinheiro, 2)
-    from rules.notificacoes_service import ao_fechar_caixa
-    ao_fechar_caixa(db, caixa)
     db.commit()
     db.refresh(caixa)
     return caixa

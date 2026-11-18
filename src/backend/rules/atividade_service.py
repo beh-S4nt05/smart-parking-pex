@@ -22,13 +22,6 @@ def registrar_evento(
     valor: float | None = None,
 ) -> None:
     """Adiciona o evento na MESMA transação da alteração; quem chamou dá commit."""
-    from rules.notificacoes_service import ao_evento_operacional
-
-    ao_evento_operacional(
-        db, evento=evento, usuario_id=usuario_id,
-        estacionamento_id=estacionamento_id, reserva_id=reserva_id,
-        vaga_id=vaga_id, pagamento_id=pagamento_id,
-    )
     db.add(EventoOperacional(
         estacionamento_id=estacionamento_id,
         usuario_id=usuario_id,
