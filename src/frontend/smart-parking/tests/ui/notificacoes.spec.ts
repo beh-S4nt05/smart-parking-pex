@@ -16,6 +16,8 @@ test("motorista abre a central, consulta preferências reais e navega pelo sino"
   await expect(page.getByText("Central de notificações")).toBeVisible();
   await expect(page.getByText("Vagas acompanhadas", { exact: true })).toBeVisible();
   await expect(page.getByText("Preferências", { exact: true })).toBeVisible();
+  await expect(page.getByText("Diagnóstico do push", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Verificar configuração do push" })).toBeVisible();
   await expect(page.getByText("Reservas, cancelamentos e expirações")).toBeVisible();
   await expect(page.getByRole("button", { name: "Marcar todas como lidas" })).toBeVisible();
   const token = await page.evaluate(() => localStorage.getItem("smartparking_access_token"));
