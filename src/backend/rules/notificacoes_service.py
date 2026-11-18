@@ -3,7 +3,6 @@
 Sem acesso externo em transações de negócio. Idempotência por chave única,
 inclusive quando mais de um worker processar o mesmo evento.
 """
-import base64
 import hashlib
 from datetime import datetime, timedelta, timezone
 
@@ -36,12 +35,15 @@ TIPOS_USUARIO_FINANCEIRO = (TipoUsuario.FINANCEIRO.value, TipoUsuario.ADMIN.valu
 
 
 def _fernet() -> Fernet:
-    # Chave independente de armazenamento, derivada da credencial do servidor.
-    secret = settings.APP_SIGNING_SECRET
-    if not secret or len(secret) < 16:
-        raise RuntimeError("APP_SIGNING_SECRET fraco: recusar tokens push")
-    raw = hashlib.sha256(("notificacoes-v1/" + secret).encode()).digest()
-    return Fernet(base64.urlsafe_b64encode(raw))
+    # Tokens Expo são credenciais; nunca derivar sua cifragem de segredos
+    # compartilhados com o app cliente ou usados para assinar requests.
+    secret = settings.NOTIFICATIONS_ENCRYPTION_KEY
+    if not secret:
+        raise RuntimeError("NOTIFICATIONS_ENCRYPTION_KEY ausente: push desabilitado")
+    try:
+        return Fernet(secret.encode("utf-8"))
+    except (ValueError, TypeError) as exc:
+        raise RuntimeError("NOTIFICATIONS_ENCRYPTION_KEY inválida") from exc
 
 
 def _inserir_sem_duplicar(db: Session, model, values: dict, unique: str) -> bool:
