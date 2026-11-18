@@ -407,3 +407,26 @@ def test_matriz_canais_eventos_gerais_na_v1(db, fab):
     assert notify._push_autorizado(pref, "pagamento_confirmado")
     pref.financeiro = False
     assert not notify._push_autorizado(pref, "pagamento_confirmado")
+
+
+def test_preferencia_financeiro_bloqueia_avisos_opcionais_da_central(db, fab):
+    from models.db_models import FechamentoCaixa
+
+    est = fab.est()
+    financeiro = fab.usuario(role=TipoUsuario.FINANCEIRO, est=est)
+    pref = notify.preferencias(db, financeiro.id)
+    pref.financeiro = False
+    db.flush()
+
+    notify.ao_evento_operacional(
+        db, evento="pagamento_confirmado", usuario_id=financeiro.id,
+        estacionamento_id=est.id, pagamento_id="pagamento-opcional-qa",
+    )
+    notify.ao_fechar_caixa(
+        db, FechamentoCaixa(id="fechamento-opcional-qa", estacionamento_id=est.id),
+    )
+    db.flush()
+    assert db.query(Notificacao).filter(
+        Notificacao.usuario_id == financeiro.id,
+        Notificacao.tipo.in_(["pagamento_confirmado", "caixa_fechado"]),
+    ).count() == 0
