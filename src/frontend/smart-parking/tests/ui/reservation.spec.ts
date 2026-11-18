@@ -1,7 +1,7 @@
 import {
   expect,
   expectSemOverflowHorizontal,
-  login,
+  loginViaApi,
   test,
 } from "./helpers";
 
@@ -13,7 +13,8 @@ test("motorista reserva e cancela pela UI e a vaga volta a ficar livre na API", 
     await dialog.accept();
   });
 
-  await login(page, "motorista@smartparking.com", "motor123");
+  await loginViaApi(page, "motorista@smartparking.com", "motor123");
+  await page.goto("/");
   await expect(page).toHaveURL(/\/$/);
 
   const lista = await page.request.get("/api/estacionamentos");

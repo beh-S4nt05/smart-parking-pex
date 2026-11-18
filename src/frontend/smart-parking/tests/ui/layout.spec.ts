@@ -10,7 +10,7 @@
  * glifos de fonte ausentes (tofu).
  */
 import type { Page } from "@playwright/test";
-import { expect, login, test } from "./helpers";
+import { expect, loginViaApi, test } from "./helpers";
 
 const VIEWPORTS = [
   { width: 320, height: 700, nome: "mobile-320" },
@@ -250,7 +250,8 @@ for (const vp of VIEWPORTS) {
       await auditar(page, rota, vp.nome);
     }
 
-    await login(page, "admin@smartparking.com", "admin123");
+    await loginViaApi(page, "admin@smartparking.com", "admin123");
+    await page.goto("/");
     await expect(page).not.toHaveURL(/\/login$/);
     for (const rota of ["/dashboard", "/perfil", "/reservas", "/notificacoes", "/simulador", "/simulador-qr"]) {
       await resetarLimiter(page);
@@ -323,7 +324,8 @@ test("login desktop já nasce com o split, sem flash do layout mobile", async ({
 
 test("rodapé do perfil vem depois do formulário, sem cortar o conteúdo", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await login(page, "admin@smartparking.com", "admin123");
+  await loginViaApi(page, "admin@smartparking.com", "admin123");
+  await page.goto("/");
   await expect(page).not.toHaveURL(/\/login$/);
   await page.goto("/perfil");
   await expect(page.getByText("Dados de cadastro")).toBeVisible();
