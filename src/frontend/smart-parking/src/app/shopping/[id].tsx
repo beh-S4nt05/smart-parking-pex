@@ -636,7 +636,7 @@ export default function MapaVagas() {
             onPress={() => void acompanharVagas()}
             accessibilityRole="button"
             accessibilityLabel="Acompanhar disponibilidade de vagas comuns"
-            style={{ flexDirection: "row", alignSelf: "flex-start", alignItems: "center", gap: 7, backgroundColor: "#EFF6FF", borderRadius: 12, borderWidth: 1, borderColor: "#BFDBFE", paddingHorizontal: 14, paddingVertical: 10, marginBottom: 12 }}
+            style={{ flexDirection: "row", alignSelf: "flex-start", alignItems: "center", gap: 7, backgroundColor: "#EFF6FF", borderRadius: 12, borderWidth: 1, borderColor: "#BFDBFE", minHeight: 48, paddingHorizontal: 14, paddingVertical: 10, marginBottom: 12 }}
           >
             <Ionicons name="notifications-outline" size={18} color="#2563EB" />
             <Text style={{ fontSize: 12, fontWeight: "700", color: "#1D4ED8" }}>Acompanhar vagas comuns</Text>
@@ -669,7 +669,7 @@ export default function MapaVagas() {
             onPress={() => void acompanharVagas()}
             accessibilityRole="button"
             accessibilityLabel="Acompanhar disponibilidade de vagas comuns"
-            style={{ flexDirection: "row", alignSelf: "flex-start", alignItems: "center", gap: 7, backgroundColor: "#EFF6FF", borderRadius: 12, borderWidth: 1, borderColor: "#BFDBFE", paddingHorizontal: 14, paddingVertical: 10, marginBottom: 12 }}
+            style={{ flexDirection: "row", alignSelf: "flex-start", alignItems: "center", gap: 7, backgroundColor: "#EFF6FF", borderRadius: 12, borderWidth: 1, borderColor: "#BFDBFE", minHeight: 48, paddingHorizontal: 14, paddingVertical: 10, marginBottom: 12 }}
           >
             <Ionicons name="notifications-outline" size={18} color="#2563EB" />
             <Text style={{ fontSize: 12, fontWeight: "700", color: "#1D4ED8" }}>Acompanhar vagas comuns</Text>
