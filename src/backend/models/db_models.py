@@ -408,6 +408,9 @@ class EntregaNotificacao(Base):
     executar_em = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
     expira_em = Column(DateTime(timezone=True), nullable=True)
     ticket_id = Column(String, nullable=True)
+    # Momento em que o Expo aceitou o ticket; diferente do momento da
+    # notificacao, que pode ficar aguardando consentimento/horario silencioso.
+    aceito_em = Column(DateTime(timezone=True), nullable=True)
     ultimo_erro = Column(String(200), nullable=True)
     __table_args__ = (UniqueConstraint("notificacao_id", "dispositivo_id", name="uq_entrega_notif_dispositivo"),)
 

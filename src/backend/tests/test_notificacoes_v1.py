@@ -355,6 +355,79 @@ def test_recibo_antigo_sem_resposta_encerrado_com_status_explicito(db, fab, monk
 
     db.refresh(entrega)
     assert entrega.status == "sem_recibo"
+    assert "24 horas" in entrega.ultimo_erro
+
+
+def test_recibo_conta_24h_do_aceite_e_nao_da_notificacao(db, fab, monkeypatch):
+    """Push adiado nao pode ter ticket descartado assim que e aceito."""
+    import hashlib
+
+    from models.db_models import DispositivoNotificacao, EntregaNotificacao
+    from rules import notificacoes_worker as worker
+
+    usuario = fab.usuario()
+    dispositivo = DispositivoNotificacao(
+        usuario_id=usuario.id, token_expo="cifrado-nao-utilizado",
+        token_hash=hashlib.sha256(("recibo-temporal-" + usuario.id).encode()).hexdigest(),
+        plataforma="android", ativo=True,
+    )
+    db.add(dispositivo)
+    db.flush()
+    agora = utc_agora()
+    antiga = Notificacao(
+        usuario_id=usuario.id, tipo="reserva_confirmada",
+        titulo="Criada ha dois dias", mensagem="Teste",
+        chave_idempotencia=f"recibo-temporal:{usuario.id}",
+        criada_em=agora - timedelta(hours=50),
+    )
+    db.add(antiga)
+    db.flush()
+    # Notificacao antiga, mas ticket aceito apenas ha 16 minutos.
+    entrega = EntregaNotificacao(
+        notificacao_id=antiga.id, dispositivo_id=dispositivo.id,
+        status="aceito", tentativas=1,
+        ticket_id=f"ticket:temporal:{usuario.id}",
+        aceito_em=agora - timedelta(minutes=16),
+        executar_em=agora - timedelta(minutes=1),
+    )
+    db.add(entrega)
+    db.commit()
+
+    class Resposta:
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {"data": {}}
+
+    class Cliente:
+        def __init__(self, timeout):
+            self.timeout = timeout
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+        def post(self, _url, json, headers):
+            assert json["ids"] == [entrega.ticket_id]
+            return Resposta()
+
+    monkeypatch.setattr(worker, "_habilitado", lambda: True)
+    monkeypatch.setattr(worker.httpx, "Client", Cliente)
+    worker.processar_recibos()
+    db.refresh(entrega)
+    assert entrega.status == "aceito"
+    assert entrega.executar_em > agora
+    # Agora o mesmo ticket, 25h apos aceite: encerrar, sem usar data de criacao.
+    entrega.aceito_em = agora - timedelta(hours=25)
+    entrega.executar_em = agora - timedelta(seconds=1)
+    db.commit()
+    worker.processar_recibos()
+    db.refresh(entrega)
+    assert entrega.status == "sem_recibo"
+    assert "24 horas" in entrega.ultimo_erro
 
 
 def test_matriz_canais_eventos_gerais_na_v1(db, fab):

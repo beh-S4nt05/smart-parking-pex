@@ -59,6 +59,10 @@ CORRECOES_ESQUEMA = {
         "veiculo_id": "VARCHAR",
         "credencial_id": "VARCHAR",
     },
+    # Compatibilidade com volume existente onde create_all nao adiciona coluna.
+    "entregas_notificacao": {
+        "aceito_em": "TIMESTAMP",
+    },
 }
 
 

@@ -132,9 +132,10 @@ def enviar_pendentes(limite=20) -> int:
                 if resposta.get("status") == "ok" and resposta.get("id"):
                     e.status = "aceito"
                     e.ticket_id = resposta["id"]
+                    e.aceito_em = utc_agora()
                     # O ticket confirma aceite do provedor, nao entrega ao celular.
                     # Expo recomenda checar o recibo apos aproximadamente 15 min.
-                    e.executar_em = utc_agora() + timedelta(minutes=15)
+                    e.executar_em = e.aceito_em + timedelta(minutes=15)
                     enviados += 1
                 else:
                     erro = resposta.get("details", {}).get("error") or resposta.get("message", "Resposta inesperada Expo")
@@ -171,10 +172,13 @@ def processar_recibos():
         ativos = []
         for e in entregas:
             n = db.get(Notificacao, e.notificacao_id)
-            # Expo descarta os recibos apos 24h; nao manter tickets para sempre.
-            if not n or normalizar(n.criada_em) <= agora - timedelta(hours=24):
+            # A idade do RECIBO comeca no aceite do ticket pelo Expo.
+            # Para tickets legados sem aceito_em, usamos a data da notificacao
+            # como fallback conservador ate a fila antiga ser processada.
+            inicio_recibo = e.aceito_em or (n.criada_em if n else None)
+            if not inicio_recibo or normalizar(inicio_recibo) <= agora - timedelta(hours=24):
                 e.status = "sem_recibo"
-                e.ultimo_erro = "Recibo nao confirmado apos 48 horas"
+                e.ultimo_erro = "Recibo nao confirmado apos 24 horas"
             else:
                 ativos.append(e)
         if not ativos:

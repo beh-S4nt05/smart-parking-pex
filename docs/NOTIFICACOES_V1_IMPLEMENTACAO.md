@@ -86,6 +86,19 @@ aviso de vaga disponível não cria nem garante uma reserva.
 O polling do mapa em 1.500 ms não aciona envio push em cada atualização.
 O backend cria notificações a partir de transições reais, não de consultas.
 
+## Garantia de recibos Expo no PR #73
+
+Cada entrega aceita registra `entregas_notificacao.aceito_em` separadamente da
+data de criação da notificação. O worker consulta recibos a partir de 15
+minutos após o aceite, e considera a ausência de recibo por até 24 horas
+**desde o aceite**, inclusive quando a notificação foi criada anteriormente.
+Tickets legados sem `aceito_em` usam a data da notificação como fallback,
+somente durante a transição.
+
+Nova migração incremental: `f066b001a1c0`, que acrescenta uma coluna
+opcional; não apaga dados existentes. Fazer backup antes de aplicar no
+PostgreSQL e nunca executar `docker compose down -v`.
+
 ## Testes e critérios de merge
 
 Antes do merge:
