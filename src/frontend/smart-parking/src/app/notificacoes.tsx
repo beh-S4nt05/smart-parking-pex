@@ -51,8 +51,19 @@ export default function TelaNotificacoes() {
         notificacoesApi.preferencias(),
         notificacoesApi.acompanhamentos(),
       ]);
-      setNotificacoes(lista);
-      setMais(lista.length === 30);
+      // A atualizacao automatica nao deve apagar paginas ja carregadas.
+      // Uma troca de filtro/carregamento explicito reinicia a paginacao.
+      if (silencioso) {
+        setNotificacoes(anteriores => {
+          if (anteriores.length <= 30) return lista;
+          const ids = new Set(lista.map(n => n.id));
+          return [...lista, ...anteriores.filter(n => !ids.has(n.id))];
+        });
+        setMais(anterior => anterior || lista.length === 30);
+      } else {
+        setNotificacoes(lista);
+        setMais(lista.length === 30);
+      }
       setPreferencias(pref);
       setAcompanhamentos(watches);
       setErro(null);
@@ -73,7 +84,9 @@ export default function TelaNotificacoes() {
   async function abrir(n: NotificacaoV1) {
     try {
       await notificacoesApi.ler(n.id);
-      setNotificacoes(atual => atual.map(i => i.id === n.id ? { ...i, lida_em: new Date().toISOString() } : i));
+      setNotificacoes(atual => filtro === "nao_lidas"
+        ? atual.filter(i => i.id !== n.id)
+        : atual.map(i => i.id === n.id ? { ...i, lida_em: new Date().toISOString() } : i));
     } catch (e) {
       avisar("Não foi possível marcar como lida", apiErrorMessage(e), "erro");
     }
@@ -162,7 +175,7 @@ export default function TelaNotificacoes() {
                   </Pressable>
                 ))}
                 <Pressable accessibilityRole="button" accessibilityLabel="Marcar todas como lidas" onPress={async () => {
-                  try { await notificacoesApi.lerTodas(); await atualizar(true); }
+                  try { await notificacoesApi.lerTodas(); setNotificacoes([]); await atualizar(false); }
                   catch (e) { avisar("Falha ao marcar notificações", apiErrorMessage(e), "erro"); }
                 }} style={{ marginLeft: "auto", minHeight: 44, justifyContent: "center", paddingHorizontal: 8 }}>
                   <Text style={{ color: C.azul, fontSize: 12, fontWeight: "700" }}>Marcar todas como lidas</Text>
