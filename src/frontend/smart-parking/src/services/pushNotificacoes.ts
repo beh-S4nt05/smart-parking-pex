@@ -2,6 +2,7 @@
 import { Platform } from "react-native";
 import Constants from "expo-constants";
 import { notificacoesApi } from "./notificacoesApi";
+import { storage } from "./storage";
 
 export async function habilitarPushMobile(): Promise<string> {
   if (Platform.OS === "web") {
@@ -31,7 +32,14 @@ export async function habilitarPushMobile(): Promise<string> {
   }
   const { data: token } = await Notifications.getExpoPushTokenAsync({ projectId });
   if (!token) throw new Error("O dispositivo não retornou um token de notificações.");
-  return notificacoesApi.registrarDispositivo(token, Platform.OS as "android" | "ios");
+  const id = await notificacoesApi.registrarDispositivo(token, Platform.OS as "android" | "ios");
+  try {
+    await storage.setNotificationDeviceId(id);
+  } catch (e) {
+    await notificacoesApi.desvincularDispositivo(id).catch(() => undefined);
+    throw e;
+  }
+  return id;
 }
 
 export function destinoNotificacaoSeguro(value: unknown): string | null {
