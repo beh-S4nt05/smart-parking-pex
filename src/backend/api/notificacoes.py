@@ -143,7 +143,11 @@ def registrar_dispositivo(dados: DispositivoInput,
             EntregaNotificacao.dispositivo_id == atual.id,
             EntregaNotificacao.status == "pendente",
         ).update({EntregaNotificacao.status: "cancelada"}, synchronize_session=False)
-    dispositivo = service.registrar_dispositivo(db, usuario.id, dados.token, dados.plataforma)
+    try:
+        dispositivo = service.registrar_dispositivo(db, usuario.id, dados.token, dados.plataforma)
+    except RuntimeError as exc:
+        db.rollback()
+        raise HTTPException(503, "Push indisponível: credenciais privadas não configuradas") from exc
     db.commit()
     return {"id": dispositivo.id, "registrado": True}
 
