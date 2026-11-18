@@ -146,7 +146,7 @@ export default function TelaNotificacoes() {
         {authLoading ? <ActivityIndicator /> : !user ? (
           <View style={{ padding: 20, backgroundColor: "#fff", borderRadius: 16 }}>
             <Text style={{ fontWeight: "700", color: C.texto }}>Entre na sua conta para ver notificações.</Text>
-            <Pressable onPress={() => router.push("/login")} style={{ marginTop: 14 }}>
+            <Pressable accessibilityRole="button" accessibilityLabel="Ir para login" onPress={() => router.push("/login")} style={{ marginTop: 14, minHeight: 44, justifyContent: "center", alignSelf: "flex-start", paddingHorizontal: 8 }}>
               <Text style={{ color: C.azul, fontWeight: "700" }}>Ir para login</Text>
             </Pressable>
           </View>
@@ -155,16 +155,16 @@ export default function TelaNotificacoes() {
             <View style={{ backgroundColor: "#fff", padding: 16, borderRadius: 16, marginBottom: 14 }}>
               <Text style={{ fontSize: 16, fontWeight: "800", color: C.texto }}>Central de notificações</Text>
               <Text style={{ color: C.cinza, marginTop: 4, fontSize: 12 }}>Avisos registrados pelo servidor permanecem disponíveis mesmo sem push.</Text>
-              <View style={{ flexDirection: "row", gap: 16, marginTop: 15, alignItems: "center" }}>
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 15, alignItems: "center" }}>
                 {(["todas", "nao_lidas"] as const).map(f => (
-                  <Pressable key={f} accessibilityRole="button" accessibilityLabel={f === "todas" ? "Todas" : "Não lidas"} onPress={() => setFiltro(f)}>
+                  <Pressable key={f} accessibilityRole="button" accessibilityLabel={f === "todas" ? "Todas" : "Não lidas"} onPress={() => setFiltro(f)} style={{ minHeight: 44, minWidth: 44, paddingHorizontal: 8, alignItems: "center", justifyContent: "center" }}>
                     <Text style={{ color: filtro === f ? C.azul : C.cinza, fontWeight: "700" }}>{f === "todas" ? "Todas" : "Não lidas"}</Text>
                   </Pressable>
                 ))}
-                <Pressable onPress={async () => {
+                <Pressable accessibilityRole="button" accessibilityLabel="Marcar todas como lidas" onPress={async () => {
                   try { await notificacoesApi.lerTodas(); await atualizar(true); }
                   catch (e) { avisar("Falha ao marcar notificações", apiErrorMessage(e), "erro"); }
-                }} style={{ marginLeft: "auto" }}>
+                }} style={{ marginLeft: "auto", minHeight: 44, justifyContent: "center", paddingHorizontal: 8 }}>
                   <Text style={{ color: C.azul, fontSize: 12, fontWeight: "700" }}>Marcar todas como lidas</Text>
                 </Pressable>
               </View>
@@ -184,7 +184,7 @@ export default function TelaNotificacoes() {
                 </Pressable>
               ))}
               {mais ? (
-                <Pressable onPress={() => void carregarMais()} style={{ padding: 10, alignItems: "center" }}>
+                <Pressable accessibilityRole="button" accessibilityLabel="Carregar mais" onPress={() => void carregarMais()} style={{ minHeight: 44, padding: 10, alignItems: "center", justifyContent: "center" }}>
                   <Text style={{ color: C.azul, fontWeight: "700" }}>Carregar mais</Text>
                 </Pressable>
               ) : null}
@@ -215,7 +215,7 @@ export default function TelaNotificacoes() {
               {acompanhamentos.map(w => (
                 <View key={w.id} style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 10 }}>
                   <Text style={{ flex: 1, color: C.texto }}>Estacionamento {w.estacionamento_id.slice(0, 8)} · {w.tipo_vaga}</Text>
-                  <Pressable onPress={() => void pararAcompanhamento(w.id)} accessibilityRole="button" accessibilityLabel="Parar acompanhamento">
+                  <Pressable onPress={() => void pararAcompanhamento(w.id)} accessibilityRole="button" accessibilityLabel="Parar acompanhamento" style={{ minWidth: 44, minHeight: 44, paddingHorizontal: 8, alignItems: "center", justifyContent: "center" }}>
                     <Text style={{ color: "#B91C1C", fontSize: 12, fontWeight: "700" }}>Parar</Text>
                   </Pressable>
                 </View>
