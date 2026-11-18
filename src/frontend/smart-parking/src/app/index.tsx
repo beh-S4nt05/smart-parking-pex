@@ -6,6 +6,7 @@ import { pagina, textoApoio, textoApoioCentro, tituloCard, tituloSecao } from ".
  */
 import { useCallback, useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   Platform,
   RefreshControl,
   ScrollView,
@@ -78,7 +79,7 @@ export default function Index() {
       <Header rotaAtual="/" />
       <ScrollView
         showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={false} onRefresh={refresh} tintColor="#2563EB" />}
+        refreshControl={<RefreshControl refreshing={loading && estacionamentos.length > 0} onRefresh={refresh} tintColor="#2563EB" />}
       >
         <Hero
           shoppings={estacionamentos}
@@ -109,14 +110,19 @@ export default function Index() {
               </Text>
             </View>
 
-            {!loading && estacionamentos.length === 0 ? (
+            {loading && estacionamentos.length === 0 ? (
+              <View accessible accessibilityLabel="Carregando estacionamentos"
+                className="items-center justify-center gap-3 rounded-2xl border border-slate-200 bg-white p-10">
+                <ActivityIndicator size="large" color="#2563EB" accessibilityLabel="Carregando estacionamentos" />
+                <Text className="text-sm font-semibold text-slate-600">Carregando estacionamentos e vagas...</Text>
+              </View>
+            ) : estacionamentos.length === 0 ? (
               <View className="items-center rounded-2xl border border-slate-200 bg-white p-8">
                 <Text className={tituloCard}>
                   Nenhum estacionamento cadastrado ainda
                 </Text>
                 <Text className={textoApoio}>
-                  Rode o backend — o seed de demonstração popula os shoppings de
-                  Manaus automaticamente.
+                  {erro ? "Não foi possível consultar os estacionamentos. Verifique a conexão e tente novamente." : "Nenhum shopping foi encontrado na rede credenciada."}
                 </Text>
               </View>
             ) : (

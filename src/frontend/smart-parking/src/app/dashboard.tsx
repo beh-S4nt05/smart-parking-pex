@@ -145,7 +145,12 @@ export default function Dashboard() {
 
       <FadeTroca chave={aba}>
       {aba === "dashboard" && (
-        <AbaDashboard estacionamentos={estacionamentos} estSel={estSel} isAdmin={isAdmin} />
+        <AbaDashboard
+          estacionamentos={estacionamentos}
+          estSel={estSel}
+          isAdmin={isAdmin}
+          onOperacao={recarregarEstacionamentos}
+        />
       )}
       {aba === "estacionamentos" && (
         <AbaEstacionamentos
@@ -181,10 +186,12 @@ function AbaDashboard({
   estacionamentos,
   estSel,
   isAdmin,
+  onOperacao,
 }: {
   estacionamentos: Estacionamento[];
   estSel: string | null;
   isAdmin: boolean;
+  onOperacao: () => void | Promise<void>;
 }) {
   const router = useRouter();
   const width = useLarguraResponsiva();
@@ -221,6 +228,7 @@ function AbaDashboard({
   const [eventos, setEventos] = useState<EventoVaga[]>([]);
   const [sincronizandoEventos, setSincronizandoEventos] = useState(false);
   const emCursoEventos = useRef(false);
+  const ultimosEventos = useRef<{ escopo: string; ids: Set<string> } | null>(null);
   const [erro, setErro] = useState<string | null>(null);
 
   const carregar = useCallback(async () => {
@@ -262,8 +270,26 @@ function AbaDashboard({
       setSincronizandoEventos(true);
       try {
         const lista = await parkingApi.listarEventos(estSel ?? undefined, 12);
-        if (vivo) setEventos((anterior) =>
-          JSON.stringify(anterior) === JSON.stringify(lista) ? anterior : lista);
+        if (vivo) {
+          const escopo = estSel ?? "todos";
+          const anterior = ultimosEventos.current;
+          const ids = new Set(lista.map(ev => ev.id));
+          // O primeiro fetch cria a linha de base; troca de shopping nao
+          // aciona alerta falso. Depois, cada evento REAL revalida KPI,
+          // ocupacao e total de vagas sem esperar os 15/30 s do polling.
+          const houveOperacao = anterior?.escopo === escopo && lista.some(ev =>
+            !anterior.ids.has(ev.id) && [
+              "reserva_criada", "reserva_cancelada", "reserva_expirada",
+              "reserva_concluida", "entrada", "saida", "pagamento_confirmado",
+            ].includes(ev.evento));
+          ultimosEventos.current = { escopo, ids };
+          setEventos((atual) =>
+            JSON.stringify(atual) === JSON.stringify(lista) ? atual : lista);
+          if (houveOperacao) {
+            void carregar();
+            void onOperacao();
+          }
+        }
       } catch {
         // Conserva o último feed quando a rede oscilar.
       } finally {
@@ -277,7 +303,7 @@ function AbaDashboard({
       vivo = false;
       clearInterval(timer);
     };
-  }, [estSel, emFoco, visivel]);
+  }, [estSel, emFoco, visivel, carregar, onOperacao]);
 
   // agregado global quando "Todos"
   const agregados = useMemo(() => {

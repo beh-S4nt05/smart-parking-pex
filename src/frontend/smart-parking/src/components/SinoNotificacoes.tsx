@@ -6,7 +6,7 @@ import { useAuth } from "../hooks/useAuth";
 import { notificacoesApi } from "../services/notificacoesApi";
 
 export default function SinoNotificacoes({ claro = false }: { claro?: boolean }) {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const router = useRouter();
   const [naoLidas, setNaoLidas] = useState(0);
   useFocusEffect(useCallback(() => {
@@ -24,9 +24,10 @@ export default function SinoNotificacoes({ claro = false }: { claro?: boolean })
       }
     };
     void consultar();
-    const id = setInterval(() => void consultar(), 15000);
+    const id = setInterval(() => void consultar(),
+      user?.role === "gestor" || user?.role === "admin" ? 3000 : 15000);
     return () => { vivo = false; clearInterval(id); };
-  }, [isAuthenticated]));
+  }, [isAuthenticated, user?.role]));
   if (!isAuthenticated) return null;
   return (
     <Pressable

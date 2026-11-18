@@ -1,5 +1,6 @@
 import { useState } from "react";
 import {
+  ActivityIndicator,
   FlatList,
   Modal,
   Pressable,
@@ -186,6 +187,14 @@ export default function MobileHome({
             >
               ONDE VAMOS ESTACIONAR?
             </Text>
+
+            {loading && shoppings.length === 0 ? (
+              <View accessible accessibilityLabel="Carregando estacionamentos"
+                style={{ flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 12 }}>
+                <ActivityIndicator size="small" color={C.blue} accessibilityLabel="Carregando estacionamentos" />
+                <Text style={{ color: C.muted, fontSize: 12 }}>Carregando estacionamentos e vagas...</Text>
+              </View>
+            ) : null}
 
             <Pressable
               accessibilityRole="button"
@@ -392,11 +401,7 @@ export default function MobileHome({
             );
           })}
 
-          {loading && shoppings.length === 0 ? (
-            <Text style={{ textAlign: "center", color: C.muted, padding: 20 }}>
-              Consultando estacionamentos...
-            </Text>
-          ) : null}
+
         </View>
       </ScrollView>
 
