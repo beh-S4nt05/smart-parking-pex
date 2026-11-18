@@ -5,7 +5,6 @@ inclusive quando mais de um worker processar o mesmo evento.
 """
 import base64
 import hashlib
-import os
 from datetime import datetime, timedelta, timezone
 
 from cryptography.fernet import Fernet
@@ -17,7 +16,7 @@ from sqlalchemy.orm import Session
 from core.config import settings
 from core.timeutils import FUSO_MANAUS, normalizar, utc_agora
 from models.db_models import (
-    AcompanhamentoVaga, Andar, DispositivoNotificacao, EntregaNotificacao,
+    AcompanhamentoVaga, DispositivoNotificacao, EntregaNotificacao,
     Estacionamento, EventoOperacional, FechamentoCaixa, Notificacao, Pagamento,
     PreferenciaNotificacao, Reserva, StatusReserva, StatusVaga, TipoUsuario,
     Usuario, Vaga,
