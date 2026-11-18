@@ -144,3 +144,37 @@ def test_financeiro_sem_vazamento_para_gestor_ou_outro_shopping(db, fab):
     assert admin.id in recebedores
     assert outro_fin.id not in recebedores
     assert gestor.id not in recebedores
+
+
+def test_push_token_privado_e_logout_desvincula_dispositivo(db, fab, client, monkeypatch):
+    from cryptography.fernet import Fernet
+    from core.config import settings
+    from models.db_models import DispositivoNotificacao
+
+    usuario = fab.usuario()
+    headers = fab.token(usuario)
+    token_expo = "ExpoPushToken[TESTTOKEN123456789012]"
+    response = client.post(
+        "/api/notificacoes/dispositivos",
+        headers=headers, json={"token": token_expo, "plataforma": "android"},
+    )
+    assert response.status_code == 503  # sem segredo privado não ativar push
+
+    monkeypatch.setattr(settings, "NOTIFICATIONS_ENCRYPTION_KEY", Fernet.generate_key().decode())
+    criado = client.post(
+        "/api/notificacoes/dispositivos",
+        headers=headers, json={"token": token_expo, "plataforma": "android"},
+    )
+    assert criado.status_code == 201, criado.text
+    device_id = criado.json()["id"]
+    device = db.get(DispositivoNotificacao, device_id)
+    assert device.ativo is True
+    assert token_expo not in device.token_expo
+
+    logout = client.post(
+        "/auth/logout", headers=headers,
+        params={"notification_device_id": device_id},
+    )
+    assert logout.status_code == 204, logout.text
+    db.refresh(device)
+    assert device.ativo is False
