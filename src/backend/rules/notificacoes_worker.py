@@ -66,19 +66,23 @@ def _claim(db):
     ).order_by(EntregaNotificacao.executar_em, EntregaNotificacao.id)
     if db.bind.dialect.name == "postgresql":
         q = q.with_for_update(skip_locked=True)
-    e = q.first()
-    if not e:
-        return None
-    if not _vivo(db, e):
-        e.status = "cancelada"
+    # Uma entrega obsoleta nao deve impedir as entregas validas seguintes.
+    # Limita o trabalho por rodada caso haja muitos registros cancelaveis.
+    for _ in range(100):
+        e = q.first()
+        if not e:
+            return None
+        if not _vivo(db, e):
+            e.status = "cancelada"
+            db.commit()
+            continue
+        e.status = "enviando"
+        e.tentativas += 1
+        e.executar_em = agora + timedelta(minutes=3)
+        uid = e.id
         db.commit()
-        return None
-    e.status = "enviando"
-    e.tentativas += 1
-    e.executar_em = agora + timedelta(minutes=3)
-    uid = e.id
-    db.commit()
-    return uid
+        return uid
+    return None
 
 
 def _registrar_erro(db, entrega, message: str):
@@ -124,6 +128,9 @@ def enviar_pendentes(limite=20) -> int:
                 if resposta.get("status") == "ok" and resposta.get("id"):
                     e.status = "aceito"
                     e.ticket_id = resposta["id"]
+                    # O ticket confirma aceite do provedor, nao entrega ao celular.
+                    # Evita sondagem em todo ciclo de 15 segundos.
+                    e.executar_em = utc_agora() + timedelta(minutes=2)
                     enviados += 1
                 else:
                     erro = resposta.get("details", {}).get("error") or resposta.get("message", "Resposta inesperada Expo")
@@ -148,21 +155,37 @@ def processar_recibos():
         return
     db = SessionLocal()
     try:
-        # No máximo 100 recibos por ciclo. Aceito pelo Expo != entregue no aparelho.
+        # A fila de recibos nao pode ficar presa nos 100 primeiros tickets sem resposta.
+        agora = utc_agora()
         entregas = db.query(EntregaNotificacao).filter(
             EntregaNotificacao.status == "aceito",
             EntregaNotificacao.ticket_id.isnot(None),
-        ).limit(100).all()
+            EntregaNotificacao.executar_em <= agora,
+        ).order_by(EntregaNotificacao.executar_em, EntregaNotificacao.id).limit(100).all()
         if not entregas:
             return
-        ids = [e.ticket_id for e in entregas]
+        ativos = []
+        for e in entregas:
+            n = db.get(Notificacao, e.notificacao_id)
+            # A API do provedor nao oferece recibos indefinidamente.
+            if not n or normalizar(n.criada_em) <= agora - timedelta(hours=48):
+                e.status = "sem_recibo"
+                e.ultimo_erro = "Recibo nao confirmado apos 48 horas"
+            else:
+                ativos.append(e)
+        if not ativos:
+            db.commit()
+            return
+        ids = [e.ticket_id for e in ativos]
         with httpx.Client(timeout=8) as client:
             r = client.post(PUSH_RECEIPTS, json={"ids": ids}, headers=_headers())
             r.raise_for_status()
             respostas = r.json().get("data", {})
-        for e in entregas:
+        for e in ativos:
             resultado = respostas.get(e.ticket_id)
             if not resultado:
+                # Um ticket sem recibo volta a ser consultado, sem monopolizar a fila.
+                e.executar_em = agora + timedelta(minutes=5)
                 continue
             if resultado.get("status") == "ok":
                 e.status = "confirmado_provedor"
@@ -182,15 +205,17 @@ def processar_recibos():
         db.close()
 
 
-def executar_rotina(*, gerar_resumo=False):
-    """Chamado em thread, uma sessão por ciclo; falha não afeta FastAPI."""
+def executar_rotina(*, gerar_resumo=False) -> bool:
+    """Retorna True somente se a geracao foi confirmada no banco."""
     db = SessionLocal()
+    geracao_ok = False
     try:
         service.lembretes_pendentes(db)
         service.disponibilidade_pendente(db)
         if gerar_resumo:
             service.resumos_diarios(db)
         db.commit()
+        geracao_ok = True
     except Exception:
         db.rollback()
         LOG.exception("Falha na geração de notificações")
@@ -198,3 +223,4 @@ def executar_rotina(*, gerar_resumo=False):
         db.close()
     enviar_pendentes()
     processar_recibos()
+    return geracao_ok
