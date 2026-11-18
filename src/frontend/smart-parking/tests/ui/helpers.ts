@@ -66,24 +66,24 @@ export async function expectSemOverflowHorizontal(page: Page) {
 }
 
 /**
- * Sessão real para testes que NÃO estão testando o formulário de login.
- * Evita a corrida de hidratação do React entre jornadas. Respeita HTTP 429,
- * sem desligar o rate limiter e sem engolir 401/403/5xx.
+ * Sessão real para jornadas que NÃO estão testando o formulário de login.
+ * A rota E2E verifica senha pelo auth_service e emite sessão válida; nunca
+ * existe em produção e não altera o rate limiter do login público.
  */
 export async function loginViaApi(page: Page, email: string, senha: string) {
-  const autenticar = () => page.request.post("/auth/login", {
-    data: { email, senha },
-  });
-  let response = await autenticar();
-  if (response.status() === 429) {
-    const segundos = Number(response.headers()["retry-after"]);
-    const espera = Number.isFinite(segundos) && segundos > 0
-      ? Math.min(Math.ceil(segundos) * 1000 + 1200, 65_000)
-      : 61_000;
-    await new Promise<void>((resolve) => setTimeout(resolve, espera));
-    response = await autenticar();
-  }
-  expect(response.status(), "Autenticação real de QA via API").toBe(200);
+  // Endpoint existe somente no wrapper E2E, protegido por segredo, em loopback.
+  // Usa o auth_service real e cria sessão JWT real, sem consumir a cota da rota
+  // /auth/login. Os testes auth.spec.ts continuam exercitando o fluxo público.
+  const response = await page.request.post(
+    process.env.UI_TEST_SESSION_URL || "http://127.0.0.1:8010/__ui_test/session",
+    {
+      headers: {
+        "X-UI-Test-Token": process.env.UI_TEST_RESET_TOKEN || "smart-parking-ui-local-tests",
+      },
+      data: { email, senha },
+    },
+  );
+  expect(response.status(), "Autenticação das contas seed pelo serviço real de QA").toBe(200);
   const sessao = (await response.json()) as {
     access_token: string;
     refresh_token: string;
