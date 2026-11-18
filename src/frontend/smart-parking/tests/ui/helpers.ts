@@ -64,3 +64,35 @@ export async function expectSemOverflowHorizontal(page: Page) {
     `documento com ${medidas.conteudo}px em viewport de ${medidas.viewport}px`,
   ).toBeLessThanOrEqual(medidas.viewport + 1);
 }
+
+/**
+ * Sessão real para testes que NÃO estão testando o formulário de login.
+ * Evita a corrida de hidratação do React entre jornadas. Respeita HTTP 429,
+ * sem desligar o rate limiter e sem engolir 401/403/5xx.
+ */
+export async function loginViaApi(page: Page, email: string, senha: string) {
+  const autenticar = () => page.request.post("/auth/login", {
+    data: { email, senha },
+  });
+  let response = await autenticar();
+  if (response.status() === 429) {
+    const segundos = Number(response.headers()["retry-after"]);
+    const espera = Number.isFinite(segundos) && segundos > 0
+      ? Math.min(Math.ceil(segundos) * 1000 + 1200, 65_000)
+      : 61_000;
+    await new Promise<void>((resolve) => setTimeout(resolve, espera));
+    response = await autenticar();
+  }
+  expect(response.status(), "Autenticação real de QA via API").toBe(200);
+  const sessao = (await response.json()) as {
+    access_token: string;
+    refresh_token: string;
+    user: unknown;
+  };
+  expect(sessao.access_token).toBeTruthy();
+  await page.addInitScript(({ access, refresh, user }) => {
+    localStorage.setItem("smartparking_access_token", access);
+    localStorage.setItem("smartparking_refresh_token", refresh);
+    if (user) localStorage.setItem("smartparking_user_cache", JSON.stringify(user));
+  }, { access: sessao.access_token, refresh: sessao.refresh_token, user: sessao.user });
+}
