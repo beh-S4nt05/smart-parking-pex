@@ -38,6 +38,14 @@ PUSH_TYPES = frozenset({
     "lembrete_reserva", "vaga_disponivel", "pagamento_confirmado",
 })
 TIPOS_USUARIO_FINANCEIRO = (TipoUsuario.FINANCEIRO.value, TipoUsuario.ADMIN.value)
+# Alertas internos do PAINEL, separados do push do motorista.
+# Sao gerados junto com a transicao real da reserva e nao usam Expo.
+EVENTOS_PAINEL_RESERVA = {
+    "reserva_criada": ("painel_reserva_criada", "Nova reserva"),
+    "reserva_cancelada": ("painel_reserva_cancelada", "Reserva cancelada"),
+    "reserva_expirada": ("painel_reserva_expirada", "Reserva expirada"),
+    "reserva_concluida": ("painel_reserva_concluida", "Check-in de reserva"),
+}
 
 
 def _fernet() -> Fernet:
@@ -129,10 +137,51 @@ def _novo_destinatario(db: Session, usuario_id: str, tipo: str, titulo: str,
     return notificacao
 
 
+def _avisar_painel_reserva(db: Session, *, evento: str, estacionamento_id: str,
+                          reserva_id: str | None, vaga_id: str | None) -> None:
+    """Entrega aviso interno a cada admin/gestor autorizado ao estacionamento.
+
+    Não envia push, não expõe dados do motorista, não mistura shoppings.
+    Usa idempotência e a mesma transação da operação auditada.
+    """
+    if not reserva_id or evento not in EVENTOS_PAINEL_RESERVA:
+        return
+    tipo, titulo = EVENTOS_PAINEL_RESERVA[evento]
+    vaga = db.get(Vaga, vaga_id) if vaga_id else None
+    codigo = vaga.codigo if vaga else "não informada"
+    mensagens = {
+        "reserva_criada": "Uma reserva foi confirmada",
+        "reserva_cancelada": "Uma reserva foi cancelada e a vaga liberada",
+        "reserva_expirada": "Uma reserva venceu; confira a disponibilidade",
+        "reserva_concluida": "Um check-in foi registrado",
+    }
+    candidatos = db.query(Usuario).filter(
+        Usuario.role.in_((TipoUsuario.ADMIN.value, TipoUsuario.GESTOR.value)),
+        Usuario.is_ativo.is_(True),
+    ).all()
+    for destinatario in candidatos:
+        if (destinatario.role != TipoUsuario.ADMIN.value
+                and estacionamento_id not in destinatario.estacionamento_ids):
+            continue
+        if not preferencias(db, destinatario.id).reservas:
+            continue
+        _novo_destinatario(
+            db, destinatario.id, tipo, titulo,
+            f"{mensagens[evento]} na vaga {codigo}. Consulte o painel.",
+            f"painel:{evento}:{reserva_id}:usuario:{destinatario.id}",
+            estacionamento_id=estacionamento_id, destino="/dashboard",
+            referencia_tipo="reserva", referencia_id=reserva_id,
+        )
+
+
 def ao_evento_operacional(db: Session, *, evento: str, usuario_id: str | None,
                          estacionamento_id: str, reserva_id=None, vaga_id=None,
                          pagamento_id=None):
     """Chamado antes do commit na mesma transação de reserva/pagamento."""
+    _avisar_painel_reserva(
+        db, evento=evento, estacionamento_id=estacionamento_id,
+        reserva_id=reserva_id, vaga_id=vaga_id,
+    )
     if not usuario_id or evento not in EVENTOS_RESERVA:
         return
     # A preferencia financeira desativa os avisos opcionais de pagamento
