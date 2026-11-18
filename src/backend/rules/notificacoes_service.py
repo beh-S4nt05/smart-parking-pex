@@ -29,8 +29,14 @@ EVENTOS_RESERVA = {
     "pagamento_confirmado": ("pagamento_confirmado", "Pagamento confirmado"),
 }
 EVENTOS_CRITICOS = {"reserva_confirmada", "reserva_cancelada", "reserva_expirada"}
-PUSH_TYPES = {"reserva_confirmada", "reserva_cancelada", "reserva_expirada", "lembrete_reserva",
-              "vaga_disponivel", "pagamento_confirmado", "caixa_fechado", "resumo_financeiro"}
+# Todos os eventos acima e os avisos financeiros permanecem na central interna.
+# O push remoto fica restrito a eventos relevantes fora do aplicativo.
+# Fechamento de caixa, resumo financeiro e entrada registrada sao internos:
+# consultar o painel evita notificacoes administrativas em excesso no telefone.
+PUSH_TYPES = frozenset({
+    "reserva_confirmada", "reserva_cancelada", "reserva_expirada",
+    "lembrete_reserva", "vaga_disponivel", "pagamento_confirmado",
+})
 TIPOS_USUARIO_FINANCEIRO = (TipoUsuario.FINANCEIRO.value, TipoUsuario.ADMIN.value)
 
 
@@ -75,9 +81,9 @@ def _push_autorizado(pref: PreferenciaNotificacao, tipo: str) -> bool:
         return pref.lembretes
     if tipo == "vaga_disponivel":
         return pref.vagas
-    if tipo == "resumo_financeiro":
-        return pref.financeiro and pref.resumo_diario
-    return pref.financeiro
+    if tipo == "pagamento_confirmado":
+        return pref.financeiro
+    return False
 
 
 def _depois_silencio(pref: PreferenciaNotificacao, now: datetime) -> datetime:
@@ -128,6 +134,10 @@ def ao_evento_operacional(db: Session, *, evento: str, usuario_id: str | None,
                          pagamento_id=None):
     """Chamado antes do commit na mesma transação de reserva/pagamento."""
     if not usuario_id or evento not in EVENTOS_RESERVA:
+        return
+    # A preferencia financeira desativa os avisos opcionais de pagamento
+    # sem ocultar o registro da operacao na area financeira/reservas.
+    if evento == "pagamento_confirmado" and not preferencias(db, usuario_id).financeiro:
         return
     tipo, titulo = EVENTOS_RESERVA[evento]
     vaga = db.get(Vaga, vaga_id) if vaga_id else None
@@ -257,6 +267,8 @@ def financeiro_destinatarios(db: Session, estacionamento_id: str) -> list[str]:
 
 def ao_fechar_caixa(db: Session, caixa: FechamentoCaixa):
     for uid in financeiro_destinatarios(db, caixa.estacionamento_id):
+        if not preferencias(db, uid).financeiro:
+            continue
         _novo_destinatario(
             db, uid, "caixa_fechado", "Caixa fechado",
             "O fechamento do caixa foi registrado. Consulte os detalhes no painel.",

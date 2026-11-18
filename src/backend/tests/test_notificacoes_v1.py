@@ -178,3 +178,328 @@ def test_push_token_privado_e_logout_desvincula_dispositivo(db, fab, client, mon
     assert logout.status_code == 204, logout.text
     db.refresh(device)
     assert device.ativo is False
+
+
+def test_worker_repete_resumo_apos_rollback_sem_marcar_dia_concluido(monkeypatch):
+    from rules import notificacoes_worker as worker
+
+    tentativas = {"resumo": 0}
+
+    def resumo_intermitente(_db):
+        tentativas["resumo"] += 1
+        if tentativas["resumo"] == 1:
+            raise RuntimeError("Falha temporaria no banco")
+        return 1
+
+    monkeypatch.setattr(worker.service, "lembretes_pendentes", lambda _db: 0)
+    monkeypatch.setattr(worker.service, "disponibilidade_pendente", lambda _db: 0)
+    monkeypatch.setattr(worker.service, "resumos_diarios", resumo_intermitente)
+    monkeypatch.setattr(worker, "enviar_pendentes", lambda: 0)
+    monkeypatch.setattr(worker, "processar_recibos", lambda: None)
+
+    assert worker.executar_rotina(gerar_resumo=True) is False
+    assert worker.executar_rotina(gerar_resumo=True) is True
+    assert tentativas["resumo"] == 2
+
+
+def test_outbox_pula_entrega_obsoleta_e_processa_proxima(db, fab):
+    import hashlib
+
+    from models.db_models import DispositivoNotificacao, EntregaNotificacao
+    from rules import notificacoes_worker as worker
+
+    usuario = fab.usuario()
+    pref = notify.preferencias(db, usuario.id)
+    pref.push_ativo = True
+    dispositivo = DispositivoNotificacao(
+        usuario_id=usuario.id, token_expo="cifrado-no-teste",
+        token_hash=hashlib.sha256(usuario.id.encode()).hexdigest(),
+        plataforma="android", ativo=True,
+    )
+    db.add(dispositivo)
+    db.flush()
+    agora = utc_agora()
+    obsoleta = Notificacao(
+        usuario_id=usuario.id, tipo="reserva_confirmada",
+        titulo="Obsoleta", mensagem="Teste",
+        chave_idempotencia=f"outbox:{usuario.id}:obsoleta",
+        expira_em=agora - timedelta(minutes=5),
+    )
+    valida = Notificacao(
+        usuario_id=usuario.id, tipo="reserva_confirmada",
+        titulo="Valida", mensagem="Teste",
+        chave_idempotencia=f"outbox:{usuario.id}:valida",
+    )
+    db.add_all([obsoleta, valida])
+    db.flush()
+    entrega_obsoleta = EntregaNotificacao(
+        notificacao_id=obsoleta.id, dispositivo_id=dispositivo.id,
+        status="pendente", tentativas=0, executar_em=agora - timedelta(minutes=3),
+    )
+    entrega_valida = EntregaNotificacao(
+        notificacao_id=valida.id, dispositivo_id=dispositivo.id,
+        status="pendente", tentativas=0, executar_em=agora - timedelta(minutes=2),
+    )
+    db.add_all([entrega_obsoleta, entrega_valida])
+    db.commit()
+
+    assert worker._claim(db) == entrega_valida.id
+    db.refresh(entrega_obsoleta)
+    db.refresh(entrega_valida)
+    assert entrega_obsoleta.status == "cancelada"
+    assert entrega_valida.status == "enviando"
+    assert entrega_valida.tentativas == 1
+
+
+def test_recibos_paginam_sem_ficar_presos_em_100_tickets(db, fab, monkeypatch):
+    import hashlib
+
+    from models.db_models import DispositivoNotificacao, EntregaNotificacao
+    from rules import notificacoes_worker as worker
+
+    usuario = fab.usuario()
+    dispositivo = DispositivoNotificacao(
+        usuario_id=usuario.id, token_expo="cifrado-no-teste",
+        token_hash=hashlib.sha256(usuario.id.encode()).hexdigest(),
+        plataforma="android", ativo=True,
+    )
+    db.add(dispositivo)
+    db.flush()
+    agora = utc_agora()
+    for i in range(101):
+        n = Notificacao(
+            usuario_id=usuario.id, tipo="reserva_confirmada",
+            titulo="Recibo em teste", mensagem="Teste",
+            chave_idempotencia=f"recibo:{usuario.id}:{i}",
+            criada_em=agora,
+        )
+        db.add(n)
+        db.flush()
+        db.add(EntregaNotificacao(
+            notificacao_id=n.id, dispositivo_id=dispositivo.id,
+            status="aceito", tentativas=1,
+            ticket_id=f"ticket:{usuario.id}:{i}",
+            executar_em=agora - timedelta(minutes=1),
+        ))
+    db.commit()
+
+    chamadas = []
+
+    class Resposta:
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return {"data": {}}  # provedor ainda nao disponibilizou recibos
+
+    class Cliente:
+        def __init__(self, timeout):
+            self.timeout = timeout
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc_val, exc_tb):
+            return False
+
+        def post(self, _url, json, headers):
+            chamadas.append(json["ids"])
+            return Resposta()
+
+    monkeypatch.setattr(worker, "_habilitado", lambda: True)
+    monkeypatch.setattr(worker.httpx, "Client", Cliente)
+
+    worker.processar_recibos()
+    worker.processar_recibos()
+
+    assert len(chamadas) == 2
+    assert len(chamadas[0]) == 100
+    assert len(chamadas[1]) == 1
+    assert not set(chamadas[0]).intersection(chamadas[1])
+
+
+def test_recibo_antigo_sem_resposta_encerrado_com_status_explicito(db, fab, monkeypatch):
+    import hashlib
+
+    from models.db_models import DispositivoNotificacao, EntregaNotificacao
+    from rules import notificacoes_worker as worker
+
+    usuario = fab.usuario()
+    dispositivo = DispositivoNotificacao(
+        usuario_id=usuario.id, token_expo="cifrado-no-teste",
+        token_hash=hashlib.sha256(usuario.id.encode()).hexdigest(),
+        plataforma="android", ativo=True,
+    )
+    db.add(dispositivo)
+    db.flush()
+    agora = utc_agora()
+    antiga = Notificacao(
+        usuario_id=usuario.id, tipo="reserva_confirmada",
+        titulo="Antiga", mensagem="Teste",
+        chave_idempotencia=f"recibo:{usuario.id}:antigo",
+        criada_em=agora - timedelta(hours=50),
+    )
+    db.add(antiga)
+    db.flush()
+    entrega = EntregaNotificacao(
+        notificacao_id=antiga.id, dispositivo_id=dispositivo.id,
+        status="aceito", tentativas=1,
+        ticket_id=f"ticket:{usuario.id}:antigo",
+        executar_em=agora - timedelta(minutes=1),
+    )
+    db.add(entrega)
+    db.commit()
+
+    monkeypatch.setattr(worker, "_habilitado", lambda: True)
+    worker.processar_recibos()
+
+    db.refresh(entrega)
+    assert entrega.status == "sem_recibo"
+    assert "24 horas" in entrega.ultimo_erro
+
+
+def test_recibo_conta_24h_do_aceite_e_nao_da_notificacao(db, fab, monkeypatch):
+    """Push adiado nao pode ter ticket descartado assim que e aceito."""
+    import hashlib
+
+    from models.db_models import DispositivoNotificacao, EntregaNotificacao
+    from rules import notificacoes_worker as worker
+
+    usuario = fab.usuario()
+    dispositivo = DispositivoNotificacao(
+        usuario_id=usuario.id, token_expo="cifrado-nao-utilizado",
+        token_hash=hashlib.sha256(("recibo-temporal-" + usuario.id).encode()).hexdigest(),
+        plataforma="android", ativo=True,
+    )
+    db.add(dispositivo)
+    db.flush()
+    agora = utc_agora()
+    antiga = Notificacao(
+        usuario_id=usuario.id, tipo="reserva_confirmada",
+        titulo="Criada ha dois dias", mensagem="Teste",
+        chave_idempotencia=f"recibo-temporal:{usuario.id}",
+        criada_em=agora - timedelta(hours=50),
+    )
+    db.add(antiga)
+    db.flush()
+    # Notificacao antiga, mas ticket aceito apenas ha 16 minutos.
+    entrega = EntregaNotificacao(
+        notificacao_id=antiga.id, dispositivo_id=dispositivo.id,
+        status="aceito", tentativas=1,
+        ticket_id=f"ticket:temporal:{usuario.id}",
+        aceito_em=agora - timedelta(minutes=16),
+        executar_em=agora - timedelta(minutes=1),
+    )
+    db.add(entrega)
+    db.commit()
+
+    class Resposta:
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {"data": {}}
+
+    class Cliente:
+        def __init__(self, timeout):
+            self.timeout = timeout
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+        def post(self, _url, json, headers):
+            assert json["ids"] == [entrega.ticket_id]
+            return Resposta()
+
+    monkeypatch.setattr(worker, "_habilitado", lambda: True)
+    monkeypatch.setattr(worker.httpx, "Client", Cliente)
+    worker.processar_recibos()
+    db.refresh(entrega)
+    assert entrega.status == "aceito"
+    assert entrega.executar_em > agora
+    # Agora o mesmo ticket, 25h apos aceite: encerrar, sem usar data de criacao.
+    entrega.aceito_em = agora - timedelta(hours=25)
+    entrega.executar_em = agora - timedelta(seconds=1)
+    db.commit()
+    worker.processar_recibos()
+    db.refresh(entrega)
+    assert entrega.status == "sem_recibo"
+    assert "24 horas" in entrega.ultimo_erro
+
+
+def test_matriz_canais_eventos_gerais_na_v1(db, fab):
+    """Avisos de app persistem; so eventos pertinentes criam push opt-in."""
+    import hashlib
+
+    from models.db_models import DispositivoNotificacao, EntregaNotificacao
+
+    usuario = fab.usuario()
+    pref = notify.preferencias(db, usuario.id)
+    pref.push_ativo = True
+    pref.vagas = True
+    pref.financeiro = True
+    pref.resumo_diario = True
+    device = DispositivoNotificacao(
+        usuario_id=usuario.id, plataforma="android",
+        token_expo="cifrado-nao-utilizado",
+        token_hash=hashlib.sha256(("push-" + usuario.id).encode()).hexdigest(),
+        ativo=True,
+    )
+    db.add(device)
+    db.flush()
+
+    canais = {
+        "reserva_confirmada": True,
+        "reserva_cancelada": True,
+        "reserva_expirada": True,
+        "reserva_concluida": False,
+        "lembrete_reserva": True,
+        "vaga_disponivel": True,
+        "pagamento_confirmado": True,
+        "caixa_fechado": False,
+        "resumo_financeiro": False,
+    }
+    for tipo, envia_push in canais.items():
+        n = notify._novo_destinatario(
+            db, usuario.id, tipo, tipo, "Aviso de teste",
+            f"matriz:{usuario.id}:{tipo}",
+        )
+        assert n is not None, tipo
+        db.flush()
+        assert (db.query(EntregaNotificacao).filter_by(notificacao_id=n.id).count() == 1) is envia_push
+
+    assert db.query(Notificacao).filter_by(usuario_id=usuario.id).count() >= len(canais)
+    pref.push_ativo = False
+    assert all(not notify._push_autorizado(pref, tipo) for tipo in canais)
+    pref.push_ativo = True
+    pref.reservas = False
+    assert not notify._push_autorizado(pref, "reserva_confirmada")
+    assert notify._push_autorizado(pref, "pagamento_confirmado")
+    pref.financeiro = False
+    assert not notify._push_autorizado(pref, "pagamento_confirmado")
+
+
+def test_preferencia_financeiro_bloqueia_avisos_opcionais_da_central(db, fab):
+    from models.db_models import FechamentoCaixa
+
+    est = fab.est()
+    financeiro = fab.usuario(role=TipoUsuario.FINANCEIRO, est=est)
+    pref = notify.preferencias(db, financeiro.id)
+    pref.financeiro = False
+    db.flush()
+
+    notify.ao_evento_operacional(
+        db, evento="pagamento_confirmado", usuario_id=financeiro.id,
+        estacionamento_id=est.id, pagamento_id="pagamento-opcional-qa",
+    )
+    notify.ao_fechar_caixa(
+        db, FechamentoCaixa(id="fechamento-opcional-qa", estacionamento_id=est.id),
+    )
+    db.flush()
+    assert db.query(Notificacao).filter(
+        Notificacao.usuario_id == financeiro.id,
+        Notificacao.tipo.in_(["pagamento_confirmado", "caixa_fechado"]),
+    ).count() == 0

@@ -29,6 +29,11 @@ services:
       # host (padrão mantém a demo local funcionando; produção: exportar ANTES do up).
       - SECRET_KEY=${SECRET_KEY:-mude_efta_chave_secreta_em_producao}
       - APP_SIGNING_SECRET=${APP_SIGNING_SECRET:-smartparking_default_signing_key_change_in_production}
+      # Push e opt-in continuam DESLIGADOS ate a configuracao explicita.
+      # A chave Fernet deve permanecer privada (nunca incluir no app web/mobile).
+      - NOTIFICACOES_PUSH_ENABLED=${NOTIFICACOES_PUSH_ENABLED:-false}
+      - NOTIFICATIONS_ENCRYPTION_KEY=${NOTIFICATIONS_ENCRYPTION_KEY:-}
+      - EXPO_ACCESS_TOKEN=${EXPO_ACCESS_TOKEN:-}
       # QR do simulador: sem isto o código no celular aponta para o localhost DELE.
       # Na demo pela LAN: SIMULADOR_BASE_URL=http://IP_DO_PC:8081 ./scripts/docker.sh up
       - SIMULADOR_BASE_URL=${SIMULADOR_BASE_URL:-http://localhost:8081}
