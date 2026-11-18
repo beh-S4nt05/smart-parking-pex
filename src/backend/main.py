@@ -226,7 +226,7 @@ async def _zapeador_notificacoes() -> None:
             await asyncio.to_thread(executar_rotina, gerar_resumo=gerar)
             if gerar:
                 ultimo_resumo = hoje
-        except asyncio.CancelledError:
+        except asyncio.CancelledError:  # noqa: PERF203 - scheduler precisa tratar exceções por ciclo
             raise
         except Exception:
             import logging
