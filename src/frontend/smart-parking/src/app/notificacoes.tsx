@@ -137,8 +137,11 @@ export default function TelaNotificacoes() {
 
   return (
     <View style={{ flex: 1, backgroundColor: "#F8FAFC" }}>
-      <Header rotaAtual="/notificacoes" />
-      <MobileScreenHeader title="Notificações" subtitle="Vagas, reservas e movimentações da sua conta" />
+      {Platform.OS === "web" ? (
+        <Header rotaAtual="/notificacoes" />
+      ) : (
+        <MobileScreenHeader title="Notificações" subtitle="Vagas, reservas e movimentações da sua conta" />
+      )}
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 50, maxWidth: 760, width: "100%", alignSelf: "center" }}>
         {authLoading ? <ActivityIndicator /> : !user ? (
           <View style={{ padding: 20, backgroundColor: "#fff", borderRadius: 16 }}>
