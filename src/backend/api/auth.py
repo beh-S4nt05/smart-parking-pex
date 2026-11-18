@@ -109,6 +109,7 @@ def logout(
     request: Request,
     token: str = Depends(oauth2_scheme),
     refresh_token: str | None = None,
+    notification_device_id: str | None = None,
     usuario: Usuario = Depends(get_usuario_logado),
     db: Session = Depends(get_db),
 ):
@@ -146,6 +147,21 @@ def logout(
         session_service.revogar(db, usuario.id, payload["sid"])
     if refresh_token:
         _revogar(refresh_token, "logout_refresh")
+
+    if notification_device_id:
+        # O próprio usuário só pode desvincular dispositivos da própria conta.
+        from models.db_models import DispositivoNotificacao, EntregaNotificacao
+
+        dispositivo = db.query(DispositivoNotificacao).filter(
+            DispositivoNotificacao.id == notification_device_id,
+            DispositivoNotificacao.usuario_id == usuario.id,
+        ).first()
+        if dispositivo:
+            dispositivo.ativo = False
+            db.query(EntregaNotificacao).filter(
+                EntregaNotificacao.dispositivo_id == dispositivo.id,
+                EntregaNotificacao.status == "pendente",
+            ).update({EntregaNotificacao.status: "cancelada"}, synchronize_session=False)
     # faxina: linhas já vencidas não servem mais para nada
     db.query(RevogacaoToken).filter(
         RevogacaoToken.expira_em.isnot(None), RevogacaoToken.expira_em < agora

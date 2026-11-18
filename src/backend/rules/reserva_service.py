@@ -34,6 +34,10 @@ def expirar_reservas_vencidas(db: Session) -> int:
                 evento="reserva_expirada", usuario_id=reserva.usuario_id,
                 reserva_id=reserva.id, vaga_id=reserva.vaga_id, origem="sistema",
             )
+            registrar_evento(
+                db, estacionamento_id=vaga.andar.estacionamento_id,
+                evento="vaga_liberada", vaga_id=vaga.id, origem="sistema",
+            )
 
     if vencidas:
         db.commit()
@@ -196,6 +200,10 @@ def cancelar_reserva(db: Session, reserva_id: str, usuario_logado: Usuario) -> R
             db, estacionamento_id=vaga.andar.estacionamento_id,
             evento="reserva_cancelada", usuario_id=usuario_logado.id,
             reserva_id=reserva.id, vaga_id=reserva.vaga_id, origem="app_motorista",
+        )
+        registrar_evento(
+            db, estacionamento_id=vaga.andar.estacionamento_id,
+            evento="vaga_liberada", vaga_id=vaga.id, origem="app_motorista",
         )
     db.commit()
     db.refresh(reserva)

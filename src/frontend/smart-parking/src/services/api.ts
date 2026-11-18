@@ -260,10 +260,12 @@ export const parkingApi = {
     // armazenamento local; offline/401 não travam o logout do app.
     try {
       const refresh = await storage.getRefreshToken();
+      const dispositivo = await storage.getNotificationDeviceId();
       await api.post(
         "/auth/logout",
         null,
-        { params: refresh ? { refresh_token: refresh } : {}, timeout: 5000 },
+        { params: { ...(refresh ? { refresh_token: refresh } : {}),
+                    ...(dispositivo ? { notification_device_id: dispositivo } : {}) }, timeout: 5000 },
       );
     } catch {
       /* melhor esforço — o clearTokens abaixo é o que fecha a sessão local */

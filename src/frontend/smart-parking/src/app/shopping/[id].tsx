@@ -32,6 +32,7 @@ import { useLarguraResponsiva } from "../../hooks/useLarguraResponsiva";
 import { useAgora, desdeAte } from "../../hooks/useAgora";
 import { useAuth } from "../../hooks/useAuth";
 import { apiErrorMessage, parkingApi } from "../../services/api";
+import { notificacoesApi } from "../../services/notificacoesApi";
 import {
   Botao,
   Card,
@@ -77,6 +78,27 @@ export default function MapaVagas() {
     useMapaVagas(id, { pollingMs: 1500, ativo: emFoco });
   const agora = useAgora(5000);
   const { isAuthenticated } = useAuth();
+
+  async function acompanharVagas() {
+    if (!id) return;
+    if (!isAuthenticated) {
+      avisar("Faça login", "Entre na sua conta para acompanhar a disponibilidade.", "info", {
+        rotulo: "Entrar", onPress: () => router.push("/login"),
+      });
+      return;
+    }
+    try {
+      await notificacoesApi.acompanhar(id);
+      const pref = await notificacoesApi.preferencias();
+      if (!pref.vagas) await notificacoesApi.salvarPreferencias({ ...pref, vagas: true });
+      avisar("Acompanhamento ativado", "Você poderá receber avisos quando vagas comuns forem liberadas.", "sucesso", {
+        rotulo: "Minhas notificações",
+        onPress: () => router.push("/notificacoes"),
+      });
+    } catch (e) {
+      avisar("Não foi possível acompanhar", apiErrorMessage(e), "erro");
+    }
+  }
 
   const [andarSel, setAndarSel] = useState<number | null>(null);
   const [filtroTipo, setFiltroTipo] = useState<VagaTipo | "todos">("todos");
@@ -610,6 +632,15 @@ export default function MapaVagas() {
             <RefreshControl refreshing={false} onRefresh={refresh} tintColor="#2563EB" />
           }
         >
+          <Pressable
+            onPress={() => void acompanharVagas()}
+            accessibilityRole="button"
+            accessibilityLabel="Acompanhar disponibilidade de vagas comuns"
+            style={{ flexDirection: "row", alignSelf: "flex-start", alignItems: "center", gap: 7, backgroundColor: "#EFF6FF", borderRadius: 12, borderWidth: 1, borderColor: "#BFDBFE", minHeight: 48, paddingHorizontal: 14, paddingVertical: 10, marginBottom: 12 }}
+          >
+            <Ionicons name="notifications-outline" size={18} color="#2563EB" />
+            <Text style={{ fontSize: 12, fontWeight: "700", color: "#1D4ED8" }}>Acompanhar vagas comuns</Text>
+          </Pressable>
           {erro ? (
             <View className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
               <Text className="text-[13px] font-medium text-amber-700">Aviso: {erro}</Text>
@@ -634,6 +665,15 @@ export default function MapaVagas() {
         }
       >
         <View className="mx-auto w-full max-w-7xl">
+          <Pressable
+            onPress={() => void acompanharVagas()}
+            accessibilityRole="button"
+            accessibilityLabel="Acompanhar disponibilidade de vagas comuns"
+            style={{ flexDirection: "row", alignSelf: "flex-start", alignItems: "center", gap: 7, backgroundColor: "#EFF6FF", borderRadius: 12, borderWidth: 1, borderColor: "#BFDBFE", minHeight: 48, paddingHorizontal: 14, paddingVertical: 10, marginBottom: 12 }}
+          >
+            <Ionicons name="notifications-outline" size={18} color="#2563EB" />
+            <Text style={{ fontSize: 12, fontWeight: "700", color: "#1D4ED8" }}>Acompanhar vagas comuns</Text>
+          </Pressable>
           <View className="mb-6 flex-row flex-wrap items-end justify-between">
             <View>
               <Text className="text-3xl font-extrabold text-slate-900">{titulo}</Text>

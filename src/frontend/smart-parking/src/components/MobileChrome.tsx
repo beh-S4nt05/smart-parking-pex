@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { Pressable, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import SinoNotificacoes from "./SinoNotificacoes";
 
 const C = {
   navy: "#0F1E38",
@@ -111,6 +112,7 @@ export function MobileScreenHeader({
             </Text>
           ) : null}
         </View>
+        <SinoNotificacoes claro />
         {right}
       </View>
     </View>

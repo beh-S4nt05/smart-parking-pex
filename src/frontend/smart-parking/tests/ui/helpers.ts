@@ -64,3 +64,35 @@ export async function expectSemOverflowHorizontal(page: Page) {
     `documento com ${medidas.conteudo}px em viewport de ${medidas.viewport}px`,
   ).toBeLessThanOrEqual(medidas.viewport + 1);
 }
+
+/**
+ * Sessão real para jornadas que NÃO estão testando o formulário de login.
+ * A rota E2E verifica senha pelo auth_service e emite sessão válida; nunca
+ * existe em produção e não altera o rate limiter do login público.
+ */
+export async function loginViaApi(page: Page, email: string, senha: string) {
+  // Endpoint existe somente no wrapper E2E, protegido por segredo, em loopback.
+  // Usa o auth_service real e cria sessão JWT real, sem consumir a cota da rota
+  // /auth/login. Os testes auth.spec.ts continuam exercitando o fluxo público.
+  const response = await page.request.post(
+    process.env.UI_TEST_SESSION_URL || "http://127.0.0.1:8010/__ui_test/session",
+    {
+      headers: {
+        "X-UI-Test-Token": process.env.UI_TEST_RESET_TOKEN || "smart-parking-ui-local-tests",
+      },
+      data: { email, senha },
+    },
+  );
+  expect(response.status(), "Autenticação das contas seed pelo serviço real de QA").toBe(200);
+  const sessao = (await response.json()) as {
+    access_token: string;
+    refresh_token: string;
+    user: unknown;
+  };
+  expect(sessao.access_token).toBeTruthy();
+  await page.addInitScript(({ access, refresh, user }) => {
+    localStorage.setItem("smartparking_access_token", access);
+    localStorage.setItem("smartparking_refresh_token", refresh);
+    if (user) localStorage.setItem("smartparking_user_cache", JSON.stringify(user));
+  }, { access: sessao.access_token, refresh: sessao.refresh_token, user: sessao.user });
+}

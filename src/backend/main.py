@@ -13,6 +13,7 @@ from api.admin import router as admin_router
 from api.api import router as api_router
 from api.auth import router as auth_router
 from api.sensores import router as sensores_router
+from api.notificacoes import router as notificacoes_router
 from core.body_limit import RequestBodyLimitMiddleware
 from core.config import settings
 from core.cors import opcoes_cors
@@ -209,13 +210,42 @@ async def _zapeador_reservas() -> None:
             await asyncio.sleep(10)
 
 
+async def _zapeador_notificacoes() -> None:
+    """Motor V1 em thread: um ciclo em 15s, com outbox segura no PostgreSQL."""
+    from datetime import datetime
+    from core.timeutils import FUSO_MANAUS
+    from rules.notificacoes_worker import executar_rotina
+
+    ultimo_resumo: str | None = None
+    while True:
+        try:
+            await asyncio.sleep(15)
+            local = datetime.now(FUSO_MANAUS)
+            hoje = local.date().isoformat()
+            gerar = local.hour >= 7 and ultimo_resumo != hoje
+            await asyncio.to_thread(executar_rotina, gerar_resumo=gerar)
+            if gerar:
+                ultimo_resumo = hoje
+        except asyncio.CancelledError:  # noqa: PERF203 - scheduler precisa tratar exceções por ciclo
+            raise
+        except Exception:
+            import logging
+            logging.getLogger("smartparking.notificacoes").exception(
+                "Falha no scheduler de notificações"
+            )
+            await asyncio.sleep(10)
+
+
 @asynccontextmanager
 async def _lifespan(app: FastAPI):
     task = asyncio.create_task(_zapeador_reservas())
+    task_notificacoes = asyncio.create_task(_zapeador_notificacoes())
     try:
         yield
     finally:
         task.cancel()
+        task_notificacoes.cancel()
+        await asyncio.gather(task, task_notificacoes, return_exceptions=True)
 
 
 # Inicializa o app do FastAPI
@@ -271,6 +301,7 @@ app.include_router(api_router)
 app.include_router(auth_router)
 app.include_router(admin_router)
 app.include_router(sensores_router, prefix="/api")
+app.include_router(notificacoes_router)
 
 
 # Rota raiz com limite de acesso

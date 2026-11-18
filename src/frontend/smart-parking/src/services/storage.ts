@@ -11,6 +11,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 const ACCESS_TOKEN_KEY = "smartparking_access_token";
 const REFRESH_TOKEN_KEY = "smartparking_refresh_token";
 const USER_CACHE_KEY = "smartparking_user_cache";
+const NOTIFICATION_DEVICE_KEY = "smartparking_notification_device_id";
 
 async function getItem(key: string): Promise<string | null> {
   if (Platform.OS === "web") {
@@ -53,12 +54,16 @@ export const storage = {
   getUserCache: async (): Promise<string | null> => getItem(USER_CACHE_KEY),
   setUserCache: (json: string) => setItem(USER_CACHE_KEY, json),
   clearUserCache: () => removeItem(USER_CACHE_KEY),
+  getNotificationDeviceId: () => getItem(NOTIFICATION_DEVICE_KEY),
+  setNotificationDeviceId: (id: string) => setItem(NOTIFICATION_DEVICE_KEY, id),
+  clearNotificationDeviceId: () => removeItem(NOTIFICATION_DEVICE_KEY),
 
   clearTokens: async (): Promise<void> => {
     await Promise.all([
       removeItem(ACCESS_TOKEN_KEY),
       removeItem(REFRESH_TOKEN_KEY),
       removeItem(USER_CACHE_KEY),
+      removeItem(NOTIFICATION_DEVICE_KEY),
     ]);
   },
 };
