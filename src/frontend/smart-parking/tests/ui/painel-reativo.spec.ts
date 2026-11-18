@@ -70,6 +70,8 @@ test("reserva e cancelamento do motorista atualizam KPI e sinos do admin sem rel
   await expect(sino).toBeVisible();
   await sino.click();
   await expect(page).toHaveURL(/\/notificacoes$/);
-  await expect(page.getByText("Nova reserva", { exact: true }).first()).toBeVisible();
-  await expect(page.getByText("Reserva cancelada", { exact: true }).first()).toBeVisible();
+  // O app possui textos homônimos em componentes ocultos responsivos;
+  // validar o aviso efetivamente visível na central, não a primeira cópia no DOM.
+  await expect(page.getByText("Nova reserva", { exact: true }).filter({ visible: true }).first()).toBeVisible();
+  await expect(page.getByText("Reserva cancelada", { exact: true }).filter({ visible: true }).first()).toBeVisible();
 });
