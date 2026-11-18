@@ -4,6 +4,7 @@ import { Link, useRouter } from "expo-router";
 import { useAuth } from "../hooks/useAuth";
 import { API_URL } from "../services/api";
 import { Botao, LogoBlox, Logo } from "./ui";
+import SinoNotificacoes from "./SinoNotificacoes";
 
 /**
  * Cabeçalho público unificado em gradiente de marca.
@@ -122,6 +123,7 @@ export default function Header({ rotaAtual = "/" }: { rotaAtual?: string }) {
                   <Text className="text-center text-sm font-semibold text-white">{canAccessPanel ? "Painel" : "Minhas reservas"}</Text>
                 </Pressable>
               </Link>
+              <SinoNotificacoes claro />
               <Link
                 href="/perfil"
                 asChild
