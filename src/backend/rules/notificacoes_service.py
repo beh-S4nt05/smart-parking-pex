@@ -135,6 +135,10 @@ def ao_evento_operacional(db: Session, *, evento: str, usuario_id: str | None,
     """Chamado antes do commit na mesma transação de reserva/pagamento."""
     if not usuario_id or evento not in EVENTOS_RESERVA:
         return
+    # A preferencia financeira desativa os avisos opcionais de pagamento
+    # sem ocultar o registro da operacao na area financeira/reservas.
+    if evento == "pagamento_confirmado" and not preferencias(db, usuario_id).financeiro:
+        return
     tipo, titulo = EVENTOS_RESERVA[evento]
     vaga = db.get(Vaga, vaga_id) if vaga_id else None
     codigo = vaga.codigo if vaga else "—"
@@ -263,6 +267,8 @@ def financeiro_destinatarios(db: Session, estacionamento_id: str) -> list[str]:
 
 def ao_fechar_caixa(db: Session, caixa: FechamentoCaixa):
     for uid in financeiro_destinatarios(db, caixa.estacionamento_id):
+        if not preferencias(db, uid).financeiro:
+            continue
         _novo_destinatario(
             db, uid, "caixa_fechado", "Caixa fechado",
             "O fechamento do caixa foi registrado. Consulte os detalhes no painel.",
