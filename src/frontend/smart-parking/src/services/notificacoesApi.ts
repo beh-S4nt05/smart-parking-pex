@@ -4,7 +4,9 @@ import { api } from "./api";
 export type TipoNotificacao =
   | "reserva_confirmada" | "reserva_cancelada" | "reserva_expirada"
   | "reserva_concluida" | "lembrete_reserva" | "vaga_disponivel"
-  | "pagamento_confirmado" | "caixa_fechado" | "resumo_financeiro";
+  | "pagamento_confirmado" | "caixa_fechado" | "resumo_financeiro"
+  | "painel_reserva_criada" | "painel_reserva_cancelada"
+  | "painel_reserva_expirada" | "painel_reserva_concluida";
 
 export interface NotificacaoV1 {
   id: string;
