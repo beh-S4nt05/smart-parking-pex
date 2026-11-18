@@ -29,8 +29,14 @@ EVENTOS_RESERVA = {
     "pagamento_confirmado": ("pagamento_confirmado", "Pagamento confirmado"),
 }
 EVENTOS_CRITICOS = {"reserva_confirmada", "reserva_cancelada", "reserva_expirada"}
-PUSH_TYPES = {"reserva_confirmada", "reserva_cancelada", "reserva_expirada", "lembrete_reserva",
-              "vaga_disponivel", "pagamento_confirmado", "caixa_fechado", "resumo_financeiro"}
+# Todos os eventos acima e os avisos financeiros permanecem na central interna.
+# O push remoto fica restrito a eventos relevantes fora do aplicativo.
+# Fechamento de caixa, resumo financeiro e entrada registrada sao internos:
+# consultar o painel evita notificacoes administrativas em excesso no telefone.
+PUSH_TYPES = frozenset({
+    "reserva_confirmada", "reserva_cancelada", "reserva_expirada",
+    "lembrete_reserva", "vaga_disponivel", "pagamento_confirmado",
+})
 TIPOS_USUARIO_FINANCEIRO = (TipoUsuario.FINANCEIRO.value, TipoUsuario.ADMIN.value)
 
 
@@ -75,9 +81,9 @@ def _push_autorizado(pref: PreferenciaNotificacao, tipo: str) -> bool:
         return pref.lembretes
     if tipo == "vaga_disponivel":
         return pref.vagas
-    if tipo == "resumo_financeiro":
-        return pref.financeiro and pref.resumo_diario
-    return pref.financeiro
+    if tipo == "pagamento_confirmado":
+        return pref.financeiro
+    return False
 
 
 def _depois_silencio(pref: PreferenciaNotificacao, now: datetime) -> datetime:
