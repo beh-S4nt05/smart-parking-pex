@@ -60,6 +60,9 @@ class Settings(BaseSettings):
 
     # Chave de assinatura de requisições anti-replicação (deve ser a MESMA no frontend)
     APP_SIGNING_SECRET: str = "smartparking_default_signing_key_change_in_production"
+    # Chave Fernet PRIVADA para tokens Expo. Não compartilhar com frontend/HMAC.
+    # Gerar: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+    NOTIFICATIONS_ENCRYPTION_KEY: str | None = None
 
     # Simulador de sensores: base do app Expo usado para montar a URL do QR
     SIMULADOR_BASE_URL: str = "http://localhost:8081"
