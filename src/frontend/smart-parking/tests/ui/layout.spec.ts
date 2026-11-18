@@ -252,7 +252,7 @@ for (const vp of VIEWPORTS) {
 
     await login(page, "admin@smartparking.com", "admin123");
     await expect(page).not.toHaveURL(/\/login$/);
-    for (const rota of ["/dashboard", "/perfil", "/reservas", "/simulador", "/simulador-qr"]) {
+    for (const rota of ["/dashboard", "/perfil", "/reservas", "/notificacoes", "/simulador", "/simulador-qr"]) {
       await resetarLimiter(page);
       await page.goto(rota);
       await auditar(page, rota, vp.nome);
