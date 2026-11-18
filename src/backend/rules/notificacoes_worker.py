@@ -120,6 +120,10 @@ def enviar_pendentes(limite=20) -> int:
                     "sound": "default", "priority": "default",
                     "channelId": "reservas" if n.tipo.startswith(("reserva_", "lembrete_")) else
                                  "vagas" if n.tipo == "vaga_disponivel" else "financeiro"}
+            # Um aviso sobre vaga/reserva expirada nao deve aparecer tardiamente
+            # na tela bloqueada depois de perder o valor operacional.
+            if n.expira_em:
+                data["ttl"] = max(0, int((normalizar(n.expira_em) - utc_agora()).total_seconds()))
             try:
                 with httpx.Client(timeout=8) as client:
                     response = client.post(PUSH_SEND, json=data, headers=_headers())
@@ -129,8 +133,8 @@ def enviar_pendentes(limite=20) -> int:
                     e.status = "aceito"
                     e.ticket_id = resposta["id"]
                     # O ticket confirma aceite do provedor, nao entrega ao celular.
-                    # Evita sondagem em todo ciclo de 15 segundos.
-                    e.executar_em = utc_agora() + timedelta(minutes=2)
+                    # Expo recomenda checar o recibo apos aproximadamente 15 min.
+                    e.executar_em = utc_agora() + timedelta(minutes=15)
                     enviados += 1
                 else:
                     erro = resposta.get("details", {}).get("error") or resposta.get("message", "Resposta inesperada Expo")
@@ -167,8 +171,8 @@ def processar_recibos():
         ativos = []
         for e in entregas:
             n = db.get(Notificacao, e.notificacao_id)
-            # A API do provedor nao oferece recibos indefinidamente.
-            if not n or normalizar(n.criada_em) <= agora - timedelta(hours=48):
+            # Expo descarta os recibos apos 24h; nao manter tickets para sempre.
+            if not n or normalizar(n.criada_em) <= agora - timedelta(hours=24):
                 e.status = "sem_recibo"
                 e.ultimo_erro = "Recibo nao confirmado apos 48 horas"
             else:
