@@ -30,6 +30,16 @@ export default function Layout() {
     let listener: { remove: () => void } | undefined;
     void import("expo-notifications").then(Notifications => {
       if (!ativo) return;
+      // Sem handler, o push pode chegar mas não aparecer como aviso visível
+      // quando o Smart Parking está aberto em primeiro plano.
+      Notifications.setNotificationHandler({
+        handleNotification: async () => ({
+          shouldShowBanner: true,
+          shouldShowList: true,
+          shouldPlaySound: true,
+          shouldSetBadge: false,
+        }),
+      });
       listener = Notifications.addNotificationResponseReceivedListener(response => {
         const destino = destinoNotificacaoSeguro(response.notification.request.content.data?.destino);
         if (destino) router.push(destino as never);
