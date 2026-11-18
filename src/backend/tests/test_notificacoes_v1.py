@@ -503,3 +503,95 @@ def test_preferencia_financeiro_bloqueia_avisos_opcionais_da_central(db, fab):
         Notificacao.usuario_id == financeiro.id,
         Notificacao.tipo.in_(["pagamento_confirmado", "caixa_fechado"]),
     ).count() == 0
+
+
+def test_evento_reserva_notifica_gestor_e_admin_do_escopo(db, fab, client):
+    """Criacao/cancelamento visiveis no painel, sem push e sem vazamento cross-shopping."""
+    from models.db_models import DispositivoNotificacao, EntregaNotificacao
+
+    est = fab.est()
+    outro_est = fab.est()
+    vaga = fab.vaga(fab.andar(est))
+    motorista = fab.usuario()
+    gestor = fab.usuario(role=TipoUsuario.GESTOR, est=est)
+    gestor_alheio = fab.usuario(role=TipoUsuario.GESTOR, est=outro_est)
+    financeiro = fab.usuario(role=TipoUsuario.FINANCEIRO, est=est)
+    admin = fab.usuario(role=TipoUsuario.ADMIN)
+    # Preferencia global de push nao torna alertas administrativos push.
+    pref = notify.preferencias(db, gestor.id)
+    pref.push_ativo = True
+    import hashlib
+    dispositivo = DispositivoNotificacao(
+        usuario_id=gestor.id, plataforma="android",
+        token_expo="cifrado-no-teste", ativo=True,
+        token_hash=hashlib.sha256(gestor.id.encode()).hexdigest(),
+    )
+    db.add(dispositivo)
+    db.commit()
+
+    reserva = _reserva(db, vaga, motorista)
+    reserva_service.cancelar_reserva(db, reserva.id, motorista)
+
+    for destinatario in (gestor, admin):
+        avisos = db.query(Notificacao).filter(
+            Notificacao.usuario_id == destinatario.id,
+            Notificacao.referencia_id == reserva.id,
+            Notificacao.tipo.like("painel_reserva_%"),
+        ).all()
+        assert {n.tipo for n in avisos} == {
+            "painel_reserva_criada", "painel_reserva_cancelada",
+        }
+        assert all(n.estacionamento_id == est.id for n in avisos)
+        resposta = client.get("/api/notificacoes", headers=fab.token(destinatario))
+        assert resposta.status_code == 200
+        assert {n["tipo"] for n in resposta.json() if n["referencia_id"] == reserva.id} >= {
+            "painel_reserva_criada", "painel_reserva_cancelada",
+        }
+
+    for destinatario in (gestor_alheio, financeiro):
+        assert db.query(Notificacao).filter(
+            Notificacao.usuario_id == destinatario.id,
+            Notificacao.referencia_id == reserva.id,
+            Notificacao.tipo.like("painel_reserva_%"),
+        ).count() == 0
+
+    assert db.query(EntregaNotificacao).join(
+        Notificacao, EntregaNotificacao.notificacao_id == Notificacao.id,
+    ).filter(Notificacao.tipo.like("painel_reserva_%")).count() == 0
+
+    alheio = client.get("/api/notificacoes", headers=fab.token(gestor_alheio))
+    assert all(n["referencia_id"] != reserva.id for n in alheio.json())
+    assert client.patch(
+        f"/api/notificacoes/{avisos[0].id}/ler", headers=fab.token(gestor_alheio),
+    ).status_code == 404
+
+
+def test_painel_respeita_opt_out_reservas_e_idempotencia(db, fab):
+    est = fab.est()
+    vaga = fab.vaga(fab.andar(est))
+    motorista = fab.usuario()
+    gestor = fab.usuario(role=TipoUsuario.GESTOR, est=est)
+    admin = fab.usuario(role=TipoUsuario.ADMIN)
+    pref = notify.preferencias(db, gestor.id)
+    pref.reservas = False
+    db.commit()
+
+    reserva = _reserva(db, vaga, motorista)
+    # Registros do backend são idempotentes mesmo quando a operação é repetida.
+    for _ in range(2):
+        notify.ao_evento_operacional(
+            db, evento="reserva_criada", usuario_id=motorista.id,
+            estacionamento_id=est.id, reserva_id=reserva.id, vaga_id=vaga.id,
+        )
+    db.commit()
+
+    assert db.query(Notificacao).filter(
+        Notificacao.usuario_id == gestor.id,
+        Notificacao.referencia_id == reserva.id,
+        Notificacao.tipo == "painel_reserva_criada",
+    ).count() == 0
+    assert db.query(Notificacao).filter(
+        Notificacao.usuario_id == admin.id,
+        Notificacao.referencia_id == reserva.id,
+        Notificacao.tipo == "painel_reserva_criada",
+    ).count() == 1
