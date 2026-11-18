@@ -4,13 +4,12 @@ import os
 from datetime import timedelta
 
 import httpx
-from sqlalchemy import or_
 
 from core.timeutils import utc_agora, normalizar
 from models.database import SessionLocal
 from models.db_models import (
     DispositivoNotificacao, EntregaNotificacao, Notificacao,
-    PreferenciaNotificacao, Reserva, StatusReserva, Usuario, Vaga,
+    Reserva, StatusReserva, Usuario, Vaga,
 )
 from rules import notificacoes_service as service
 
