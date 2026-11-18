@@ -223,8 +223,10 @@ async def _zapeador_notificacoes() -> None:
             local = datetime.now(FUSO_MANAUS)
             hoje = local.date().isoformat()
             gerar = local.hour >= 7 and ultimo_resumo != hoje
-            await asyncio.to_thread(executar_rotina, gerar_resumo=gerar)
-            if gerar:
+            rotina_ok = await asyncio.to_thread(executar_rotina, gerar_resumo=gerar)
+            # O worker devolve False em caso de rollback. Nao marcar o dia
+            # como concluido sem um commit valido do resumo financeiro.
+            if gerar and rotina_ok:
                 ultimo_resumo = hoje
         except asyncio.CancelledError:  # noqa: PERF203 - scheduler precisa tratar exceções por ciclo
             raise
