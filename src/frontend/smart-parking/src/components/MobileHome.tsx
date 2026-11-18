@@ -188,6 +188,14 @@ export default function MobileHome({
               ONDE VAMOS ESTACIONAR?
             </Text>
 
+            {loading && shoppings.length === 0 ? (
+              <View accessible accessibilityLabel="Carregando estacionamentos"
+                style={{ flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 12 }}>
+                <ActivityIndicator size="small" color={C.blue} accessibilityLabel="Carregando estacionamentos" />
+                <Text style={{ color: C.muted, fontSize: 12 }}>Carregando estacionamentos e vagas...</Text>
+              </View>
+            ) : null}
+
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Selecionar shopping"
@@ -393,15 +401,7 @@ export default function MobileHome({
             );
           })}
 
-          {loading && shoppings.length === 0 ? (
-            <View accessible accessibilityLabel="Carregando estacionamentos"
-              style={{ alignItems: "center", justifyContent: "center", padding: 24, gap: 12, backgroundColor: "#FFFFFF", borderRadius: 18 }}>
-              <ActivityIndicator size="large" color={C.blue} accessibilityLabel="Carregando estacionamentos" />
-              <Text style={{ textAlign: "center", color: C.muted, fontWeight: "600" }}>
-                Carregando estacionamentos e vagas...
-              </Text>
-            </View>
-          ) : null}
+
         </View>
       </ScrollView>
 
