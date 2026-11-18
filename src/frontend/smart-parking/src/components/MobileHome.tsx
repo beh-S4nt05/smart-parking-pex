@@ -1,5 +1,6 @@
 import { useState } from "react";
 import {
+  ActivityIndicator,
   FlatList,
   Modal,
   Pressable,
@@ -393,9 +394,13 @@ export default function MobileHome({
           })}
 
           {loading && shoppings.length === 0 ? (
-            <Text style={{ textAlign: "center", color: C.muted, padding: 20 }}>
-              Consultando estacionamentos...
-            </Text>
+            <View accessible accessibilityLabel="Carregando estacionamentos"
+              style={{ alignItems: "center", justifyContent: "center", padding: 24, gap: 12, backgroundColor: "#FFFFFF", borderRadius: 18 }}>
+              <ActivityIndicator size="large" color={C.blue} accessibilityLabel="Carregando estacionamentos" />
+              <Text style={{ textAlign: "center", color: C.muted, fontWeight: "600" }}>
+                Carregando estacionamentos e vagas...
+              </Text>
+            </View>
           ) : null}
         </View>
       </ScrollView>
