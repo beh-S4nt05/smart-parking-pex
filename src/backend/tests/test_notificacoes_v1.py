@@ -355,3 +355,55 @@ def test_recibo_antigo_sem_resposta_encerrado_com_status_explicito(db, fab, monk
 
     db.refresh(entrega)
     assert entrega.status == "sem_recibo"
+
+
+def test_matriz_canais_eventos_gerais_na_v1(db, fab):
+    """Avisos de app persistem; so eventos pertinentes criam push opt-in."""
+    import hashlib
+
+    from models.db_models import DispositivoNotificacao, EntregaNotificacao
+
+    usuario = fab.usuario()
+    pref = notify.preferencias(db, usuario.id)
+    pref.push_ativo = True
+    pref.vagas = True
+    pref.financeiro = True
+    pref.resumo_diario = True
+    device = DispositivoNotificacao(
+        usuario_id=usuario.id, plataforma="android",
+        token_expo="cifrado-nao-utilizado",
+        token_hash=hashlib.sha256(("push-" + usuario.id).encode()).hexdigest(),
+        ativo=True,
+    )
+    db.add(device)
+    db.flush()
+
+    canais = {
+        "reserva_confirmada": True,
+        "reserva_cancelada": True,
+        "reserva_expirada": True,
+        "reserva_concluida": False,
+        "lembrete_reserva": True,
+        "vaga_disponivel": True,
+        "pagamento_confirmado": True,
+        "caixa_fechado": False,
+        "resumo_financeiro": False,
+    }
+    for tipo, envia_push in canais.items():
+        n = notify._novo_destinatario(
+            db, usuario.id, tipo, tipo, "Aviso de teste",
+            f"matriz:{usuario.id}:{tipo}",
+        )
+        assert n is not None, tipo
+        db.flush()
+        assert (db.query(EntregaNotificacao).filter_by(notificacao_id=n.id).count() == 1) is envia_push
+
+    assert db.query(Notificacao).filter_by(usuario_id=usuario.id).count() >= len(canais)
+    pref.push_ativo = False
+    assert all(not notify._push_autorizado(pref, tipo) for tipo in canais)
+    pref.push_ativo = True
+    pref.reservas = False
+    assert not notify._push_autorizado(pref, "reserva_confirmada")
+    assert notify._push_autorizado(pref, "pagamento_confirmado")
+    pref.financeiro = False
+    assert not notify._push_autorizado(pref, "pagamento_confirmado")
