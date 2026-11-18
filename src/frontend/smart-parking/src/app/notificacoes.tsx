@@ -1,6 +1,6 @@
 /** Central interna da V1 — dados autorizados pelo JWT, sem dependência do push remoto. */
 import { useCallback, useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, Switch, Text, View } from "react-native";
+import { ActivityIndicator, Platform, Pressable, ScrollView, Switch, Text, View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import Header from "../components/Header";
@@ -8,6 +8,7 @@ import { MobileScreenHeader } from "../components/MobileChrome";
 import { useAuth } from "../hooks/useAuth";
 import { useNotificacoes } from "../components/Notificacoes";
 import { apiErrorMessage } from "../services/api";
+import { habilitarPushMobile } from "../services/pushNotificacoes";
 import {
   notificacoesApi, type AcompanhamentoV1, type NotificacaoV1,
   type PreferenciasNotificacaoV1,
@@ -94,6 +95,27 @@ export default function TelaNotificacoes() {
     } finally { setSalvando(false); }
   }
 
+  async function alternarPush(ativo: boolean) {
+    if (!preferencias || salvando) return;
+    if (!ativo) {
+      await atualizarOpcao("push_ativo", false);
+      return;
+    }
+    setSalvando(true);
+    try {
+      // Solicita permissão apenas após ação explícita do usuário.
+      await habilitarPushMobile();
+      const proxima = { ...preferencias, push_ativo: true };
+      await notificacoesApi.salvarPreferencias(proxima);
+      setPreferencias(proxima);
+      avisar("Notificações ativadas", "Acompanhe reservas e vagas pelo celular.", "sucesso");
+    } catch (e) {
+      avisar("Push não ativado", apiErrorMessage(e), "erro");
+    } finally {
+      setSalvando(false);
+    }
+  }
+
   async function carregarMais() {
     try {
       const page = await notificacoesApi.listar(filtro, notificacoes.length);
@@ -169,6 +191,11 @@ export default function TelaNotificacoes() {
               <Text style={{ color: C.cinza, fontSize: 12, marginTop: 3 }}>As notificações externas precisam de permissão do celular.</Text>
               {preferencias ? (
                 <>
+                  <View style={{ flexDirection: "row", alignItems: "center", paddingVertical: 9, borderBottomWidth: 1, borderColor: C.borda, gap: 10 }}>
+                    <Text style={{ flex: 1, color: C.texto, fontSize: 13 }}>Receber push no celular</Text>
+                    <Switch accessibilityLabel="Receber push no celular" value={preferencias.push_ativo}
+                      onValueChange={v => void alternarPush(v)} disabled={salvando || Platform.OS === "web"} />
+                  </View>
                   {TITULOS.map(([chave, rotulo]) => (
                     <View key={chave} style={{ flexDirection: "row", alignItems: "center", paddingVertical: 9, borderBottomWidth: 1, borderColor: C.borda, gap: 10 }}>
                       <Text style={{ flex: 1, color: C.texto, fontSize: 13 }}>{rotulo}</Text>
