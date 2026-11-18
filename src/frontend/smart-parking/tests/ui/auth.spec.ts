@@ -84,6 +84,8 @@ test("admin acessa dados reais do painel e encerra a sessão", async ({ page }) 
   await login(page, "admin@smartparking.com", "admin123");
   await expect(page).toHaveURL(/\/dashboard$/);
   await expect(page.getByText("Visão geral em tempo real")).toBeVisible();
+  await expect(page.getByText("Shoppings cadastrados", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Atualizar indicadores" })).toBeVisible();
 
   await page.getByText("Usuários", { exact: true }).click();
   await expect(page.getByText("motorista@smartparking.com")).toBeVisible();
