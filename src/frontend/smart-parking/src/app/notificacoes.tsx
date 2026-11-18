@@ -20,7 +20,7 @@ function destinoSeguro(destino: string | null): string | null {
   if (/^\/shopping\/[a-zA-Z0-9_-]+$/.test(destino)) return destino;
   return null;
 }
-const C = { azul: "#2563EB", texto: "#0F172A", cinza: "#64748B", borda: "#E2E8F0" };
+const C = { azul: "#2563EB", texto: "#0F172A", cinza: "#475569", borda: "#E2E8F0" };
 const TITULOS = [
   ["reservas", "Reservas, cancelamentos e expirações"],
   ["lembretes", "Lembretes antes de vencer"],
