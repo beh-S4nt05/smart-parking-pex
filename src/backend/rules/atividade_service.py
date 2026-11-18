@@ -60,7 +60,11 @@ def listar_atividades(
     """Ações registradas, autorizadas exclusivamente pelo escopo do endpoint."""
     limite = max(1, min(limite, 100))
     offset = max(0, offset)
-    q = db.query(EventoOperacional)
+    # Eventos internos usados para acompanhar vagas não poluem o histórico
+    # operacional visível nem deslocam a paginação de reservas/pagamentos.
+    q = db.query(EventoOperacional).filter(
+        EventoOperacional.evento != "vaga_liberada"
+    )
     if estacionamento_id:
         q = q.filter(EventoOperacional.estacionamento_id == estacionamento_id)
     if inicio is not None:
