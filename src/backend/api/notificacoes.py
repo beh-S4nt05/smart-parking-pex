@@ -127,6 +127,41 @@ def atualizar_preferencias(dados: PreferenciasInput,
     return {"ok": True}
 
 
+@router.get("/push/status")
+def diagnostico_push(db: Session = Depends(get_db),
+                     usuario: Usuario = Depends(get_usuario_autenticado)):
+    """Diagnóstico seguro para a conta atual, sem vazar tokens nem credenciais.
+
+    'pronto' significa servidor apto a REGISTRAR e PROCESSAR entregas.
+    A entrega ao celular ainda depende do build EAS, FCM/APNs e do provedor.
+    """
+    from rules.notificacoes_worker import _habilitado
+
+    habilitado = _habilitado()
+    try:
+        service._fernet()
+        criptografia = True
+    except RuntimeError:
+        criptografia = False
+
+    dispositivos = db.query(func.count(DispositivoNotificacao.id)).filter(
+        DispositivoNotificacao.usuario_id == usuario.id,
+        DispositivoNotificacao.ativo.is_(True),
+    ).scalar() or 0
+    motivos = []
+    if not habilitado:
+        motivos.append("O envio push do servidor está desligado (NOTIFICACOES_PUSH_ENABLED).")
+    if not criptografia:
+        motivos.append("A chave privada de dispositivos não está configurada ou é inválida.")
+    return {
+        "envio_habilitado": habilitado,
+        "criptografia_configurada": criptografia,
+        "dispositivos_ativos": dispositivos,
+        "pronto": habilitado and criptografia,
+        "motivos": motivos,
+    }
+
+
 @router.post("/dispositivos", status_code=201)
 def registrar_dispositivo(dados: DispositivoInput,
                           db: Session = Depends(get_db),
