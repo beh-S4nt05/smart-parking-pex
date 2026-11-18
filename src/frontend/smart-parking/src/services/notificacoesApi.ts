@@ -31,6 +31,14 @@ export interface PreferenciasNotificacaoV1 {
   silencio_inicio: number;
   silencio_fim: number;
 }
+export interface DiagnosticoPushV1 {
+  envio_habilitado: boolean;
+  criptografia_configurada: boolean;
+  dispositivos_ativos: number;
+  pronto: boolean;
+  motivos: string[];
+}
+
 export interface AcompanhamentoV1 {
   id: string;
   estacionamento_id: string;
@@ -40,6 +48,10 @@ export interface AcompanhamentoV1 {
 }
 
 export const notificacoesApi = {
+  async diagnosticoPush() {
+    const { data } = await api.get<DiagnosticoPushV1>("/api/notificacoes/push/status");
+    return data;
+  },
   async listar(filtro: "todas" | "nao_lidas" = "todas", offset = 0) {
     const { data } = await api.get<NotificacaoV1[]>("/api/notificacoes", {
       params: { minhas: filtro, offset, limite: 30 },
