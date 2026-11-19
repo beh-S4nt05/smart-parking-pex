@@ -26,10 +26,12 @@ export function useEstacionamentos({ pollingMs = 0, escopoPainel = false }: Opti
   const chaveCache = escopoPainel ? null : chaveCacheVitrine(user?.id);
   const [estacionamentos, setEstacionamentos] = useState<Estacionamento[]>([]);
   const [loading, setLoading] = useState(true);
+  const [atualizando, setAtualizando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [atualizadoEm, setAtualizadoEm] = useState<number>(Date.now());
   const mounted = useRef(true);
   const emCurso = useRef(false);
+  const timerIndicador = useRef<ReturnType<typeof setTimeout> | null>(null);
   const revalidou = useRef(false);
   const dadosRef = useRef<Estacionamento[]>([]);
   const atualizadoRef = useRef(0);
@@ -38,6 +40,7 @@ export function useEstacionamentos({ pollingMs = 0, escopoPainel = false }: Opti
     mounted.current = true;
     return () => {
       mounted.current = false;
+      if (timerIndicador.current) clearTimeout(timerIndicador.current);
     };
   }, []);
 
@@ -48,6 +51,11 @@ export function useEstacionamentos({ pollingMs = 0, escopoPainel = false }: Opti
     // Uma API lenta não pode acumular chamadas idênticas a cada intervalo.
     if (emCurso.current) return;
     emCurso.current = true;
+    if (timerIndicador.current) clearTimeout(timerIndicador.current);
+    const inicio = Date.now();
+    // Mostra o estado de sincronizacao por pelo menos 480 ms, sem atrasar
+    // a atualizacao dos dados nem bloquear cliques no Hero.
+    if (mounted.current) setAtualizando(true);
     try {
       const dados = escopoPainel
         ? await parkingApi.listarEstacionamentosPainel()
@@ -75,7 +83,16 @@ export function useEstacionamentos({ pollingMs = 0, escopoPainel = false }: Opti
       );
     } finally {
       emCurso.current = false;
-      if (mounted.current) setLoading(false);
+      if (mounted.current) {
+        setLoading(false);
+        timerIndicador.current = setTimeout(
+          () => {
+            if (mounted.current) setAtualizando(false);
+            timerIndicador.current = null;
+          },
+          Math.max(0, 480 - (Date.now() - inicio)),
+        );
+      }
     }
   }, [escopoPainel, chaveCache, authLoading, user?.id, canAccessPanel]);
 
@@ -111,5 +128,5 @@ export function useEstacionamentos({ pollingMs = 0, escopoPainel = false }: Opti
     }
   }, [refresh, pollingMs]);
 
-  return { estacionamentos, loading, erro, atualizadoEm, refresh };
+  return { estacionamentos, loading, atualizando, erro, atualizadoEm, refresh };
 }
