@@ -14,6 +14,7 @@ import { minW0Flex1, subtituloHero } from "../styles/recipes";
 import { useEffect, useState } from "react";
 import { FlatList, Modal, Platform, Pressable, ScrollView, Text, View, useWindowDimensions } from "react-native";
 import { Botao, IconeChevron } from "./ui";
+import BarraAtualizacaoHero from "./BarraAtualizacaoHero";
 import type { Estacionamento } from "../types/api";
 
 interface Props {
@@ -21,9 +22,11 @@ interface Props {
   selecionadoId: string | null;
   onSelect: (id: string) => void;
   onBuscar: () => void;
+  atualizando?: boolean;
+  erroAtualizacao?: boolean;
 }
 
-export default function Hero({ shoppings, selecionadoId, onSelect, onBuscar }: Props) {
+export default function Hero({ shoppings, selecionadoId, onSelect, onBuscar, atualizando = false, erroAtualizacao = false }: Props) {
   const [listaAberta, setListaAberta] = useState(false);
   const { height: alturaTela } = useWindowDimensions();
   const selecionado =
@@ -216,7 +219,9 @@ export default function Hero({ shoppings, selecionadoId, onSelect, onBuscar }: P
           </View>
         </View>
 
-
+        <View className="w-full max-w-2xl px-3 sm:px-4 3xl:max-w-3xl">
+          <BarraAtualizacaoHero atualizando={atualizando} erro={erroAtualizacao} />
+        </View>
       </View>
     </View>
   );
