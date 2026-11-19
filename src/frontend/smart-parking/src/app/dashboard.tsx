@@ -129,7 +129,11 @@ export default function Dashboard() {
       }
       subtitulo={
         aba === "dashboard"
-          ? "Visão geral em tempo real"
+          ? user?.role === "admin"
+            ? "Visão geral em tempo real"
+            : user?.role === "gestor"
+              ? "Operação dos estacionamentos vinculados"
+              : "Fluxo e faturamento do seu estacionamento"
           : aba === "relatorios"
             ? "Fluxo e ocupação por período"
             : undefined
@@ -141,6 +145,20 @@ export default function Dashboard() {
           <Botao label="Tentar novamente" variant="contorno" onPress={recarregarEstacionamentos} />
         </View>
       ) : null}
+      <View className="mb-3 flex-row flex-wrap items-center gap-2">
+        <View className="rounded-full bg-blue-50 px-3 py-1.5">
+          <Text className="text-xs font-bold text-blue-800">
+            Perfil: {ROLE_LABEL[user?.role ?? ""] ?? "Operação"}
+          </Text>
+        </View>
+        <Text className="text-xs text-slate-600">
+          {isAdmin
+            ? "Visão global ou por shopping selecionado"
+            : user?.role === "gestor"
+              ? "Acesso somente aos estacionamentos vinculados"
+              : "Dados exclusivos do estacionamento financeiro"}
+        </Text>
+      </View>
       {listaShoppings}
 
       <FadeTroca chave={aba}>
@@ -149,6 +167,7 @@ export default function Dashboard() {
           estacionamentos={estacionamentos}
           estSel={estSel}
           isAdmin={isAdmin}
+          role={user?.role ?? "gestor"}
           onOperacao={recarregarEstacionamentos}
         />
       )}
@@ -186,11 +205,13 @@ function AbaDashboard({
   estacionamentos,
   estSel,
   isAdmin,
+  role,
   onOperacao,
 }: {
   estacionamentos: Estacionamento[];
   estSel: string | null;
   isAdmin: boolean;
+  role: string;
   onOperacao: () => void | Promise<void>;
 }) {
   const router = useRouter();
@@ -213,6 +234,11 @@ function AbaDashboard({
     return () => subscription.remove();
   }, []);
   const [admin, setAdmin] = useState<DashboardAdmin | null>(null);
+  const [financeiro, setFinanceiro] = useState<
+    Awaited<ReturnType<typeof parkingApi.financeiroResumo>> | null
+  >(null);
+  const [sincronizandoResumo, setSincronizandoResumo] = useState(false);
+  const [atualizadoEm, setAtualizadoEm] = useState<number | null>(null);
   const [gestor, setGestor] = useState<{
     faturamento_hoje: number;
     ticket_medio_hoje: number;
@@ -232,13 +258,25 @@ function AbaDashboard({
   const [erro, setErro] = useState<string | null>(null);
 
   const carregar = useCallback(async () => {
+    setSincronizandoResumo(true);
     try {
-      if (isAdmin && !estSel) {
+      if (role === "financeiro") {
+        // Financeiro NÃO possui acesso a /admin/gestor/dashboard (403).
+        // Consultar somente o endpoint autorizado e escopado no servidor.
+        const d = await parkingApi.financeiroResumo("diario", estSel ?? undefined);
+        setFinanceiro(d);
+        setGestor(null);
+        setAdmin(null);
+      } else if (isAdmin && !estSel) {
         const d = await parkingApi.dashboardAdmin();
         setAdmin(d);
+        setGestor(null);
+        setFinanceiro(null);
       } else {
-        const d = await parkingApi.dashboardGestor(estSel ?? undefined).catch(() => null);
-        if (d) setGestor(d as never);
+        const d = await parkingApi.dashboardGestor(estSel ?? undefined);
+        setGestor(d);
+        setFinanceiro(null);
+        setAdmin(null);
       }
       const f = await parkingApi.fluxoHoje(estSel ?? undefined);
       setFluxo(f);
@@ -248,11 +286,14 @@ function AbaDashboard({
       } else {
         setAndares([]);
       }
+      setAtualizadoEm(Date.now());
       setErro(null);
     } catch (e) {
       setErro(apiErrorMessage(e, "Falha ao carregar o painel."));
+    } finally {
+      setSincronizandoResumo(false);
     }
-  }, [estSel, isAdmin]);
+  }, [estSel, isAdmin, role]);
 
   useEffect(() => {
     carregar();
@@ -346,6 +387,19 @@ function AbaDashboard({
 
   return (
     <View className="gap-5">
+      <View className="flex-row flex-wrap items-center justify-between gap-3">
+        <Text className="text-xs text-slate-600">
+          {atualizadoEm
+            ? `Indicadores atualizados às ${new Date(atualizadoEm).toLocaleTimeString("pt-BR")}`
+            : "Consultando indicadores do painel..."}
+        </Text>
+        <Botao
+          label="Atualizar indicadores"
+          variant="contorno"
+          loading={sincronizandoResumo}
+          onPress={() => { void carregar(); void onOperacao(); }}
+        />
+      </View>
       {erro ? (
         <View className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
           <Text className="text-[13px] font-medium text-amber-700">Aviso: {erro}</Text>
@@ -384,11 +438,44 @@ function AbaDashboard({
         </View>
       </View>
 
-      {gestor ? (
-        <Text className="text-xs text-slate-600">
-          Faturamento hoje: {formatarMoedaBR(gestor.faturamento_hoje)} ·{" "}
-          {gestor.total_pagamentos_hoje} pagamentos
-        </Text>
+      {isAdmin && !estSel && admin ? (
+        <View className="flex-row flex-wrap gap-3">
+          <View className="min-w-[150px] flex-1">
+            <StatTile rotulo="Shoppings cadastrados" valor={String(admin.total_estacionamentos)} tone="azul" />
+          </View>
+          <View className="min-w-[150px] flex-1">
+            <StatTile rotulo="Motoristas cadastrados" valor={String(admin.total_usuarios_cadastrados)} tone="neutro" />
+          </View>
+          <View className="min-w-[150px] flex-1">
+            <StatTile rotulo="Reservas criadas hoje" valor={String(admin.reservas_hoje)} tone="roxo" />
+          </View>
+        </View>
+      ) : null}
+      {role === "financeiro" && financeiro ? (
+        <View className="flex-row flex-wrap gap-3">
+          <View className="min-w-[150px] flex-1">
+            <StatTile rotulo="Faturamento hoje" valor={formatarMoedaBR(financeiro.faturamento_total)} tone="verde" />
+          </View>
+          <View className="min-w-[150px] flex-1">
+            <StatTile rotulo="Pagamentos hoje" valor={String(financeiro.total_pagamentos)} tone="azul" />
+          </View>
+          <View className="min-w-[150px] flex-1">
+            <StatTile rotulo="Ticket médio hoje" valor={formatarMoedaBR(financeiro.ticket_medio)} tone="roxo" />
+          </View>
+        </View>
+      ) : null}
+      {role === "gestor" && gestor ? (
+        <View className="flex-row flex-wrap gap-3">
+          <View className="min-w-[150px] flex-1">
+            <StatTile rotulo="Faturamento hoje" valor={formatarMoedaBR(gestor.faturamento_hoje)} tone="verde" />
+          </View>
+          <View className="min-w-[150px] flex-1">
+            <StatTile rotulo="Pagamentos hoje" valor={String(gestor.total_pagamentos_hoje)} tone="azul" />
+          </View>
+          <View className="min-w-[150px] flex-1">
+            <StatTile rotulo="Ticket médio hoje" valor={formatarMoedaBR(gestor.ticket_medio_hoje)} tone="roxo" />
+          </View>
+        </View>
       ) : null}
 
       <View className="flex-row flex-wrap items-start gap-5">

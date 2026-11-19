@@ -84,6 +84,8 @@ test("admin acessa dados reais do painel e encerra a sessão", async ({ page }) 
   await login(page, "admin@smartparking.com", "admin123");
   await expect(page).toHaveURL(/\/dashboard$/);
   await expect(page.getByText("Visão geral em tempo real")).toBeVisible();
+  await expect(page.getByText("Shoppings cadastrados", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Atualizar indicadores" })).toBeVisible();
 
   await page.getByText("Usuários", { exact: true }).click();
   await expect(page.getByText("motorista@smartparking.com")).toBeVisible();
@@ -104,11 +106,10 @@ test("gestor não recebe ações exclusivas do admin global", async ({ page }) =
   await expect(page).toHaveURL(/\/dashboard$/);
   await expect(page.getByText("Simulador QR", { exact: true })).toHaveCount(0);
 
-  await page.getByText("Usuários", { exact: true }).click();
-  await expect(
-    page.getByText("Gestão de usuários é exclusiva do administrador global."),
-  ).toBeVisible();
+  await expect(page.getByText("Usuários", { exact: true })).toHaveCount(0);
   await expect(page.getByRole("button", { name: /Novo usuário/ })).toHaveCount(0);
+  await expect(page.getByText("Operação dos estacionamentos vinculados")).toBeVisible();
+  await expect(page.getByText("Faturamento hoje", { exact: true })).toBeVisible();
 
   await page.getByText("Estacionamentos", { exact: true }).click();
   await expect(page.getByRole("button", { name: /Novo estacionamento/ })).toHaveCount(0);
@@ -119,15 +120,16 @@ test("financeiro acessa relatórios sem receber ações do admin global", async 
   await login(page, "financeiro@smartparking.com", "financ123");
   await expect(page).toHaveURL(/\/dashboard$/);
   await expect(page.getByText("Simulador QR", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("Fluxo e faturamento do seu estacionamento")).toBeVisible();
+  await expect(page.getByText("Faturamento hoje", { exact: true })).toBeVisible();
+  await expect(page.getByText("Pagamentos hoje", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Atualizar indicadores" })).toBeVisible();
 
   await page.getByText("Relatórios", { exact: true }).click();
   await expect(page.getByText("Financeiro do período", { exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "CSV financeiro" })).toBeVisible();
 
-  await page.getByText("Usuários", { exact: true }).click();
-  await expect(
-    page.getByText("Gestão de usuários é exclusiva do administrador global."),
-  ).toBeVisible();
+  await expect(page.getByText("Usuários", { exact: true })).toHaveCount(0);
   await expect(page.getByRole("button", { name: /Novo usuário/ })).toHaveCount(0);
 });
 

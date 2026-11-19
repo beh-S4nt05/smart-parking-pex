@@ -66,8 +66,11 @@ export default function AdminShell({
   const router = useRouter();
   const { user, signOut } = useAuth();
 
-  // Simulador QR é tooling de infraestrutura: visível SOMENTE ao admin global
-  const abas = ABAS.filter((a) => a.id !== "simulador-qr" || user?.role === "admin");
+  // Usuários e Simulador QR são ferramentas do admin global.
+  // Não anunciar uma rota que mostra apenas "acesso exclusivo" a gestor/financeiro.
+  const abas = ABAS.filter((a) =>
+    (a.id !== "simulador-qr" && a.id !== "usuarios") || user?.role === "admin"
+  );
 
   const trocar = (a: AbaPainel) => {
     if (a === "simulador-qr") {
