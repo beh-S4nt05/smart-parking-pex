@@ -19,6 +19,15 @@ export function diagnosticoBuildPush(): string | null {
   return null;
 }
 
+/** Consulta a permissão do sistema sem mostrar diálogo; útil para diagnóstico. */
+export async function estadoPermissaoPushNativa(): Promise<"permitida" | "solicitar" | "bloqueada" | null> {
+  if (diagnosticoBuildPush()) return null;
+  const Notifications = await import("expo-notifications");
+  const permissao = await Notifications.getPermissionsAsync();
+  if (permissao.granted) return "permitida";
+  return permissao.canAskAgain ? "solicitar" : "bloqueada";
+}
+
 export async function habilitarPushMobile(): Promise<string> {
   const problema = diagnosticoBuildPush();
   if (problema) throw new Error(problema);
