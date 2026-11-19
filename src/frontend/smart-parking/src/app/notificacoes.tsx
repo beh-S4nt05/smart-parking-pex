@@ -1,6 +1,6 @@
 /** Central interna da V1 — dados autorizados pelo JWT, sem dependência do push remoto. */
 import { useCallback, useState } from "react";
-import { ActivityIndicator, Platform, Pressable, ScrollView, Switch, Text, View } from "react-native";
+import { ActivityIndicator, Linking, Platform, Pressable, ScrollView, Switch, Text, View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import Header from "../components/Header";
@@ -8,9 +8,10 @@ import { MobileScreenHeader } from "../components/MobileChrome";
 import { useAuth } from "../hooks/useAuth";
 import { useNotificacoes } from "../components/Notificacoes";
 import { apiErrorMessage } from "../services/api";
-import { habilitarPushMobile } from "../services/pushNotificacoes";
+import { diagnosticoBuildPush, estadoPermissaoPushNativa, habilitarPushMobile } from "../services/pushNotificacoes";
+import { storage } from "../services/storage";
 import {
-  notificacoesApi, type AcompanhamentoV1, type NotificacaoV1,
+  notificacoesApi, type AcompanhamentoV1, type DiagnosticoPushV1, type NotificacaoV1,
   type PreferenciasNotificacaoV1,
 } from "../services/notificacoesApi";
 
@@ -41,6 +42,30 @@ export default function TelaNotificacoes() {
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [mais, setMais] = useState(false);
+  const [statusPush, setStatusPush] = useState<DiagnosticoPushV1 | null>(null);
+  const [erroStatusPush, setErroStatusPush] = useState<string | null>(null);
+  const [permissaoPushNativa, setPermissaoPushNativa] = useState<
+    "permitida" | "solicitar" | "bloqueada" | null
+  >(null);
+
+  const consultarPush = useCallback(async () => {
+    if (!user) return;
+    try {
+      const status = await notificacoesApi.diagnosticoPush();
+      setStatusPush(status);
+      setErroStatusPush(null);
+    } catch (e) {
+      setErroStatusPush(apiErrorMessage(e, "Diagnóstico de push indisponível."));
+      setStatusPush(null);
+    } finally {
+      setPermissaoPushNativa(await estadoPermissaoPushNativa().catch(() => null));
+    }
+  }, [user?.id]);
+
+  useFocusEffect(useCallback(() => {
+    if (!user) return;
+    void consultarPush();
+  }, [user?.id, consultarPush]));
 
   const atualizar = useCallback(async (silencioso = false) => {
     if (!user) return;
@@ -110,19 +135,44 @@ export default function TelaNotificacoes() {
 
   async function alternarPush(ativo: boolean) {
     if (!preferencias || salvando) return;
-    if (!ativo) {
-      await atualizarOpcao("push_ativo", false);
-      return;
-    }
     setSalvando(true);
+    let novoDispositivo: string | null = null;
     try {
-      // Solicita permissão apenas após ação explícita do usuário.
-      await habilitarPushMobile();
+      if (!ativo) {
+        // A preferência é a trava principal (worker a valida antes de enviar).
+        // A desvinculação adicional elimina um token inativo do cadastro.
+        const proxima = { ...preferencias, push_ativo: false };
+        await notificacoesApi.salvarPreferencias(proxima);
+        setPreferencias(proxima);
+        const anterior = await storage.getNotificationDeviceId();
+        if (anterior) {
+          try {
+            await notificacoesApi.desvincularDispositivo(anterior);
+            await storage.clearNotificationDeviceId();
+          } catch {
+            avisar("Push desligado", "Preferência salva, mas não foi possível desvincular o aparelho. Tente novamente.", "info");
+          }
+        }
+        await consultarPush();
+        return;
+      }
+      const status = await notificacoesApi.diagnosticoPush();
+      setStatusPush(status);
+      if (!status.pronto) {
+        throw new Error(status.motivos.join(" ") || "Servidor push indisponível.");
+      }
+      // Permissão do SO somente após opção explícita, em build EAS válido.
+      novoDispositivo = await habilitarPushMobile();
       const proxima = { ...preferencias, push_ativo: true };
       await notificacoesApi.salvarPreferencias(proxima);
       setPreferencias(proxima);
-      avisar("Notificações ativadas", "Acompanhe reservas e vagas pelo celular.", "sucesso");
+      await consultarPush();
+      avisar("Notificações ativadas", "O dispositivo foi cadastrado. O envio remoto depende de FCM/APNs e da rede.", "sucesso");
     } catch (e) {
+      if (novoDispositivo) {
+        await notificacoesApi.desvincularDispositivo(novoDispositivo).catch(() => undefined);
+        await storage.clearNotificationDeviceId().catch(() => undefined);
+      }
       avisar("Push não ativado", apiErrorMessage(e), "erro");
     } finally {
       setSalvando(false);
@@ -210,7 +260,53 @@ export default function TelaNotificacoes() {
                   <View style={{ flexDirection: "row", alignItems: "center", paddingVertical: 9, borderBottomWidth: 1, borderColor: C.borda, gap: 10 }}>
                     <Text style={{ flex: 1, color: C.texto, fontSize: 13 }}>Receber push no celular</Text>
                     <Switch accessibilityLabel="Receber push no celular" value={preferencias.push_ativo}
-                      onValueChange={v => void alternarPush(v)} disabled={salvando || Platform.OS === "web"} />
+                      onValueChange={v => void alternarPush(v)}
+                      disabled={salvando || Platform.OS === "web" || (!preferencias.push_ativo && statusPush?.pronto === false)} />
+                  </View>
+                  <View style={{ padding: 12, borderWidth: 1, borderColor: statusPush?.pronto ? "#BBF7D0" : "#FED7AA", borderRadius: 12, backgroundColor: statusPush?.pronto ? "#F0FDF4" : "#FFFBEB", gap: 6 }}>
+                    <Text style={{ fontSize: 12, fontWeight: "800", color: C.texto }}>
+                      {statusPush?.pronto ? "Servidor push configurado" : "Diagnóstico do push"}
+                    </Text>
+                    {statusPush ? (
+                      <>
+                        <Text style={{ fontSize: 12, color: C.cinza }}>
+                          {statusPush.dispositivos_ativos} dispositivo(s) ativo(s) na sua conta.
+                        </Text>
+                        {statusPush.motivos.map(motivo => (
+                          <Text key={motivo} style={{ fontSize: 12, color: "#92400E" }}>{motivo}</Text>
+                        ))}
+                      </>
+                    ) : (
+                      <Text style={{ fontSize: 12, color: "#92400E" }}>
+                        {erroStatusPush || "Consultando disponibilidade do servidor..."}
+                      </Text>
+                    )}
+                    {diagnosticoBuildPush() ? (
+                      <Text style={{ fontSize: 12, color: "#92400E" }}>{diagnosticoBuildPush()}</Text>
+                    ) : null}
+                    {permissaoPushNativa ? (
+                      <Text style={{ fontSize: 12, color: permissaoPushNativa === "permitida" ? "#166534" : "#92400E" }}>
+                        Permissão do celular: {permissaoPushNativa === "permitida"
+                          ? "concedida"
+                          : permissaoPushNativa === "solicitar"
+                            ? "ainda precisa ser autorizada"
+                            : "bloqueada nas configurações do dispositivo"}
+                      </Text>
+                    ) : null}
+                    {permissaoPushNativa === "bloqueada" ? (
+                      <Pressable accessibilityRole="button" accessibilityLabel="Abrir configurações do dispositivo"
+                        onPress={() => void Linking.openSettings().catch(() =>
+                          avisar("Configurações indisponíveis", "Abra as configurações de notificações do Smart Parking no celular.", "info")
+                        )}
+                        style={{ minHeight: 44, justifyContent: "center", alignSelf: "flex-start", paddingHorizontal: 4 }}>
+                        <Text style={{ color: C.azul, fontSize: 12, fontWeight: "700" }}>Abrir configurações do celular</Text>
+                      </Pressable>
+                    ) : null}
+                    <Pressable accessibilityRole="button" accessibilityLabel="Verificar configuração do push"
+                      disabled={salvando} onPress={() => void consultarPush()}
+                      style={{ minHeight: 44, justifyContent: "center", alignSelf: "flex-start", paddingHorizontal: 4 }}>
+                      <Text style={{ color: C.azul, fontSize: 12, fontWeight: "700" }}>Verificar configuração</Text>
+                    </Pressable>
                   </View>
                   {TITULOS.map(([chave, rotulo]) => (
                     <View key={chave} style={{ flexDirection: "row", alignItems: "center", paddingVertical: 9, borderBottomWidth: 1, borderColor: C.borda, gap: 10 }}>

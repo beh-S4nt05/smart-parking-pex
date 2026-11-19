@@ -1,0 +1,55 @@
+# Perfil isolado para PILOTO ACADEMICO de ate 14 dias, SEM dominio pago.
+# Publicar SOMENTE a API atraves do Tailscale Funnel (HTTPS) no computador host.
+# NUNCA publicar PostgreSQL ou PgAdmin na internet.
+# Uso: docker compose --env-file src/.env.piloto -f src/docker-compose.piloto.yml up -d --build
+name: smartparking-piloto
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: smartparking_piloto
+      POSTGRES_PASSWORD: ${PILOT_DB_PASSWORD:?Defina PILOT_DB_PASSWORD em src/.env.piloto}
+      POSTGRES_DB: smartparking_piloto
+    volumes:
+      - postgres_data_piloto:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U smartparking_piloto -d smartparking_piloto"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    # Sem 'ports': nao exibe o banco nem na rede local, nem no Funnel.
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      ENVIRONMENT: production
+      DEBUG: "false"
+      DB_AUTO_SQLITE: "false"
+      SEED_DEMO_ON_STARTUP: "false"
+      DATABASE_URL: "postgresql+psycopg2://smartparking_piloto:${PILOT_DB_PASSWORD:?Defina senha do banco}@postgres:5432/smartparking_piloto"
+      SECRET_KEY: ${SECRET_KEY:?Defina SECRET_KEY}
+      APP_SIGNING_SECRET: ${APP_SIGNING_SECRET:?Defina APP_SIGNING_SECRET}
+      TRUSTED_HOSTS: ${TRUSTED_HOSTS:?Defina dominio real do Funnel em JSON}
+      CORS_ORIGINS: ${CORS_ORIGINS:?Defina origem real do Cloudflare Pages em JSON}
+      NOTIFICACOES_PUSH_ENABLED: ${NOTIFICACOES_PUSH_ENABLED:-false}
+      NOTIFICATIONS_ENCRYPTION_KEY: ${NOTIFICATIONS_ENCRYPTION_KEY:?Defina chave Fernet do servidor}
+      EXPO_ACCESS_TOKEN: ${EXPO_ACCESS_TOKEN:-}
+      SIMULADOR_BASE_URL: ${SIMULADOR_BASE_URL:?Defina dominio web real}
+      GUNICORN_WORKERS: "1"
+    ports:
+      - "127.0.0.1:${PILOT_API_PORT:-8000}:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      retries: 12
+      start_period: 40s
+
+volumes:
+  postgres_data_piloto:

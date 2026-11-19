@@ -117,7 +117,10 @@ def enviar_pendentes(limite=20) -> int:
             push_body = n.mensagem if n.tipo not in {"resumo_financeiro", "caixa_fechado", "pagamento_confirmado"} else "Consulte o Smart Parking para ver os detalhes."
             data = {"to": token, "title": n.titulo, "body": push_body,
                     "data": {"notificacao_id": n.id, "destino": n.destino or "/notificacoes"},
-                    "sound": "default", "priority": "default",
+                    "sound": "default",
+                    # Reservas canceladas/expiradas sao alertas operacionais
+                    # sensiveis ao tempo no Android (FCM); demais avisos normais.
+                    "priority": "high" if n.tipo in service.EVENTOS_CRITICOS else "default",
                     "channelId": "reservas" if n.tipo.startswith(("reserva_", "lembrete_")) else
                                  "vagas" if n.tipo == "vaga_disponivel" else "financeiro"}
             # Um aviso sobre vaga/reserva expirada nao deve aparecer tardiamente

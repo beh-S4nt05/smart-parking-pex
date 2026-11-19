@@ -1,0 +1,41 @@
+# Blueprint API somente; frontend Web em Cloudflare Pages (plano anterior).
+# DEMONSTRACAO GRATUITA, NAO SLA de producao:
+# Render Free adormece sem trafego, logo push/expiracoes atrasam.
+# Configure todas as variaveis sync:false no Render; banco em Neon.
+# No Cloudflare Pages configurar a build Expo Web separadamente.
+services:
+  - type: web
+    name: smartparking-api
+    runtime: docker
+    plan: free
+    dockerfilePath: ./src/backend/Dockerfile
+    dockerContext: ./src/backend
+    healthCheckPath: /health
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: DEBUG
+        value: "false"
+      - key: PORT
+        value: "8000"
+      - key: DB_AUTO_SQLITE
+        value: "false"
+      - key: SEED_DEMO_ON_STARTUP
+        value: "false"
+      - key: GUNICORN_WORKERS
+        value: "1"
+      - key: DATABASE_URL
+        sync: false
+      - key: SECRET_KEY
+        generateValue: true
+      - key: APP_SIGNING_SECRET
+        sync: false
+      - key: TRUSTED_HOSTS
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
+      - key: NOTIFICACOES_PUSH_ENABLED
+        value: "false"
+      - key: NOTIFICATIONS_ENCRYPTION_KEY
+        sync: false
+

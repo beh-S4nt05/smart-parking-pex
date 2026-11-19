@@ -14,14 +14,16 @@
         "NSAppTransportSecurity": {
           "NSAllowsArbitraryLoads": false
         }
-      }
+      },
+      "bundleIdentifier": "com.behs4nt05.smartparking"
     },
     "android": {
       "predictiveBackGestureEnabled": false,
       "adaptiveIcon": {
         "foregroundImage": "./src/assets/imgs/adaptive-icon.png",
         "backgroundColor": "#2563EB"
-      }
+      },
+      "package": "com.behs4nt05.smartparking"
     },
     "web": {
       "bundler": "metro",

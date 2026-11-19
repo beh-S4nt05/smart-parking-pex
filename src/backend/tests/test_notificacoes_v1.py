@@ -595,3 +595,44 @@ def test_painel_respeita_opt_out_reservas_e_idempotencia(db, fab):
         Notificacao.referencia_id == reserva.id,
         Notificacao.tipo == "painel_reserva_criada",
     ).count() == 1
+
+
+def test_diagnostico_push_expo_respeita_conta_e_nao_vaza_segredos(db, fab, client, monkeypatch):
+    """Status explica configuracao sem retornar tokens, chaves ou aparelhos de terceiros."""
+    from cryptography.fernet import Fernet
+    from core.config import settings
+    from models.db_models import DispositivoNotificacao
+    import hashlib
+
+    usuario = fab.usuario()
+    outro = fab.usuario()
+    assert client.get("/api/notificacoes/push/status").status_code == 401
+    headers = fab.token(usuario)
+    monkeypatch.delenv("NOTIFICACOES_PUSH_ENABLED", raising=False)
+    monkeypatch.setattr(settings, "NOTIFICATIONS_ENCRYPTION_KEY", None)
+    resposta = client.get("/api/notificacoes/push/status", headers=headers)
+    assert resposta.status_code == 200
+    status = resposta.json()
+    assert status["pronto"] is False
+    assert status["dispositivos_ativos"] == 0
+    assert len(status["motivos"]) == 2
+    assert "token" not in str(status).lower()
+    chave = Fernet.generate_key().decode()
+    monkeypatch.setattr(settings, "NOTIFICATIONS_ENCRYPTION_KEY", chave)
+    monkeypatch.setenv("NOTIFICACOES_PUSH_ENABLED", "true")
+    db.add(DispositivoNotificacao(
+        usuario_id=outro.id, plataforma="android", ativo=True,
+        token_expo="cifrado-alheio",
+        token_hash=hashlib.sha256(outro.id.encode()).hexdigest(),
+    ))
+    db.commit()
+    status = client.get("/api/notificacoes/push/status", headers=headers).json()
+    assert status == {
+        "envio_habilitado": True, "criptografia_configurada": True,
+        "dispositivos_ativos": 0, "pronto": True, "motivos": [],
+    }
+    assert chave not in str(status)
+    status_outro = client.get(
+        "/api/notificacoes/push/status", headers=fab.token(outro),
+    ).json()
+    assert status_outro["dispositivos_ativos"] == 1

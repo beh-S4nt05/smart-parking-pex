@@ -12,3 +12,7 @@ expo-env.d.ts
 # Python 
 __pycache__
 __pycache__/*
+
+# Credenciais Firebase do aparelho: apenas local ou EAS secret file
+google-services.json
+GoogleService-Info.plist
