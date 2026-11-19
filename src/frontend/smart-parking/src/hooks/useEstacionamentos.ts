@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { AppState, Platform } from "react-native";
 import { API_URL, apiErrorMessage, parkingApi } from "../services/api";
 import { useAuth } from "./useAuth";
 import { chaveCacheVitrine } from "../services/cacheChaves";
@@ -122,10 +123,34 @@ export function useEstacionamentos({ pollingMs = 0, escopoPainel = false }: Opti
 
   useEffect(() => {
     void refresh();
-    if (pollingMs > 0) {
-      const timer = setInterval(() => void refresh(), pollingMs);
-      return () => clearInterval(timer);
+    if (pollingMs <= 0) return;
+
+    // A frequencia de 1,5 s vale para a tela ATIVA. Nao sobrecarregar o
+    // computador/servidor do piloto com abas ocultas ou app em background.
+    const emPrimeiroPlano = () =>
+      Platform.OS === "web"
+        ? typeof document === "undefined" || document.visibilityState !== "hidden"
+        : AppState.currentState == null || AppState.currentState === "active";
+    const timer = setInterval(() => {
+      if (emPrimeiroPlano()) void refresh();
+    }, pollingMs);
+    const aoRetornar = () => {
+      if (emPrimeiroPlano()) void refresh();
+    };
+
+    if (Platform.OS === "web" && typeof document !== "undefined") {
+      document.addEventListener("visibilitychange", aoRetornar);
+      return () => {
+        clearInterval(timer);
+        document.removeEventListener("visibilitychange", aoRetornar);
+      };
     }
+
+    const assinatura = AppState.addEventListener("change", aoRetornar);
+    return () => {
+      clearInterval(timer);
+      assinatura.remove();
+    };
   }, [refresh, pollingMs]);
 
   return { estacionamentos, loading, atualizando, erro, atualizadoEm, refresh };
