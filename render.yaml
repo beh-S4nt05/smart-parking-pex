@@ -1,6 +1,8 @@
-# Blueprint para DEMONSTRACAO GRATUITA. Nao e SLA de producao:
+# Blueprint API somente; frontend Web em Cloudflare Pages (plano anterior).
+# DEMONSTRACAO GRATUITA, NAO SLA de producao:
 # Render Free adormece sem trafego, logo push/expiracoes atrasam.
-# Configure todas as variaveis marcadas sync:false pelo painel Render.
+# Configure todas as variaveis sync:false no Render; banco em Neon.
+# No Cloudflare Pages configurar a build Expo Web separadamente.
 services:
   - type: web
     name: smartparking-api
@@ -37,21 +39,3 @@ services:
       - key: NOTIFICATIONS_ENCRYPTION_KEY
         sync: false
 
-  - type: web
-    name: smartparking-web
-    runtime: static
-    buildCommand: cd src/frontend/smart-parking && npm ci --no-audit --no-fund && npx expo export --platform web
-    staticPublishPath: src/frontend/smart-parking/dist
-    envVars:
-      - key: NODE_VERSION
-        value: "24.19.0"
-      - key: EXPO_PUBLIC_API_URL_WEB
-        sync: false
-      # Assinatura legada em clientes publicos NAO e um segredo seguro.
-      # JWT/RBAC + autorizacao backend sao a barreira real de acesso.
-      - key: EXPO_PUBLIC_APP_SIGNING_SECRET
-        sync: false
-    routes:
-      - type: rewrite
-        source: /*
-        destination: /index.html
