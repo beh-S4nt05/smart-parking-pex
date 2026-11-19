@@ -2,6 +2,20 @@
 
 Data da auditoria: 18/11/2026. Referências de código: `main` após PR #74, `develop/v2` e correções propostas no PR #75. **Não confundir teste de integração com demonstração em aparelho físico.**
 
+## Escopo aprovado: push nativo faz parte da V1
+
+A V1 deve suportar notificações **remotas nativas** no Android/iOS instalados por build próprio do Expo, mesmo sem as evoluções da V2. O app nativo usa o FCM/APNs por meio do Expo Push Service; a infraestrutura FastAPI/PostgreSQL já existente gera eventos e processa a fila. **Não** depende de animações, modelo 3D, gateway de pagamentos, visão computacional, integração externa de estacionamento nem EAS Update/OTA da V2.
+
+Ciclo V1 no aplicativo:
+1. Ativação explícita: permissões do SO, token Expo, registro JWT e preferência do usuário; erro reversível se a ativação falhar.
+2. Primeiro plano: apresentação por `setNotificationHandler`; central persistente independente do push.
+3. Segundo plano/encerrado: o **sistema operacional** exibe notificações visíveis enviadas pelo FCM/APNs quando tiver permissão e conectividade; ao tocar, o app aceita apenas destinos internos previamente permitidos. O app também recupera o último toque após um arranque a frio.
+4. Retorno ao primeiro plano: revalida silenciosamente o ExpoPushToken para usuários com opt-in ativo, sem abrir diálogo de permissão; a rotação do token nativo aciona nova sincronização.
+5. Bloqueio: a tela de notificações mostra o estado do backend e da permissão local, e oferece acesso às configurações do celular se a permissão foi bloqueada.
+6. Logout/desativação: preferência no servidor desliga o envio e o dispositivo é desvinculado em melhor esforço. O backend verifica o opt-in e o usuário atual antes de despachar.
+
+**Limitação de infraestrutura:** a funcionalidade é da V1, mas o seu funcionamento público em um aparelho real exige APK instalado com projeto EAS e credenciais FCM/APNs verdadeiros, API HTTPS acessível e worker online. Os testes CI não simulam o serviço real do Google ou da Apple.
+
 ## 1. Sistemas existentes e compatibilidade
 
 | Elemento | Evidência no repositório | Conclusão |
