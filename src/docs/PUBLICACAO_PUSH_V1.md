@@ -42,6 +42,8 @@ Depois:
 npx eas-cli@latest build --platform android --profile preview
 ```
 
+Esse APK utiliza a API pública definida em `EXPO_PUBLIC_API_URL_MOBILE`; o túnel do Metro **não** encaminha o FastAPI. Atualizações nativas (como instalação do `expo-notifications` e Firebase) exigem **novo APK**; alterações JS podem futuramente usar EAS Update, mas na V1 a OTA **ainda não está configurada/validada**.
+
 Abra o link do build no telefone e instale o **APK**. Não depende de publicar na Play Store. Ao iniciar, faça login e abra **Notificações → Verificar configuração**. Após o diagnóstico ficar apto, ative o switch. Teste reserva, cancelamento e recebimento **com o aplicativo em primeiro plano, fundo e fechado**.
 
 **iOS:** distribuir binário instalável a terceiros exige os requisitos de assinatura/provisionamento da Apple, normalmente uma conta paga. Sem isso, disponibilize a versão web para Safari; isso não equivale a push nativo iOS.
@@ -54,7 +56,7 @@ Fontes oficiais:
 
 ## 3. Backend e banco públicos para demonstração
 
-O `render.yaml` prepara **dois serviços de demonstração** no Render: backend FastAPI e site web estático. É necessário criar a conta e autorizar o deploy no Render. Para banco persistente separado, use um PostgreSQL externo (por exemplo, Neon Free) e a URL com driver `postgresql+psycopg2://` e TLS adequado. Não habilite fallback SQLite em rede pública.
+O `render.yaml` prepara **apenas a API FastAPI no Render**. A arquitetura previamente discutida usa a **web Expo no Cloudflare Pages**, com **PostgreSQL separado no Neon**. Nenhum desses serviços está publicado só por existir no repositório. É necessário vincular as contas, configurar o deploy e validar HTTPS. Use uma URL de banco com driver `postgresql+psycopg2://` e TLS adequado; não habilite fallback SQLite em rede pública.
 
 Variáveis fundamentais do backend (configurar **privadamente** no Render):
 - `DATABASE_URL` — conexão real ao PostgreSQL. Nunca commitar credenciais.
@@ -67,10 +69,12 @@ Variáveis fundamentais do backend (configurar **privadamente** no Render):
 - `NOTIFICACOES_PUSH_ENABLED=true` **depois de configurar FCM e validar a API**. `EXPO_ACCESS_TOKEN` pode ser necessário se o serviço Expo push estiver configurado com autenticação adicional.
 - `SIMULADOR_BASE_URL` — endereço público do app para o QR, se o simulador for publicado.
 
-Variáveis públicas do site Render:
+Variáveis públicas do site **Cloudflare Pages** (compilação estática Expo Web):
 - `NODE_VERSION=24.19.0`
 - `EXPO_PUBLIC_API_URL_WEB=https://DOMINIO_REAL_DA_API`
 - `EXPO_PUBLIC_APP_SIGNING_SECRET` — mesmo valor do backend **para compatibilidade atual**, nunca considerado proteção de identidade.
+
+No Cloudflare Pages, use a raiz do repositório, comando `cd src/frontend/smart-parking && npm ci --no-audit --no-fund && npx expo export --platform web` e diretório de saída `src/frontend/smart-parking/dist`. Configure fallback de rotas conforme o export Expo estático (evite reescrever indiscriminadamente rotas que já geram HTML).
 
 **Importante:** em `production` o projeto intencionalmente **não cria conta admin com senha padrão nem seed de demonstração**. Faça provisionamento seguro do primeiro administrador por script privado, após subir banco e migrações. Não exponha `admin123` ou outras senhas do seed publicamente.
 
