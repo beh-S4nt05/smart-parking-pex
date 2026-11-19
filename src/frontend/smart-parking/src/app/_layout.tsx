@@ -35,12 +35,23 @@ function SincronizacaoPushNativa() {
       });
     };
     sincronizar();
+    let mudancaToken: { remove: () => void } | undefined;
+    // Se FCM/APNs trocar o token durante a sessão, revalidar a associação
+    // opt-in imediatamente, sem aguardar um novo boot ou a tela de opções.
+    void import("expo-notifications").then(Notifications => {
+      if (!ativo) return;
+      mudancaToken = Notifications.addPushTokenListener(() => {
+        ultimaTentativa = 0;
+        sincronizar();
+      });
+    }).catch(() => undefined);
     const assinatura = AppState.addEventListener("change", (estado) => {
       if (estado === "active") sincronizar();
     });
     return () => {
       ativo = false;
       assinatura.remove();
+      mudancaToken?.remove();
     };
   }, [loading, user?.id]);
   return null;
