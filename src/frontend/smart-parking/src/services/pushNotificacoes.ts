@@ -60,6 +60,39 @@ export async function habilitarPushMobile(): Promise<string> {
   return id;
 }
 
+/**
+ * Revalida um token de um usuário que JÁ ativou push. Nunca mostra o prompt do SO
+ * em background: se a permissão foi revogada, a central interna continua disponível.
+ * Ajuda quando o aparelho recebe um novo token ou volta a ficar online.
+ */
+export async function sincronizarPushAutorizado(): Promise<void> {
+  if (diagnosticoBuildPush()) return;
+  const pref = await notificacoesApi.preferencias();
+  if (!pref.push_ativo) return;
+
+  const Notifications = await import("expo-notifications");
+  const permissao = await Notifications.getPermissionsAsync();
+  if (!permissao.granted) return;
+
+  const projectId = Constants.easConfig?.projectId ??
+    (Constants.expoConfig?.extra?.eas as { projectId?: string } | undefined)?.projectId;
+  if (!projectId) return;
+
+  // Revalidação silenciosa: não altera preferência, nem inscreve contas
+  // que ainda não consentiram. Mantém a autorização do JWT no servidor.
+  const { data: token } = await Notifications.getExpoPushTokenAsync({ projectId });
+  if (!token) return;
+
+  const antigo = await storage.getNotificationDeviceId();
+  const id = await notificacoesApi.registrarDispositivo(token, Platform.OS as "android" | "ios");
+  await storage.setNotificationDeviceId(id);
+  if (antigo && antigo !== id) {
+    // Token trocado ou login em outra conta: o backend só permite excluir
+    // aparelhos da própria conta. 404 não interrompe a sincronização.
+    await notificacoesApi.desvincularDispositivo(antigo).catch(() => undefined);
+  }
+}
+
 export function destinoNotificacaoSeguro(value: unknown): string | null {
   if (typeof value !== "string") return null;
   if (["/reservas", "/dashboard", "/perfil", "/notificacoes"].includes(value)) return value;
