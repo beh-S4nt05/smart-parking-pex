@@ -104,6 +104,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Verificar scripts de diagnostico e expiracao (sem executar)
+        run: |
+          bash -n scripts/piloto_preflight.sh
+          bash -n scripts/piloto_encerrar.sh
+          bash -n scripts/piloto_agendar_encerramento.sh
+          test -f src/.env.piloto.example
+          grep -q 'Persistent=true' scripts/piloto_agendar_encerramento.sh
+          grep -q -- '--https=443 off' scripts/piloto_encerrar.sh
       - name: Validar compose, isolamento de rede e bootstrap
         env:
           PILOT_DB_PASSWORD: "0123456789abcdef0123456789abcdef"
