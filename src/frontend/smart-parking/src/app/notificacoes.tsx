@@ -1,6 +1,6 @@
 /** Central interna da V1 — dados autorizados pelo JWT, sem dependência do push remoto. */
 import { useCallback, useState } from "react";
-import { ActivityIndicator, Platform, Pressable, ScrollView, Switch, Text, View } from "react-native";
+import { ActivityIndicator, Linking, Platform, Pressable, ScrollView, Switch, Text, View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import Header from "../components/Header";
@@ -8,7 +8,7 @@ import { MobileScreenHeader } from "../components/MobileChrome";
 import { useAuth } from "../hooks/useAuth";
 import { useNotificacoes } from "../components/Notificacoes";
 import { apiErrorMessage } from "../services/api";
-import { diagnosticoBuildPush, habilitarPushMobile } from "../services/pushNotificacoes";
+import { diagnosticoBuildPush, estadoPermissaoPushNativa, habilitarPushMobile } from "../services/pushNotificacoes";
 import { storage } from "../services/storage";
 import {
   notificacoesApi, type AcompanhamentoV1, type DiagnosticoPushV1, type NotificacaoV1,
@@ -44,6 +44,9 @@ export default function TelaNotificacoes() {
   const [mais, setMais] = useState(false);
   const [statusPush, setStatusPush] = useState<DiagnosticoPushV1 | null>(null);
   const [erroStatusPush, setErroStatusPush] = useState<string | null>(null);
+  const [permissaoPushNativa, setPermissaoPushNativa] = useState<
+    "permitida" | "solicitar" | "bloqueada" | null
+  >(null);
 
   const consultarPush = useCallback(async () => {
     if (!user) return;
@@ -54,6 +57,8 @@ export default function TelaNotificacoes() {
     } catch (e) {
       setErroStatusPush(apiErrorMessage(e, "Diagnóstico de push indisponível."));
       setStatusPush(null);
+    } finally {
+      setPermissaoPushNativa(await estadoPermissaoPushNativa().catch(() => null));
     }
   }, [user?.id]);
 
@@ -278,6 +283,24 @@ export default function TelaNotificacoes() {
                     )}
                     {diagnosticoBuildPush() ? (
                       <Text style={{ fontSize: 12, color: "#92400E" }}>{diagnosticoBuildPush()}</Text>
+                    ) : null}
+                    {permissaoPushNativa ? (
+                      <Text style={{ fontSize: 12, color: permissaoPushNativa === "permitida" ? "#166534" : "#92400E" }}>
+                        Permissão do celular: {permissaoPushNativa === "permitida"
+                          ? "concedida"
+                          : permissaoPushNativa === "solicitar"
+                            ? "ainda precisa ser autorizada"
+                            : "bloqueada nas configurações do dispositivo"}
+                      </Text>
+                    ) : null}
+                    {permissaoPushNativa === "bloqueada" ? (
+                      <Pressable accessibilityRole="button" accessibilityLabel="Abrir configurações do dispositivo"
+                        onPress={() => void Linking.openSettings().catch(() =>
+                          avisar("Configurações indisponíveis", "Abra as configurações de notificações do Smart Parking no celular.", "info")
+                        )}
+                        style={{ minHeight: 44, justifyContent: "center", alignSelf: "flex-start", paddingHorizontal: 4 }}>
+                        <Text style={{ color: C.azul, fontSize: 12, fontWeight: "700" }}>Abrir configurações do celular</Text>
+                      </Pressable>
                     ) : null}
                     <Pressable accessibilityRole="button" accessibilityLabel="Verificar configuração do push"
                       disabled={salvando} onPress={() => void consultarPush()}
