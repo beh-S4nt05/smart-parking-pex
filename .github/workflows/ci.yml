@@ -98,3 +98,37 @@ jobs:
           path: src/frontend/smart-parking/test-results/**/preview-*.png
           if-no-files-found: ignore
           retention-days: 5
+
+  piloto-deploy:
+    name: Configuracao segura do piloto (Docker)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validar compose, isolamento de rede e bootstrap
+        env:
+          PILOT_DB_PASSWORD: "0123456789abcdef0123456789abcdef"
+          SECRET_KEY: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+          APP_SIGNING_SECRET: "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789"
+          NOTIFICATIONS_ENCRYPTION_KEY: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+          TRUSTED_HOSTS: '["piloto.example.ts.net","localhost","127.0.0.1"]'
+          CORS_ORIGINS: '["https://piloto.pages.dev"]'
+          SIMULADOR_BASE_URL: "https://piloto.pages.dev"
+        run: |
+          docker compose -f src/docker-compose.piloto.yml config --format json > /tmp/smartparking-piloto-compose.json
+          python3 -m py_compile src/backend/piloto_criar_admin.py
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          cfg = json.loads(Path("/tmp/smartparking-piloto-compose.json").read_text())
+          assert set(cfg["services"]) == {"postgres", "backend"}
+          pg = cfg["services"]["postgres"]
+          api = cfg["services"]["backend"]
+          assert not pg.get("ports"), "Postgres nao pode estar publicado"
+          assert not pg.get("network_mode") == "host"
+          assert len(api["ports"]) == 1
+          assert api["ports"][0]["host_ip"] == "127.0.0.1"
+          assert api["environment"]["ENVIRONMENT"] == "production"
+          assert api["environment"]["DB_AUTO_SQLITE"] == "false"
+          assert api["environment"]["SEED_DEMO_ON_STARTUP"] == "false"
+          print("Piloto: porta privada, banco isolado e bootstrap sintaticamente validos")
+          PY
