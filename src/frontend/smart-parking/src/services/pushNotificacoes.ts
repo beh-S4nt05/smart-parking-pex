@@ -28,23 +28,27 @@ export async function estadoPermissaoPushNativa(): Promise<"permitida" | "solici
   return permissao.canAskAgain ? "solicitar" : "bloqueada";
 }
 
+/** Canais da V1 também devem existir após reinstalação ou rotação de token. */
+async function garantirCanaisAndroid(Notifications: typeof import("expo-notifications")): Promise<void> {
+  if (Platform.OS !== "android") return;
+  await Notifications.setNotificationChannelAsync("reservas", {
+    name: "Reservas", importance: Notifications.AndroidImportance.HIGH,
+  });
+  await Notifications.setNotificationChannelAsync("vagas", {
+    name: "Disponibilidade de vagas", importance: Notifications.AndroidImportance.DEFAULT,
+  });
+  await Notifications.setNotificationChannelAsync("financeiro", {
+    name: "Financeiro", importance: Notifications.AndroidImportance.DEFAULT,
+  });
+}
+
 export async function habilitarPushMobile(): Promise<string> {
   const problema = diagnosticoBuildPush();
   if (problema) throw new Error(problema);
   const projectId = (Constants.easConfig?.projectId ??
     (Constants.expoConfig?.extra?.eas as { projectId?: string } | undefined)?.projectId)!;
   const Notifications = await import("expo-notifications");
-  if (Platform.OS === "android") {
-    await Notifications.setNotificationChannelAsync("reservas", {
-      name: "Reservas", importance: Notifications.AndroidImportance.DEFAULT,
-    });
-    await Notifications.setNotificationChannelAsync("vagas", {
-      name: "Disponibilidade de vagas", importance: Notifications.AndroidImportance.DEFAULT,
-    });
-    await Notifications.setNotificationChannelAsync("financeiro", {
-      name: "Financeiro", importance: Notifications.AndroidImportance.DEFAULT,
-    });
-  }
+  await garantirCanaisAndroid(Notifications);
   const atual = await Notifications.getPermissionsAsync();
   const permissao = atual.granted ? atual : await Notifications.requestPermissionsAsync();
   if (!permissao.granted) {
@@ -82,6 +86,7 @@ export async function sincronizarPushAutorizado(): Promise<void> {
   const Notifications = await import("expo-notifications");
   const permissao = await Notifications.getPermissionsAsync();
   if (!permissao.granted) return;
+  await garantirCanaisAndroid(Notifications);
 
   const projectId = Constants.easConfig?.projectId ??
     (Constants.expoConfig?.extra?.eas as { projectId?: string } | undefined)?.projectId;
