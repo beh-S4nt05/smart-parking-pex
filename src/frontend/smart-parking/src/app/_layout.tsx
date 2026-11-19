@@ -71,7 +71,7 @@ export default function Layout() {
     if (Platform.OS === "web") return;
     let ativo = true;
     let listener: { remove: () => void } | undefined;
-    let ultimoId: string | null = null;
+    let ultimoToque: { id: string; em: number } | null = null;
     void import("expo-notifications").then(Notifications => {
       if (!ativo) return;
       // Sem handler, o push pode chegar mas não aparecer como aviso visível
@@ -87,8 +87,12 @@ export default function Layout() {
       const abrirResposta = (response: import("expo-notifications").NotificationResponse) => {
         const destino = destinoNotificacaoSeguro(response.notification.request.content.data?.destino);
         const id = response.notification.request.identifier;
-        if (!ativo || !destino || ultimoId === id) return;
-        ultimoId = id;
+        // O callback e a consulta do toque inicial podem receber o mesmo
+        // evento. Suprime apenas a duplicata imediata, não toques futuros.
+        const agora = Date.now();
+        if (!ativo || !destino ||
+            (ultimoToque?.id === id && agora - ultimoToque.em < 1500)) return;
+        ultimoToque = { id, em: agora };
         router.push(destino as never);
         // Evita reabrir a mesma rota em próximos boots ou re-renderizações.
         void Notifications.clearLastNotificationResponseAsync().catch(() => undefined);
