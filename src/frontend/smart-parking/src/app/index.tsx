@@ -70,7 +70,7 @@ export default function Index() {
         onBuscar={() => selecionado && abrirMapa(selecionado.id)}
         tempoMedio={tempoMedio}
         loading={loading}
-        atualizando={atualizando}
+        atualizando={loading || atualizando}
         erro={erro}
         refresh={refresh}
         onAbrirShopping={abrirMapa}
@@ -90,7 +90,7 @@ export default function Index() {
           selecionadoId={selecionado?.id ?? null}
           onSelect={setSelecionadoId}
           onBuscar={() => selecionado && abrirMapa(selecionado.id)}
-          atualizando={atualizando}
+          atualizando={loading || atualizando}
           erroAtualizacao={Boolean(erro)}
         />
 
