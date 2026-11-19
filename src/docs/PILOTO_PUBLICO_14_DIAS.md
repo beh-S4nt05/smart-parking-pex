@@ -10,6 +10,29 @@ A alternativa escolhida para testes acadêmicos de duas semanas é:
 
 O Funnel Personal gratuito é indicado para uso pessoal/acadêmico sujeito aos termos da Tailscale; não usar como hospedagem comercial com SLA. Se o computador desligar, API, reservas e worker pararão; web estática ainda carrega, mas não funciona online. Internet/energia locais continuam sendo necessários.
 
+## Fase zero: comprovar que o computador suporta o piloto (somente leitura)
+
+Antes de expor a API, na cópia do repositório que contém o PR #75:
+
+```bash
+bash scripts/piloto_preflight.sh
+```
+
+Ele identifica Docker/Compose, Node 24.19+, Tailscale, porta do FastAPI, arquivo de configuração e espaço em disco sem imprimir segredos. O comando **não inicia serviços nem abre nenhuma porta**. Avisos de Tailscale não autenticado e ausência do arquivo `.env.piloto` são esperados antes da configuração; bloqueios precisam ser corrigidos.
+
+**Portão de aprovação:** scripts e Compose validados no CI + preflight Linux local aprovado + `GET /health` local aprovado. Só então ativar Funnel. Depois testar via 4G, Cloudflare Pages e APK/Firebase reais.
+
+### Expiração obrigatória do piloto
+
+Ao iniciar a disponibilidade pública (não antes), agendar imediatamente o encerramento em **14 dias de calendário** pelo systemd do Linux:
+
+```bash
+bash scripts/piloto_agendar_encerramento.sh
+systemctl list-timers smartparking-piloto-expira.timer --no-pager
+```
+
+Esse script cria um temporizador `Persistent=true` em `/etc/systemd/system/`, para que o encerramento seja executado mesmo após reinicialização. Na expiração, `scripts/piloto_encerrar.sh` desliga o Tailscale Funnel e para os containers, preservando o volume do PostgreSQL. **Verifique o agendamento e o fuso horário do Linux**; o site Cloudflare Pages precisa ser despublicado manualmente ao final. Não trate apenas esse temporizador como substituto de supervisão humana.
+
 ## 1. Pré-condições antes de qualquer divulgação
 
 1. PR #75 mesclado após CI e validação; PR #76 é independente. Sem merge, o push de V1 que estava em draft não estará na main.
