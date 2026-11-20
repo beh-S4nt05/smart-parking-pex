@@ -2,7 +2,7 @@
 Seed de demonstração do SmartParking — shoppings reais de Manaus/AM.
 
 Popula o banco com:
-  • 8 estacionamentos de shoppings parceiros (endereços e coordenadas aproximadas)
+  • 8 estacionamentos de shoppings de Manaus (endereços oficiais verificados)
   • andares e vagas por andar (tipos: comum, pcd, idoso, moto, eletrico)
   • usuários demo (admin, gestor, financeiro, motorista) — senhas do README
   • histórico de entradas/saídas de hoje (para os relatórios nascerem vivos)
@@ -40,15 +40,17 @@ from models.db_models import (
 random.seed(2026)  # demo reproduzível
 
 # ---------------------------------------------------------------------------
-# Shoppings parceiros de Manaus/AM — números casados com os templates do Figma
+# Shoppings de Manaus/AM — endereços oficiais verificados em novembro/2026.
+# Não armazenar coordenadas aproximadas do seed como se fossem GPS verificadas;
+# o botão Como chegar usa destinos nomeados no Google Maps (sem API paga).
 # ---------------------------------------------------------------------------
 SHOPPINGS = [
     {
         "nome": "Amazonas Shopping",
-        "endereco": "Av. Djalma Batista, 1646 - Chapada, Manaus - AM",
-        "bairro": "Chapada",
-        "latitude": -3.0728,
-        "longitude": -60.0194,
+        "endereco": "Av. Djalma Batista, 482 - Parque 10 de Novembro, Manaus - AM",
+        "bairro": "Parque 10 de Novembro",
+        "latitude": None,
+        "longitude": None,
         "hora_abertura": "06:00",
         "hora_fechamento": "00:00",
         "taxa_hora": 8.00,
@@ -60,8 +62,8 @@ SHOPPINGS = [
         "nome": "Manauara Shopping",
         "endereco": "Av. Mário Ypiranga Monteiro, 1300 - Adrianópolis, Manaus - AM",
         "bairro": "Adrianópolis",
-        "latitude": -3.0886,
-        "longitude": -60.0049,
+        "latitude": None,
+        "longitude": None,
         "hora_abertura": "06:00",
         "hora_fechamento": "00:00",
         "taxa_hora": 9.00,
@@ -73,8 +75,8 @@ SHOPPINGS = [
         "nome": "Sumaúma Park Shopping",
         "endereco": "Av. Noel Nutels, 1762 - Cidade Nova, Manaus - AM",
         "bairro": "Cidade Nova",
-        "latitude": -3.0309,
-        "longitude": -60.0041,
+        "latitude": None,
+        "longitude": None,
         "hora_abertura": "07:00",
         "hora_fechamento": "23:00",
         "taxa_hora": 6.00,
@@ -84,10 +86,10 @@ SHOPPINGS = [
     },
     {
         "nome": "Ponta Negra Shopping",
-        "endereco": "Av. Coronel Teixeira, 5200 - Ponta Negra, Manaus - AM",
+        "endereco": "Av. Coronel Teixeira, 5705 - Ponta Negra, Manaus - AM",
         "bairro": "Ponta Negra",
-        "latitude": -3.0181,
-        "longitude": -60.0364,
+        "latitude": None,
+        "longitude": None,
         "hora_abertura": "07:00",
         "hora_fechamento": "23:00",
         "taxa_hora": 7.00,
@@ -97,10 +99,10 @@ SHOPPINGS = [
     },
     {
         "nome": "Millennium Shopping",
-        "endereco": "Av. Djalma Batista, 2010 - Chapada, Manaus - AM",
+        "endereco": "Av. Djalma Batista, 1661 - Chapada, Manaus - AM",
         "bairro": "Chapada",
-        "latitude": -3.0755,
-        "longitude": -60.0231,
+        "latitude": None,
+        "longitude": None,
         "hora_abertura": "08:00",
         "hora_fechamento": "22:00",
         "taxa_hora": 6.00,
@@ -110,10 +112,10 @@ SHOPPINGS = [
     },
     {
         "nome": "Studio 5 Festival Mall",
-        "endereco": "Av. Max Teixeira, 2000 - Cidade Nova, Manaus - AM",
-        "bairro": "Cidade Nova",
-        "latitude": -3.0405,
-        "longitude": -60.0180,
+        "endereco": "Av. Rodrigo Otávio, 3555 - Distrito Industrial, Manaus - AM",
+        "bairro": "Distrito Industrial",
+        "latitude": None,
+        "longitude": None,
         "hora_abertura": "07:00",
         "hora_fechamento": "23:00",
         "taxa_hora": 5.00,
@@ -122,11 +124,11 @@ SHOPPINGS = [
         "ocupacao_alvo": 0.44,
     },
     {
-        "nome": "Shopping Norte",
-        "endereco": "Av. Camapuã, 1480 - Cidade Nova, Manaus - AM",
-        "bairro": "Cidade Nova",
-        "latitude": -3.0474,
-        "longitude": -59.9876,
+        "nome": "Shopping Manaus ViaNorte",
+        "endereco": "Av. Arquiteto José Henrique Bento Rodrigues, 3541 - Santa Etelvina, Manaus - AM",
+        "bairro": "Santa Etelvina",
+        "latitude": None,
+        "longitude": None,
         "hora_abertura": "08:00",
         "hora_fechamento": "22:00",
         "taxa_hora": 5.00,
@@ -136,10 +138,10 @@ SHOPPINGS = [
     },
     {
         "nome": "Shopping Phelippe Daou",
-        "endereco": "Av. Camapuã, 4475 - Jorge Teixeira, Manaus - AM",
-        "bairro": "Jorge Teixeira",
-        "latitude": -3.0550,
-        "longitude": -59.9558,
+        "endereco": "Av. Camapuã, 2939 - Cidade de Deus, Manaus - AM",
+        "bairro": "Cidade de Deus",
+        "latitude": None,
+        "longitude": None,
         "hora_abertura": "08:00",
         "hora_fechamento": "22:00",
         "taxa_hora": 5.00,
