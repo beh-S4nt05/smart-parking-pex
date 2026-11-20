@@ -8,6 +8,7 @@
     "android": "npx expo start --android",
     "ios": "npx expo start --ios",
     "web": "npx expo start --web",
+    "build:web:piloto": "SMARTPARKING_WEB_SPA=true npx expo export --platform web",
     "clean": "npx expo start -c",
     "doctor": "npx -y expo-doctor",
     "check-deps": "npx expo install --check",
