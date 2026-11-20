@@ -50,7 +50,7 @@ def popular_shoppings_piloto(db, *, aplicar=False):
         db.flush()
         # Foto inicial reprodutivel para demonstrar disponibilidade, jamais
         # contagem real de ocupacao dos estacionamentos citados.
-        aleatorio = random.Random(2026 + indice)
+        aleatorio = random.Random(2026 + indice)  # noqa: S311 - apenas dados simulados, sem finalidade criptografica
         alvo = spec.get("ocupacao_alvo", 0.5)
         for andar_numero, capacidade in spec["andares"].items():
             andar = Andar(
