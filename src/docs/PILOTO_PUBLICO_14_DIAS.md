@@ -63,15 +63,15 @@ python3 -c 'import os,base64; print(base64.urlsafe_b64encode(os.urandom(32)).dec
 
 Edite `src/.env.piloto` localmente: senha do Postgres (somente caracteres HEX), `SECRET_KEY` e `APP_SIGNING_SECRET` gerados separadamente por `openssl rand -hex 32`, Fernet gerada pelo comando Python (32 bytes codificados em base64), host real do Funnel em `TRUSTED_HOSTS` e origem Cloudflare real em `CORS_ORIGINS`. Configure `SIMULADOR_BASE_URL` com o site Cloudflare. **Nunca envie essas chaves no chat ou GitHub.**
 
-Se já houver FastAPI na porta 8000, encerre-o ou troque `PILOT_API_PORT` e o destino do Funnel em conjunto. Não execute o Compose padrão ao mesmo tempo se houver conflito.
+**A API de desenvolvimento já ocupa a porta 8000 e deve permanecer intacta.** O piloto usa `PILOT_API_PORT=18000` no arquivo privado `src/.env.piloto`; confira que 18000 está livre e que o Funnel aponta para a mesma porta. Containers e volumes do Compose antigo permanecem separados. Não execute `docker compose down` no ambiente de desenvolvimento.
 
 ```bash
 docker compose --env-file src/.env.piloto -f src/docker-compose.piloto.yml up -d --build
 docker compose --env-file src/.env.piloto -f src/docker-compose.piloto.yml ps
-curl -fsS http://127.0.0.1:8000/health
+curl -fsS http://127.0.0.1:18000/health
 ```
 
-O banco do piloto usa **volume próprio** e não publica portas, o backend publica somente `127.0.0.1:8000`, e nenhum PgAdmin é iniciado. `/health` é o endpoint real (não `/api/health`). A saúde do banco deve também ser validada no `docker compose ps`.
+O banco do piloto usa **volume próprio** e não publica portas, o backend publica somente `127.0.0.1:18000` no computador (dentro do container a porta continua 8000), e nenhum PgAdmin é iniciado. `/health` é o endpoint real (não `/api/health`). A saúde do banco deve também ser validada no `docker compose ps`.
 
 Criar conta administrativa com senha forte, sem qualquer admin padrão público:
 
@@ -104,7 +104,7 @@ Para bancos existentes com o seed antigo e endereços incorretos, faça backup e
 Depois de confirmar que o backend está em `production` e protegido, habilite o endereço público via Tailscale:
 
 ```bash
-sudo tailscale funnel --bg http://127.0.0.1:8000
+sudo tailscale funnel --bg http://127.0.0.1:18000
 tailscale funnel status
 curl -fsS https://SEU-DISPOSITIVO.tailnet.ts.net/health
 ```
