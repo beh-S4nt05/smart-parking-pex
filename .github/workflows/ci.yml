@@ -52,6 +52,12 @@ jobs:
             exit "$status"
           fi
       - run: npm run check-native
+      - name: Validar exportacao web SPA para Cloudflare Pages
+        run: |
+          npm run build:web:piloto
+          test -f dist/index.html
+          test -f dist/_redirects
+          grep -Fxq '/* /index.html 200' dist/_redirects
       # Executa npm audit REAL (sem --force), falha para novas CVEs e mantém
       # somente a exceção GHSA-fc5q-39xc-vjpf sem patch upstream até 18/12/2026.
       # A exceção é temporária, rastreável e expira automaticamente.
