@@ -17,7 +17,6 @@ import {
   ScrollView,
   Text,
   View,
-  Linking,
 } from "react-native";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -28,6 +27,7 @@ import OptionChips from "../../components/OptionChips";
 import { useMapaVagas } from "../../hooks/useMapaVagas";
 import { useNotificacoes } from "../../components/Notificacoes";
 import IndicadorAtualizacao from "../../components/IndicadorAtualizacao";
+import BotaoComoChegar from "../../components/BotaoComoChegar";
 import { useLarguraResponsiva } from "../../hooks/useLarguraResponsiva";
 import { useAgora, desdeAte } from "../../hooks/useAgora";
 import { useAuth } from "../../hooks/useAuth";
@@ -641,6 +641,12 @@ export default function MapaVagas() {
             <Ionicons name="notifications-outline" size={18} color="#2563EB" />
             <Text style={{ fontSize: 12, fontWeight: "700", color: "#1D4ED8" }}>Acompanhar vagas comuns</Text>
           </Pressable>
+          <View style={{ marginBottom: 12 }}>
+            <BotaoComoChegar
+              shopping={shopping}
+              onErro={() => avisar("Google Maps indisponível", "Não foi possível abrir a rota. Verifique a conexão.", "erro")}
+            />
+          </View>
           {erro ? (
             <View className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
               <Text className="text-[13px] font-medium text-amber-700">Aviso: {erro}</Text>
@@ -680,24 +686,10 @@ export default function MapaVagas() {
               <Text className={textoApoio}>{subtitulo}</Text>
             </View>
             <View className="flex-row items-center gap-2">
-              <Pressable
-                onPress={() => {
-                  const q =
-                    shopping?.latitude && shopping?.longitude
-                      ? `${shopping.latitude},${shopping.longitude}`
-                      : shopping?.endereco;
-                  if (q) {
-                    Linking.openURL(
-                      `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`,
-                    );
-                  }
-                }}
-                disabled={!shopping?.latitude && !shopping?.endereco}
-                className="flex-row items-center gap-1.5 rounded-full border border-blue-200 bg-blue-50 px-4 py-2 active:bg-blue-100"
-              >
-                <Ionicons name="location-outline" size={14} color="#1D4ED8" />
-                <Text className="text-[13px] font-bold text-blue-700">Como chegar</Text>
-              </Pressable>
+              <BotaoComoChegar
+                shopping={shopping}
+                onErro={() => avisar("Google Maps indisponível", "Não foi possível abrir a rota. Verifique a conexão.", "erro")}
+              />
               <SeloAoVivo />
             </View>
           </View>
