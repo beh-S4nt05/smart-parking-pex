@@ -46,9 +46,9 @@ Esse script cria um temporizador `Persistent=true` em `/etc/systemd/system/`, pa
 - No Cloudflare Pages, criar projeto ligado ao GitHub `beh-S4nt05/smart-parking-pex`, com `main` quando PR #75 já estiver mesclado. Obter endereço real `https://SEU-PROJETO.pages.dev`.
 - Configurar build Cloudflare Pages: raiz do repositório; comando:
   ```bash
-  cd src/frontend/smart-parking && npm ci --no-audit --no-fund && npx expo export --platform web
+  cd src/frontend/smart-parking && npm ci --no-audit --no-fund && npm run build:web:piloto
   ```
-  diretório de saída `src/frontend/smart-parking/dist`, variável `NODE_VERSION=24.19.0`. Colocar no painel, ANTES do build, `EXPO_PUBLIC_API_URL_WEB=https://SEU-DISPOSITIVO.tailnet.ts.net`. Verificar as rotas geradas pelo Expo; revisar fallback de navegação do Pages se uma URL acessada diretamente retornar 404.
+  diretório de saída `src/frontend/smart-parking/dist`, variável `NODE_VERSION=24.19.0`. Colocar no painel, ANTES do build, `EXPO_PUBLIC_API_URL_WEB=https://SEU-DISPOSITIVO.tailnet.ts.net`. O comando `build:web:piloto` ajusta `web.output=single` somente no deploy Cloudflare (SPA), preservando `static` em desenvolvimento/CI. O arquivo `public/_redirects` instrui o Pages a retornar `/index.html` para rotas dinâmicas como `/shopping/:id`. Validar essa rota abrindo-a diretamente em aba anônima, pois a exportação local não comprova o comportamento do Pages.
 - A URL de Funnel é pública. JWT + RBAC de verdade continuam obrigatórios. Nunca expor PostgreSQL, PgAdmin, ferramentas de manutenção ou documentação aberta.
 
 ## 3. Subir o backend local ISOLADO
