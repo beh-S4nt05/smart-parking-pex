@@ -26,9 +26,9 @@ import { parkingApi } from "../services/api";
 export default function Index() {
   const router = useRouter();
 
-  // Revalida a cada 10s e recupera a conexão sem exigir reload.
-  const { estacionamentos, loading, erro, refresh } = useEstacionamentos({
-    pollingMs: 10000,
+  // Dados operacionais da Home: 1.500 ms, sem empilhar requisicoes lentas.
+  const { estacionamentos, loading, atualizando, erro, refresh } = useEstacionamentos({
+    pollingMs: 1500,
   });
   const [selecionadoId, setSelecionadoId] = useState<string | null>(null);
   const [tempoMedio, setTempoMedio] = useState<number | null>(null);
@@ -53,7 +53,10 @@ export default function Index() {
   }, []);
 
   useEffect(() => {
-    carregarTempoMedio(selecionado?.id);
+    void carregarTempoMedio(selecionado?.id);
+    // Relatorio de fluxo e pesado; atualiza separadamente a cada 15 s.
+    const timer = setInterval(() => void carregarTempoMedio(selecionado?.id), 15000);
+    return () => clearInterval(timer);
   }, [selecionado?.id, carregarTempoMedio]);
 
   const abrirMapa = (id: string) => router.push(`/shopping/${id}` as never);
@@ -67,6 +70,7 @@ export default function Index() {
         onBuscar={() => selecionado && abrirMapa(selecionado.id)}
         tempoMedio={tempoMedio}
         loading={loading}
+        atualizando={loading || atualizando}
         erro={erro}
         refresh={refresh}
         onAbrirShopping={abrirMapa}
@@ -86,6 +90,8 @@ export default function Index() {
           selecionadoId={selecionado?.id ?? null}
           onSelect={setSelecionadoId}
           onBuscar={() => selecionado && abrirMapa(selecionado.id)}
+          atualizando={loading || atualizando}
+          erroAtualizacao={Boolean(erro)}
         />
 
         <View className="mx-auto w-full max-w-7xl gap-6 px-4 py-6 sm:gap-8 sm:px-6 sm:py-8 3xl:gap-10 3xl:px-8">

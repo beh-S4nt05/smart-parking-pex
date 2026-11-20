@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { AppState, Platform } from "react-native";
 import { API_URL, apiErrorMessage, parkingApi } from "../services/api";
 import { useAuth } from "./useAuth";
 import { chaveCacheVitrine } from "../services/cacheChaves";
@@ -26,10 +27,12 @@ export function useEstacionamentos({ pollingMs = 0, escopoPainel = false }: Opti
   const chaveCache = escopoPainel ? null : chaveCacheVitrine(user?.id);
   const [estacionamentos, setEstacionamentos] = useState<Estacionamento[]>([]);
   const [loading, setLoading] = useState(true);
+  const [atualizando, setAtualizando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [atualizadoEm, setAtualizadoEm] = useState<number>(Date.now());
   const mounted = useRef(true);
   const emCurso = useRef(false);
+  const timerIndicador = useRef<ReturnType<typeof setTimeout> | null>(null);
   const revalidou = useRef(false);
   const dadosRef = useRef<Estacionamento[]>([]);
   const atualizadoRef = useRef(0);
@@ -38,6 +41,7 @@ export function useEstacionamentos({ pollingMs = 0, escopoPainel = false }: Opti
     mounted.current = true;
     return () => {
       mounted.current = false;
+      if (timerIndicador.current) clearTimeout(timerIndicador.current);
     };
   }, []);
 
@@ -48,6 +52,11 @@ export function useEstacionamentos({ pollingMs = 0, escopoPainel = false }: Opti
     // Uma API lenta não pode acumular chamadas idênticas a cada intervalo.
     if (emCurso.current) return;
     emCurso.current = true;
+    if (timerIndicador.current) clearTimeout(timerIndicador.current);
+    const inicio = Date.now();
+    // Mostra o estado de sincronizacao por pelo menos 480 ms, sem atrasar
+    // a atualizacao dos dados nem bloquear cliques no Hero.
+    if (mounted.current) setAtualizando(true);
     try {
       const dados = escopoPainel
         ? await parkingApi.listarEstacionamentosPainel()
@@ -75,7 +84,16 @@ export function useEstacionamentos({ pollingMs = 0, escopoPainel = false }: Opti
       );
     } finally {
       emCurso.current = false;
-      if (mounted.current) setLoading(false);
+      if (mounted.current) {
+        setLoading(false);
+        timerIndicador.current = setTimeout(
+          () => {
+            if (mounted.current) setAtualizando(false);
+            timerIndicador.current = null;
+          },
+          Math.max(0, 480 - (Date.now() - inicio)),
+        );
+      }
     }
   }, [escopoPainel, chaveCache, authLoading, user?.id, canAccessPanel]);
 
@@ -105,11 +123,35 @@ export function useEstacionamentos({ pollingMs = 0, escopoPainel = false }: Opti
 
   useEffect(() => {
     void refresh();
-    if (pollingMs > 0) {
-      const timer = setInterval(() => void refresh(), pollingMs);
-      return () => clearInterval(timer);
+    if (pollingMs <= 0) return;
+
+    // A frequencia de 1,5 s vale para a tela ATIVA. Nao sobrecarregar o
+    // computador/servidor do piloto com abas ocultas ou app em background.
+    const emPrimeiroPlano = () =>
+      Platform.OS === "web"
+        ? typeof document === "undefined" || document.visibilityState !== "hidden"
+        : AppState.currentState == null || AppState.currentState === "active";
+    const timer = setInterval(() => {
+      if (emPrimeiroPlano()) void refresh();
+    }, pollingMs);
+    const aoRetornar = () => {
+      if (emPrimeiroPlano()) void refresh();
+    };
+
+    if (Platform.OS === "web" && typeof document !== "undefined") {
+      document.addEventListener("visibilitychange", aoRetornar);
+      return () => {
+        clearInterval(timer);
+        document.removeEventListener("visibilitychange", aoRetornar);
+      };
     }
+
+    const assinatura = AppState.addEventListener("change", aoRetornar);
+    return () => {
+      clearInterval(timer);
+      assinatura.remove();
+    };
   }, [refresh, pollingMs]);
 
-  return { estacionamentos, loading, erro, atualizadoEm, refresh };
+  return { estacionamentos, loading, atualizando, erro, atualizadoEm, refresh };
 }

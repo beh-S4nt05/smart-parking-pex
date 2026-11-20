@@ -16,6 +16,7 @@ import { useAuth } from "../hooks/useAuth";
 import type { Estacionamento } from "../types/api";
 import { formatarMinutos } from "./ui";
 import { MobileBottomNav } from "./MobileChrome";
+import BarraAtualizacaoHero from "./BarraAtualizacaoHero";
 
 const C = {
   navy: "#0F1E38",
@@ -33,6 +34,7 @@ type Props = {
   onBuscar: () => void;
   tempoMedio: number | null;
   loading: boolean;
+  atualizando: boolean;
   erro: string | null;
   refresh: () => void;
   onAbrirShopping: (id: string) => void;
@@ -45,6 +47,7 @@ export default function MobileHome({
   onBuscar,
   tempoMedio,
   loading,
+  atualizando,
   erro,
   refresh,
   onAbrirShopping,
@@ -161,6 +164,7 @@ export default function MobileHome({
           <Text style={{ color: "#B5C7E2", fontSize: 14, lineHeight: 21, marginTop: 11 }}>
             Escolha seu shopping, encontre uma vaga e aproveite seu tempo.
           </Text>
+          <BarraAtualizacaoHero atualizando={atualizando} erro={Boolean(erro)} escura />
         </View>
 
         <View style={{ paddingHorizontal: 18, marginTop: -20 }}>
