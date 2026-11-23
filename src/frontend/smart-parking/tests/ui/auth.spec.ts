@@ -80,6 +80,56 @@ test("cadastro em duas etapas valida dados e cria sessão de motorista", async (
 });
 
 
+test("cadastro opcional pode ser pulado sem perder conta", async ({ page }) => {
+  const email = `cadastro-simples.${Date.now()}@teste.dev`;
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/cadastro");
+  await page.getByLabel("Nome completo", { exact: true }).fill("Motorista Sem Veículo");
+  await page.getByLabel("E-mail", { exact: true }).fill(email);
+  await page.getByLabel("Telefone", { exact: true }).fill("92999997777");
+  await page.getByLabel("Senha", { exact: true }).fill("NovaSenha2026!");
+  await page.getByLabel("Confirmar senha", { exact: true }).fill("NovaSenha2026!");
+  await page.getByRole("button", { name: "Continuar", exact: true }).click();
+  await page.getByRole("button", { name: "Cadastrar sem opcionais" }).click();
+  await expect(page).toHaveURL(/\/$/);
+  await expect(page.getByText("Minhas reservas").first()).toBeVisible();
+});
+
+test("cadastro informa que e-mail já existe e oferece link para entrar", async ({ page }) => {
+  const email = `duplicado-ui.${Date.now()}@teste.dev`;
+  const cadastro = await page.request.post("/auth/registrar", {
+    data: { nome: "Usuário Existente", email, senha: "MinhaSenha2026!" },
+  });
+  expect(cadastro.status()).toBe(201);
+  await page.goto("/cadastro");
+  await page.getByLabel("Nome completo", { exact: true }).fill("Nova Tentativa");
+  await page.getByLabel("E-mail", { exact: true }).fill(email);
+  await page.getByLabel("Telefone", { exact: true }).fill("92999998888");
+  await page.getByLabel("Senha", { exact: true }).fill("OutraSenha2026!");
+  await page.getByLabel("Confirmar senha", { exact: true }).fill("OutraSenha2026!");
+  await page.getByRole("button", { name: "Continuar", exact: true }).click();
+  await page.getByRole("button", { name: "Cadastrar sem opcionais" }).click();
+  await expect(page.getByText("Este e-mail já possui uma conta. Entre com sua senha ou use a recuperação de acesso.")).toBeVisible();
+  await page.getByRole("button", { name: "Ir para entrar" }).click();
+  await expect(page).toHaveURL(/\/login$/);
+});
+
+test("cadastro valida idade mínima de 60 anos antes de enviar", async ({ page }) => {
+  const email = `idoso-ui.${Date.now()}@teste.dev`;
+  await page.goto("/cadastro");
+  await page.getByLabel("Nome completo", { exact: true }).fill("Pessoa Solicitante");
+  await page.getByLabel("E-mail", { exact: true }).fill(email);
+  await page.getByLabel("Telefone", { exact: true }).fill("92999998888");
+  await page.getByLabel("Senha", { exact: true }).fill("SenhaParaIdoso2026!");
+  await page.getByLabel("Confirmar senha", { exact: true }).fill("SenhaParaIdoso2026!");
+  await page.getByRole("button", { name: "Continuar", exact: true }).click();
+  await page.getByRole("radio", { name: "Idoso (60+)" }).click();
+  await page.getByLabel("Data de nascimento", { exact: true }).fill("01012000");
+  await page.getByRole("button", { name: "Criar conta", exact: true }).click();
+  await expect(page.getByText("Credencial de idoso exige 60 anos ou mais")).toBeVisible();
+  await expect(page).toHaveURL(/\/cadastro$/);
+});
+
 test("admin acessa dados reais do painel e encerra a sessão", async ({ page }) => {
   await login(page, "admin@smartparking.com", "admin123");
   await expect(page).toHaveURL(/\/dashboard$/);
