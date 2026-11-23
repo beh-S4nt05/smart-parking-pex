@@ -1,5 +1,15 @@
 # 🔐 Proteção contra replicação de requisições e acesso indevido pelo navegador/Postman
 
+> **Atualização da V1 pública (PR #81):** a assinatura HMAC compartilhada
+> com Web/APK/iOS é **legada e opt-in** (`REQUIRE_CLIENT_HMAC=true`).
+> Ela não autentica a identidade do aplicativo: quem recebe o bundle
+> consegue copiar o segredo. No piloto padrão `REQUIRE_CLIENT_HMAC=false`,
+> as escritas protegidas exigem JWT/RBAC, escopo no servidor, limites de
+> requisição e, para sensores, `X-Device-Key`. Nenhuma
+> `EXPO_PUBLIC_APP_SIGNING_SECRET` deve ser publicada. O texto abaixo
+> descreve o desenho anterior e não deve ser tratado como configuração ativa.
+
+
 # 🔏 Proteção de Requisições — Assinatura HMAC + Anti-replay
 
 > **Nota de honestidade (SDD M4-04, 22/10):** este mecanismo é **camada de

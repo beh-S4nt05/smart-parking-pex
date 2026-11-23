@@ -57,6 +57,11 @@ jobs:
           npm run build:web:piloto
           test -f dist/index.html
           test -f dist/_redirects
+          test -s dist/manifest.webmanifest
+          test -s dist/smartparking-icon.png
+          grep -Fq 'href="/manifest.webmanifest"' dist/index.html
+          node -e 'const m=JSON.parse(require("node:fs").readFileSync("dist/manifest.webmanifest","utf8")); if(m.display!=="standalone" || m.start_url!=="/") process.exit(1)'
+          ! grep -r -q 'smartparking_default_signing_key_change_in_production' dist
           grep -Fxq '/* /index.html 200' dist/_redirects
       # Executa npm audit REAL (sem --force), falha para novas CVEs e mantém
       # somente a exceção GHSA-fc5q-39xc-vjpf sem patch upstream até 18/12/2026.
@@ -153,7 +158,7 @@ jobs:
           assert set(cfg["services"]) == {"postgres", "backend"}
           pg = cfg["services"]["postgres"]
           api = cfg["services"]["backend"]
-          # Banco acessivel somente no loopback para DBeaver local.
+          # Permitir somente acesso local do DBeaver; nunca expor em LAN.
           pg_ports = pg.get("ports", [])
           assert len(pg_ports) <= 1, "Postgres aceita no maximo a porta local"
           for porta in pg_ports:

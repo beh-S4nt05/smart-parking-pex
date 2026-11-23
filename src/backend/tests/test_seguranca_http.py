@@ -17,6 +17,7 @@ from core.security_middleware import SecurityHeadersMiddleware
 
 def _app_assinado(monkeypatch):
     monkeypatch.setattr(settings, "ENVIRONMENT", "production")
+    monkeypatch.setattr(settings, "REQUIRE_CLIENT_HMAC", True)
     app = FastAPI()
     app.add_middleware(RequestValidationMiddleware)
     app.add_middleware(SecurityHeadersMiddleware, environment="production")
@@ -42,6 +43,23 @@ def _headers_assinatura(corpo: bytes, path="/api/echo", timestamp=None, nonce=No
         "X-Request-Nonce": nonce,
         "X-Request-Signature": assinatura,
     }
+
+
+def test_v1_publica_dispensa_segredo_compartilhado_no_cliente(monkeypatch):
+    """Não tratar chave extraível do JavaScript/IPA/APK como autenticação."""
+    monkeypatch.setattr(settings, "ENVIRONMENT", "production")
+    monkeypatch.setattr(settings, "REQUIRE_CLIENT_HMAC", False)
+    app = FastAPI()
+    app.add_middleware(RequestValidationMiddleware)
+
+    @app.post("/api/echo")
+    def echo(dados: dict):
+        return dados
+
+    with TestClient(app) as client:
+        response = client.post("/api/echo", json={"teste": True})
+        assert response.status_code == 200
+        assert response.json() == {"teste": True}
 
 
 def test_escrita_em_producao_exige_assinatura(monkeypatch):

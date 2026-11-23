@@ -58,7 +58,10 @@ class Settings(BaseSettings):
         "172.*.*.*",
     ]
 
-    # Chave de assinatura de requisições anti-replicação (deve ser a MESMA no frontend)
+    # HMAC legado não identifica clientes oficiais: segredo em app público
+    # pode ser extraído de JS/APK/IPA. Autorização efetiva: JWT/RBAC, chaves
+    # específicas de sensores, validação de escopo e rate limiting.
+    REQUIRE_CLIENT_HMAC: bool = False
     APP_SIGNING_SECRET: str = "smartparking_default_signing_key_change_in_production"
     # Chave Fernet PRIVADA para tokens Expo. Não compartilhar com frontend/HMAC.
     # Gerar: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
