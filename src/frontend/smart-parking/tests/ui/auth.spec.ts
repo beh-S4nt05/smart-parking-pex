@@ -91,7 +91,7 @@ test("cadastro opcional pode ser pulado sem perder conta", async ({ page }) => {
   await page.getByLabel("Confirmar senha", { exact: true }).fill("NovaSenha2026!");
   await page.getByRole("button", { name: "Continuar", exact: true }).click();
   await page.getByRole("button", { name: "Cadastrar sem opcionais" }).click();
-  await expect(page).toHaveURL(/\\/$/);
+  await expect(page).toHaveURL(/\/$/);
   await expect(page.getByText("Minhas reservas").first()).toBeVisible();
 });
 
