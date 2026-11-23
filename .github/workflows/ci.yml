@@ -105,6 +105,21 @@ jobs:
           if-no-files-found: ignore
           retention-days: 5
 
+  nginx-http2:
+    name: Nginx HTTP origin e HTTPS HTTP2 (ALPN)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Sintaxe dos scripts de diagnostico e teste
+        run: |
+          bash -n scripts/diagnosticar_nginx_http2.sh
+          bash -n scripts/ci_nginx_http2.sh
+          grep -Eq '^[[:space:]]*listen 443 ssl;' src/nginx/https.conf.example
+          grep -Eq '^[[:space:]]*http2 on;' src/nginx/https.conf.example
+          ! grep -Eq '^[[:space:]]*listen .*http2' src/nginx/https.conf.example
+      - name: Nginx -t, proxy HTTP1.1 e negociação TLS/ALPN HTTP2
+        run: bash scripts/ci_nginx_http2.sh
+
   piloto-deploy:
     name: Configuracao segura do piloto (Docker)
     runs-on: ubuntu-latest
