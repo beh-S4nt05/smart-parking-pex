@@ -53,10 +53,10 @@ class AppleLoginRequest(BaseModel):
 
 @router.post("/registrar", response_model=UsuarioResponse, status_code=201)
 @limiter.limit(LIMITS["registro"])
-async def registrar_usuario(
+def registrar_usuario(
     request: Request, dados: UsuarioCreate, db: Session = Depends(get_db)
 ):
-    """Endpoint para cadastro de novo usuário"""
+    """Cadastro transacional, executado no pool de threads (hash bcrypt CPU-bound)."""
     return auth_service.criar_usuario(db, dados)
 
 
