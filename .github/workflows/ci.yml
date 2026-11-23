@@ -153,7 +153,14 @@ jobs:
           assert set(cfg["services"]) == {"postgres", "backend"}
           pg = cfg["services"]["postgres"]
           api = cfg["services"]["backend"]
-          assert not pg.get("ports"), "Postgres nao pode estar publicado"
+          # Banco nunca exposto em 0.0.0.0/LAN/Tailscale:
+          # acesso local opcional 127.0.0.1:15432 para DBeaver.
+          pg_ports = pg.get("ports", [])
+          assert len(pg_ports) <= 1, "Postgres aceita no maximo a porta local"
+          for porta in pg_ports:
+              assert porta["host_ip"] == "127.0.0.1", "Postgres exposto fora do loopback"
+              assert porta["published"] == "15432"
+              assert porta["target"] == 5432
           assert not pg.get("network_mode") == "host"
           assert len(api["ports"]) == 1
           assert api["ports"][0]["host_ip"] == "127.0.0.1"
