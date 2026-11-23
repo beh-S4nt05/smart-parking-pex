@@ -1,0 +1,5 @@
+# Cloudflare Pages: roteamento SPA do piloto V1.
+# Somente com SMARTPARKING_WEB_SPA=true em export (dist/index.html).
+# Arquivos estaticos reais mantêm precedência na plataforma.
+# URLs dinâmicas (/shopping/<id>) funcionam mesmo ao recarregar.
+/* /index.html 200

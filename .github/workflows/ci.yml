@@ -52,6 +52,12 @@ jobs:
             exit "$status"
           fi
       - run: npm run check-native
+      - name: Validar exportacao web SPA para Cloudflare Pages
+        run: |
+          npm run build:web:piloto
+          test -f dist/index.html
+          test -f dist/_redirects
+          grep -Fxq '/* /index.html 200' dist/_redirects
       # Executa npm audit REAL (sem --force), falha para novas CVEs e mantém
       # somente a exceção GHSA-fc5q-39xc-vjpf sem patch upstream até 18/12/2026.
       # A exceção é temporária, rastreável e expira automaticamente.
@@ -114,6 +120,7 @@ jobs:
           grep -q -- '--https=443 off' scripts/piloto_encerrar.sh
       - name: Validar compose, isolamento de rede e bootstrap
         env:
+          PILOT_API_PORT: "18000"
           PILOT_DB_PASSWORD: "0123456789abcdef0123456789abcdef"
           SECRET_KEY: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
           APP_SIGNING_SECRET: "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789"
@@ -135,6 +142,7 @@ jobs:
           assert not pg.get("network_mode") == "host"
           assert len(api["ports"]) == 1
           assert api["ports"][0]["host_ip"] == "127.0.0.1"
+          assert api["ports"][0]["published"] == "18000"
           assert api["environment"]["ENVIRONMENT"] == "production"
           assert api["environment"]["DB_AUTO_SQLITE"] == "false"
           assert api["environment"]["SEED_DEMO_ON_STARTUP"] == "false"

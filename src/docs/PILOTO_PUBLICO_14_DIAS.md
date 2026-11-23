@@ -46,9 +46,9 @@ Esse script cria um temporizador `Persistent=true` em `/etc/systemd/system/`, pa
 - No Cloudflare Pages, criar projeto ligado ao GitHub `beh-S4nt05/smart-parking-pex`, com `main` quando PR #75 já estiver mesclado. Obter endereço real `https://SEU-PROJETO.pages.dev`.
 - Configurar build Cloudflare Pages: raiz do repositório; comando:
   ```bash
-  cd src/frontend/smart-parking && npm ci --no-audit --no-fund && npx expo export --platform web
+  cd src/frontend/smart-parking && npm ci --no-audit --no-fund && npm run build:web:piloto
   ```
-  diretório de saída `src/frontend/smart-parking/dist`, variável `NODE_VERSION=24.19.0`. Colocar no painel, ANTES do build, `EXPO_PUBLIC_API_URL_WEB=https://SEU-DISPOSITIVO.tailnet.ts.net`. Verificar as rotas geradas pelo Expo; revisar fallback de navegação do Pages se uma URL acessada diretamente retornar 404.
+  diretório de saída `src/frontend/smart-parking/dist`, variável `NODE_VERSION=24.19.0`. Colocar no painel, ANTES do build, `EXPO_PUBLIC_API_URL_WEB=https://SEU-DISPOSITIVO.tailnet.ts.net`. O comando `build:web:piloto` ajusta `web.output=single` somente no deploy Cloudflare (SPA), preservando `static` em desenvolvimento/CI. O arquivo `public/_redirects` instrui o Pages a retornar `/index.html` para rotas dinâmicas como `/shopping/:id`. Validar essa rota abrindo-a diretamente em aba anônima, pois a exportação local não comprova o comportamento do Pages.
 - A URL de Funnel é pública. JWT + RBAC de verdade continuam obrigatórios. Nunca expor PostgreSQL, PgAdmin, ferramentas de manutenção ou documentação aberta.
 
 ## 3. Subir o backend local ISOLADO
@@ -63,15 +63,15 @@ python3 -c 'import os,base64; print(base64.urlsafe_b64encode(os.urandom(32)).dec
 
 Edite `src/.env.piloto` localmente: senha do Postgres (somente caracteres HEX), `SECRET_KEY` e `APP_SIGNING_SECRET` gerados separadamente por `openssl rand -hex 32`, Fernet gerada pelo comando Python (32 bytes codificados em base64), host real do Funnel em `TRUSTED_HOSTS` e origem Cloudflare real em `CORS_ORIGINS`. Configure `SIMULADOR_BASE_URL` com o site Cloudflare. **Nunca envie essas chaves no chat ou GitHub.**
 
-Se já houver FastAPI na porta 8000, encerre-o ou troque `PILOT_API_PORT` e o destino do Funnel em conjunto. Não execute o Compose padrão ao mesmo tempo se houver conflito.
+**A API de desenvolvimento já ocupa a porta 8000 e deve permanecer intacta.** O piloto usa `PILOT_API_PORT=18000` no arquivo privado `src/.env.piloto`; confira que 18000 está livre e que o Funnel aponta para a mesma porta. Containers e volumes do Compose antigo permanecem separados. Não execute `docker compose down` no ambiente de desenvolvimento.
 
 ```bash
 docker compose --env-file src/.env.piloto -f src/docker-compose.piloto.yml up -d --build
 docker compose --env-file src/.env.piloto -f src/docker-compose.piloto.yml ps
-curl -fsS http://127.0.0.1:8000/health
+curl -fsS http://127.0.0.1:18000/health
 ```
 
-O banco do piloto usa **volume próprio** e não publica portas, o backend publica somente `127.0.0.1:8000`, e nenhum PgAdmin é iniciado. `/health` é o endpoint real (não `/api/health`). A saúde do banco deve também ser validada no `docker compose ps`.
+O banco do piloto usa **volume próprio** e não publica portas, o backend publica somente `127.0.0.1:18000` no computador (dentro do container a porta continua 8000), e nenhum PgAdmin é iniciado. `/health` é o endpoint real (não `/api/health`). A saúde do banco deve também ser validada no `docker compose ps`.
 
 Criar conta administrativa com senha forte, sem qualquer admin padrão público:
 
@@ -79,12 +79,32 @@ Criar conta administrativa com senha forte, sem qualquer admin padrão público:
 docker compose --env-file src/.env.piloto -f src/docker-compose.piloto.yml exec backend python piloto_criar_admin.py
 ```
 
-Use a interface da V1 para criar gestores/financeiros e dados **fictícios** de teste, vinculando cada usuário ao estacionamento autorizado. Se precisar mostrar os dados demo de Manaus, reconstruí-los sob contas/senhas seguras e sem dados pessoais.
+Use a interface da V1 para criar gestores/financeiros de teste, vinculando cada usuário ao estacionamento autorizado e criando senhas próprias.
+
+### Popular somente shoppings/vagas simuladas, sem contas demo (recomendado para a banca)
+
+Em um **banco de piloto vazio**, carregue os oito shoppings reais de Manaus (endereços corrigidos), com andares e vagas **fictícias**, sem executar `seed_demo.py` e sem criar nenhuma senha padrão:
+
+```bash
+# Inspecionar o que seria criado, SEM gravar:
+docker compose --env-file src/.env.piloto -f src/docker-compose.piloto.yml \
+  exec backend python piloto_popular_shoppings.py
+
+# Se a lista estiver correta, autorizar explicitamente:
+docker compose --env-file src/.env.piloto -f src/docker-compose.piloto.yml \
+  exec backend python piloto_popular_shoppings.py --apply
+```
+
+A importação é **opcional, idempotente e só funciona se o banco ainda não tiver estacionamentos**. Não apaga reservas, não altera cadastros existentes e não cria administradores/gestores/financeiros/motoristas. As capacidades, ocupações, preços e disponibilidade são **dados de demonstração**, não sensores reais nem dados oficiais dos shoppings. Os empreendimentos citados são referências geográficas acadêmicas, **não parcerias comerciais confirmadas**. Não apresentar esses números como disponibilidade real dos estacionamentos.
+
+Para bancos existentes com o seed antigo e endereços incorretos, faça backup e consulte `src/docs/ROTAS_GOOGLE_MAPS_MANAUS.md`; há uma migração **opt-in** separada.
+
+
 
 Depois de confirmar que o backend está em `production` e protegido, habilite o endereço público via Tailscale:
 
 ```bash
-sudo tailscale funnel --bg http://127.0.0.1:8000
+sudo tailscale funnel --bg http://127.0.0.1:18000
 tailscale funnel status
 curl -fsS https://SEU-DISPOSITIVO.tailnet.ts.net/health
 ```
