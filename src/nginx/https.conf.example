@@ -1,0 +1,49 @@
+# TEMPLATE OPCIONAL (nao carregado pelo Dockerfile). Nao renomear para .conf
+# sem configurar certificados reais, dominio, portas e politica de seguranca.
+#
+# Piloto publico: TLS/HTTP2 termina no Tailscale Funnel/Cloudflare.
+# O Nginx do compose local permanece apenas HTTP/1.1 na porta interna 80.
+#
+# Se for publicar HTTPS diretamente NESTE Nginx, use um override Compose
+# especifico, montando este template em /etc/nginx/conf.d/https.conf e os
+# certificados em /etc/nginx/ssl/ (somente leitura). Substitua server_name.
+#
+# Nginx >= 1.25.1: NAO usar "listen 443 ssl http2" (depreciado).
+# Use "listen 443 ssl;" + "http2 on;" e negocie h2 com TLS/ALPN.
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name piloto.example.test;
+
+    ssl_certificate     /etc/nginx/ssl/fullchain.pem;
+    ssl_certificate_key /etc/nginx/ssl/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+
+    # Alinhado ao limite local de requests no compose de desenvolvimento.
+    limit_req zone=req_limit_per_ip burst=50 nodelay;
+    limit_conn conn_limit_per_ip 20;
+    limit_req_status 429;
+    limit_conn_status 429;
+
+    location / {
+        # h2 cliente -> Nginx TLS/ALPN -> HTTP/1.1 backend FastAPI
+        proxy_pass http://backend_smartparking;
+        proxy_http_version 1.1;
+        proxy_set_header Host              $host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_connect_timeout 10s;
+        proxy_read_timeout    60s;
+    }
+
+    location /auth/login {
+        limit_req zone=login_limit burst=3 nodelay;
+        proxy_pass http://backend_smartparking;
+        proxy_http_version 1.1;
+        proxy_set_header Host              $host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}

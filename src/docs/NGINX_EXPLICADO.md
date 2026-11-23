@@ -1,4 +1,23 @@
 # 📖 Guia COMPLETO da configuração do Nginx
+
+> **Estado real da V1 (novembro/2026):** o Nginx executado por `src/docker-compose.yml`
+> usa `src/nginx/default.conf`, com **HTTP/1.1 na porta interna 80**
+> (publicada no host como `8080`) e proxy para `backend:8000`.
+> Não existem certificados, `listen 443` nem HTTP/2 ativos nesse Compose.
+> O piloto público em `src/docker-compose.piloto.yml` **não utiliza Nginx**:
+> a API fica vinculada a `127.0.0.1:18000` e o HTTPS/HTTP2 é negociado
+> no **Tailscale Funnel**, não na API. O frontend é servido pelo Cloudflare Pages.
+>
+> Portanto, o erro/warning `listen ... http2` detectado num Nginx **externo**
+> não provém do `default.conf` atual. A sintaxe correta em Nginx >= 1.25.1
+> para um HTTPS próprio é `listen 443 ssl;` seguido de `http2 on;`.
+> O template opt-in `src/nginx/https.conf.example` demonstra essa opção,
+> sem carregá-la nem alterar a produção. Consulte `NGINX_HTTP2_DIAGNOSTICO.md`.
+>
+> **Atenção:** as seções de otimização, SSL, arquivos `nginx.conf`,
+> `smartparking.conf` e `ssl-strong.conf` abaixo são exemplos históricos de
+> arquitetura, **não arquivos implantados** nesta versão.
+
 Todas as opções explicadas linha por linha, com o porquê de cada configuração e como alterar para produção.
 
 ---
