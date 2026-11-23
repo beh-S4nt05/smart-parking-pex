@@ -5,7 +5,7 @@ from models.db_models import Usuario
 
 
 def _email(prefix: str) -> str:
-    return f"{prefix}-{uuid.uuid4().hex[:12]}@example.test"
+    return f"{prefix}-{uuid.uuid4().hex[:12]}@teste.dev"
 
 
 def test_cadastro_normaliza_nome_email_telefone_sem_expor_senha(client, db):
