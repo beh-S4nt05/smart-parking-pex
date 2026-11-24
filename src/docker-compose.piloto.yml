@@ -21,7 +21,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
-    # Sem 'ports': nao exibe o banco nem na rede local, nem no Funnel.
+    # Somente 127.0.0.1:15432 (DBeaver local); jamais publicar em LAN/Funnel.
 
   backend:
     build: ./backend
