@@ -1,4 +1,13 @@
 # Smart Parking V1 — piloto público por até 14 dias, custo de serviço R$ 0
+ 
+> **Atualização da V1 (PR #81):** projeto publica Web App instalável na
+> Tela de Início do iPhone/Android (sem push web/offline), e entrega nativa
+> Android/iOS somente via EAS/assinatura. Veja
+> [INSTALACAO_MOBILE_V1.md](INSTALACAO_MOBILE_V1.md).
+> O piloto real optou pelo **encerramento manual**, não pelo timer opcional;
+> o operador é responsável por desligar Funnel, containers e Cloudflare
+> Pages quando terminar. A API v1 não distribui mais chave HMAC ao cliente.
+
 
 **Alvo:** preservar funcionalidades existentes (FastAPI + React Native/Expo + PostgreSQL + web), notificação remota nativa no APK Android e painéis por papel. **Fora de escopo:** módulos da V2, EAS Update/OTA, Play Store, App Store e backend em Render Free com worker suspenso.
 

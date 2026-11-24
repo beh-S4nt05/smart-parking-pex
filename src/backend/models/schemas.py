@@ -43,9 +43,29 @@ class UsuarioBase(BaseModel):
 
 
 class UsuarioCreate(UsuarioBase):
-    senha: str = Field(..., min_length=6)
+    # Mínimo idêntico ao formulário Web/iOS/Android; bcrypt mantém 72 bytes UTF-8.
+    senha: str = Field(..., min_length=8)
     veiculo: VeiculoCadastro | None = None
     beneficio_solicitado: Literal["idoso", "pcd"] | None = None
+
+    @field_validator("nome")
+    @classmethod
+    def normalizar_nome(cls, nome: str) -> str:
+        nome = " ".join(nome.strip().split())
+        if len(nome) < 2:
+            raise ValueError("Informe um nome de pelo menos 2 caracteres")
+        return nome
+
+    @field_validator("telefone")
+    @classmethod
+    def normalizar_telefone(cls, telefone: str | None) -> str | None:
+        if not telefone:
+            return None
+        import re
+        digitos = re.sub(r"\D", "", telefone)
+        if len(digitos) not in (10, 11):
+            raise ValueError("Informe um telefone com DDD e 10 ou 11 dígitos")
+        return digitos
 
     @model_validator(mode="after")
     def validar_beneficio(self):

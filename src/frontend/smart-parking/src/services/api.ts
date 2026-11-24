@@ -5,7 +5,7 @@
  *    o código antigo só tinha default e quebrava os imports)
  * ✅ Token JWT adicionado automaticamente
  * ✅ Renovação transparente do access_token em 401 (fila de requisições)
- * ✅ Assinatura HMAC de escrita (paridade com core/request_validator.py)
+ * ✅ JWT/RBAC no backend; sem segredo de assinatura no bundle público
  * ✅ Funções tipadas por endpoint — telas não montam URL na mão
  */
 import { Platform } from "react-native";
@@ -17,7 +17,6 @@ import axios, {
 } from "axios";
 import Constants from "expo-constants";
 import { storage } from "./storage";
-import { addRequestSignerInterceptor } from "./requestSigner";
 import type {
   CadastroPayload,
   CategoriaVeiculo,
@@ -178,11 +177,8 @@ api.interceptors.response.use(
   },
 );
 
-// ======================================================================
-// Interceptor 3: assinatura HMAC das escritas (anti-replicação)
-// ======================================================================
-addRequestSignerInterceptor(api, { signWriteMethodsOnly: true });
-
+// Clientes web e mobile são públicos: nenhuma chave de assinatura HMAC
+// privada é enviada no bundle. O backend aplica JWT/RBAC e escopo.
 // ======================================================================
 // Utilitários
 // ======================================================================

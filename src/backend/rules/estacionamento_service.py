@@ -1,4 +1,5 @@
 
+from sqlalchemy import case, func
 from sqlalchemy.orm import Session
 
 from models.db_models import Andar, Estacionamento, StatusVaga, TipoVaga, Usuario, Vaga
@@ -6,56 +7,59 @@ from models.schemas import AndarCreate, EstacionamentoCreate
 from rules.elegibilidade_service import credencial_valida
 
 
+def _contabilizar_vagas(db: Session, est: Estacionamento) -> None:
+    """Vitrine e detalhe usam EXATAMENTE a mesma regra por andar.
+
+    Livres = somente status livre. Ocupadas = ocupada + reservada.
+    Inativas nao contam como disponiveis nem como ocupadas. Nao grava
+    nenhum valor no banco: os atributos calculados sao serializados na API.
+    """
+    linhas = (
+        db.query(
+            Vaga.andar_id,
+            func.count(Vaga.id),
+            func.sum(case((Vaga.status == StatusVaga.LIVRE, 1), else_=0)),
+            func.sum(case((
+                Vaga.status.in_([StatusVaga.OCUPADA, StatusVaga.RESERVADA]), 1
+            ), else_=0)),
+        )
+        .join(Andar, Andar.id == Vaga.andar_id)
+        .filter(Andar.estacionamento_id == est.id)
+        .group_by(Vaga.andar_id)
+        .all()
+    )
+    por_andar = {
+        andar_id: (int(total or 0), int(livres or 0), int(ocupadas or 0))
+        for andar_id, total, livres, ocupadas in linhas
+    }
+    est.total_vagas = 0
+    est.vagas_disponiveis_total = 0
+    for andar in est.andares:
+        total, livres, ocupadas = por_andar.get(andar.id, (0, 0, 0))
+        andar.vagas_livres = livres
+        andar.vagas_ocupadas = ocupadas
+        est.total_vagas += total
+        est.vagas_disponiveis_total += livres
+
+
 def listar_todos_estacionamentos(
     db: Session, apenas_ids: list[str] | set[str] | None = None
 ) -> list[Estacionamento]:
-    """Retorna estacionamentos com contagem de vagas disponíveis.
-
-    `apenas_ids` restringe a lista ao escopo de um gestor/financeiro; `None`
-    mantém a vitrine pública completa (anônimo, motorista ou admin global).
-    """
+    """Vitrine pública: totais e andares sincronizados, com escopo RBAC."""
     query = db.query(Estacionamento)
     if apenas_ids is not None:
         query = query.filter(Estacionamento.id.in_(list(apenas_ids)))
     estacionamentos = query.order_by(Estacionamento.nome).all()
-
     for est in estacionamentos:
-        total_vagas = db.query(Vaga).join(Andar).filter(
-            Andar.estacionamento_id == est.id
-        ).count()
-        vagas_ocupadas = db.query(Vaga).join(Andar).filter(
-            Andar.estacionamento_id == est.id,
-            Vaga.status.in_([StatusVaga.OCUPADA, StatusVaga.RESERVADA])
-        ).count()
-        est.total_vagas = total_vagas
-        est.vagas_disponiveis_total = total_vagas - vagas_ocupadas
-
+        _contabilizar_vagas(db, est)
     return estacionamentos
 
 
 def buscar_estacionamento_por_id(db: Session, estacionamento_id: str) -> Estacionamento | None:
-    """Busca um estacionamento pelo ID (UUID)"""
+    """Consulta de detalhe com a mesma contabilização da vitrine."""
     est = db.query(Estacionamento).filter(Estacionamento.id == estacionamento_id).first()
-    if est:
-        # Adiciona contagem de vagas por andar
-        for andar in est.andares:
-            total_vagas_andar = db.query(Vaga).filter(Vaga.andar_id == andar.id).count()
-            vagas_ocupadas = db.query(Vaga).filter(
-                Vaga.andar_id == andar.id,
-                Vaga.status.in_([StatusVaga.OCUPADA, StatusVaga.RESERVADA])
-            ).count()
-            andar.vagas_ocupadas = vagas_ocupadas
-            andar.vagas_livres = total_vagas_andar - vagas_ocupadas
-
-        total_vagas = sum(db.query(Vaga).filter(Vaga.andar_id == a.id).count() for a in est.andares)
-        vagas_ocupadas_total = sum(
-            db.query(Vaga).filter(
-                Vaga.andar_id == a.id,
-                Vaga.status.in_([StatusVaga.OCUPADA, StatusVaga.RESERVADA])
-            ).count() for a in est.andares
-        )
-        est.vagas_disponiveis_total = total_vagas - vagas_ocupadas_total
-
+    if est is not None:
+        _contabilizar_vagas(db, est)
     return est
 
 

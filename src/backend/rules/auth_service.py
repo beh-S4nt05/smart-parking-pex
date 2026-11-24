@@ -3,6 +3,7 @@ import re
 import jwt as pyjwt
 from fastapi import HTTPException, status
 from sqlalchemy import func
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from core.security import (
@@ -49,49 +50,68 @@ def buscar_usuario_por_credencial(db: Session, credencial: str) -> Usuario | Non
 
 
 def criar_usuario(db: Session, dados: UsuarioCreate) -> Usuario:
-    """Cria um novo usuário com senha hasheada"""
-    email = (dados.email or "").strip().lower()
-    usuario_existente = db.query(Usuario).filter(Usuario.email == email).first()
-    if usuario_existente:
+    """Cadastro atômico: conta, veículo e solicitação, sem contas parciais.
+
+    O banco possui uma constraint UNIQUE em usuarios.email. O pre-check dá
+    feedback amigável; IntegrityError também trata a corrida entre duas
+    requisições simultâneas com o mesmo e-mail.
+    """
+    email = dados.email.strip().lower()
+
+    def ja_cadastrado() -> bool:
+        return db.query(Usuario.id).filter(func.lower(Usuario.email) == email).first() is not None
+
+    if ja_cadastrado():
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="E-mail já cadastrado no sistema"
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Este e-mail já possui uma conta. Entre com sua senha ou recupere o acesso.",
         )
 
-    senha_hash = criar_hash_senha(dados.senha)
-    novo_usuario = Usuario(
-        nome=dados.nome.strip(),
-        email=email,
-        telefone=_somente_digitos(dados.telefone) if dados.telefone else None,
-        placa_veiculo=(dados.placa_veiculo or "").upper().replace(" ", "") or None,
-        senha_hash=senha_hash,
-        role="usuario",  # Usuários cadastrados publicamente são sempre comuns
-        is_ativo=True,
-        is_pcd=dados.is_pcd,  # campo legado: solicitação de credencial não concede elegibilidade
-        data_nascimento=dados.data_nascimento,
-    )
-
-    db.add(novo_usuario)
-    db.flush()  # gerar id do novo usuário; gravar usuário, veículo e solicitação na mesma transação
-    if dados.veiculo:
-        db.add(Veiculo(
-            usuario_id=novo_usuario.id,
-            placa=dados.veiculo.placa,
-            categoria=dados.veiculo.categoria,
-            motorizacao=dados.veiculo.motorizacao,
-            modelo=dados.veiculo.modelo,
-            principal=True,
-        ))
-        novo_usuario.placa_veiculo = dados.veiculo.placa
-    if dados.beneficio_solicitado:
-        db.add(CredencialEstacionamento(
-            usuario_id=novo_usuario.id,
-            tipo=dados.beneficio_solicitado,
-            status="pendente",  # exige verificação oficial posterior; não libera a vaga
-        ))
-    db.commit()
-    db.refresh(novo_usuario)
-    return novo_usuario
+    try:
+        novo_usuario = Usuario(
+            nome=dados.nome,
+            email=email,
+            telefone=_somente_digitos(dados.telefone) if dados.telefone else None,
+            placa_veiculo=(dados.placa_veiculo or "").upper().replace(" ", "") or None,
+            senha_hash=criar_hash_senha(dados.senha),
+            role="usuario",
+            is_ativo=True,
+            # Apenas solicitação; PCD/idoso depende de validação oficial.
+            is_pcd=dados.is_pcd,
+            data_nascimento=dados.data_nascimento,
+        )
+        db.add(novo_usuario)
+        db.flush()
+        if dados.veiculo:
+            db.add(Veiculo(
+                usuario_id=novo_usuario.id,
+                placa=dados.veiculo.placa,
+                categoria=dados.veiculo.categoria,
+                motorizacao=dados.veiculo.motorizacao,
+                modelo=dados.veiculo.modelo,
+                principal=True,
+            ))
+            novo_usuario.placa_veiculo = dados.veiculo.placa
+        if dados.beneficio_solicitado:
+            db.add(CredencialEstacionamento(
+                usuario_id=novo_usuario.id,
+                tipo=dados.beneficio_solicitado,
+                status="pendente",
+            ))
+        db.commit()
+        db.refresh(novo_usuario)
+        return novo_usuario
+    except IntegrityError:
+        db.rollback()
+        if ja_cadastrado():
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Este e-mail já possui uma conta. Entre com sua senha ou recupere o acesso.",
+            ) from None
+        raise
+    except Exception:
+        db.rollback()
+        raise
 
 
 def montar_token_response(usuario: Usuario, access: str, refresh: str) -> TokenResponse:

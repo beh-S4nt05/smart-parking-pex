@@ -4,7 +4,7 @@ import { pagina } from "../styles/recipes";
  * POST /auth/registrar → auto-login via /auth/login → redireciona por papel.
  * Mantém o fluxo existente, com a paleta azul dos templates do Figma.
  */
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   KeyboardAvoidingView,
   Platform,
@@ -77,26 +77,33 @@ export default function Cadastro() {
   const [erroGeral, setErroGeral] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [senhaVisivel, setSenhaVisivel] = useState(false);
+  const [mostrarLoginAposErro, setMostrarLoginAposErro] = useState(false);
+  // Bloqueia toques muito rápidos antes de o React renderizar loading=true.
+  const envioEmCurso = useRef(false);
 
   function setField<K extends keyof FormState>(key: K, value: string) {
     setForm((prev) => ({ ...prev, [key]: value }));
     setErrors((prev) => ({ ...prev, [key]: undefined }));
+    setErroGeral(null);
+    setMostrarLoginAposErro(false);
   }
 
   function validarEtapa1() {
     const e: FormErrors = {};
-    if (!form.nome.trim()) e.nome = "Informe seu nome";
+    if (form.nome.trim().length < 2) e.nome = "Informe seu nome (mínimo 2 caracteres)";
     if (!form.email.trim()) e.email = "Informe o e-mail";
-    else if (!/\S+@\S+\.\S+/.test(form.email)) e.email = "E-mail inválido";
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) e.email = "Digite um e-mail válido";
 
     const tel = form.telefone.replace(/\D/g, "");
     if (!tel) e.telefone = "Informe seu telefone";
-    else if (tel.length < 10) e.telefone = "Telefone inválido";
+    else if (tel.length !== 10 && tel.length !== 11)
+      e.telefone = "Use DDD + telefone (10 ou 11 dígitos)";
 
     if (!form.senha) e.senha = "Informe a senha";
-    else if (form.senha.length < 8) e.senha = "Mínimo 8 caracteres";
+    else if (form.senha.length < 8) e.senha = "A senha precisa de pelo menos 8 caracteres";
 
-    if (form.confirmarSenha !== form.senha)
+    if (!form.confirmarSenha) e.confirmarSenha = "Confirme sua senha";
+    else if (form.confirmarSenha !== form.senha)
       e.confirmarSenha = "As senhas não coincidem";
 
     setErrors(e);
@@ -118,6 +125,11 @@ export default function Cadastro() {
           dt.getUTCFullYear() !== ano || dt.getUTCMonth() !== mes - 1 || dt.getUTCDate() !== dia ||
           dt > new Date()) {
         e.dataNascimento = "Informe uma data válida: DD/MM/AAAA";
+      } else if (form.beneficio === "idoso") {
+        const hoje = new Date();
+        const idade = hoje.getFullYear() - ano -
+          (hoje.getMonth() + 1 < mes || (hoje.getMonth() + 1 === mes && hoje.getDate() < dia) ? 1 : 0);
+        if (idade < 60) e.dataNascimento = "Credencial de idoso exige 60 anos ou mais";
       }
     } else if (form.beneficio === "idoso") {
       e.dataNascimento = "Informe o nascimento para solicitar benefício de idoso";
@@ -133,8 +145,16 @@ export default function Cadastro() {
   }
 
   async function enviar(pularOpcionais = false) {
+    if (envioEmCurso.current) return;
+    // Previne envio com etapa 1 incompleta em qualquer fluxo de navegação.
+    if (!validarEtapa1()) {
+      setStep(1);
+      return;
+    }
+    envioEmCurso.current = true;
     setLoading(true);
     setErroGeral(null);
+    setMostrarLoginAposErro(false);
     let contaCriada = false;
     try {
       const comVeiculo = !pularOpcionais && Boolean(form.placa.trim());
@@ -154,16 +174,23 @@ export default function Cadastro() {
         } : undefined,
       });
       contaCriada = true;
-      await signIn(form.email, form.senha);
+      await signIn(form.email.trim().toLowerCase(), form.senha);
       router.replace("/");
     } catch (err) {
-      const motivo = apiErrorMessage(err, "Tente novamente.");
+      const motivo = apiErrorMessage(err, "Não foi possível concluir o cadastro.");
+      const duplicado = [400, 409].includes(
+        (err as { response?: { status?: number } })?.response?.status ?? 0,
+      ) && /e-mail.*cadastrad|e-mail.*conta/i.test(motivo);
+      setMostrarLoginAposErro(contaCriada || duplicado);
       setErroGeral(
         contaCriada
-          ? `Sua conta foi cadastrada, mas o acesso automático falhou: ${motivo} Abra Entrar e use o e-mail e a senha cadastrados. Não é necessário se cadastrar novamente.`
-          : motivo,
+          ? "Sua conta foi criada! O acesso automático não terminou. Entre usando o e-mail e a senha cadastrados; não repita o cadastro."
+          : duplicado
+            ? "Este e-mail já possui uma conta. Entre com sua senha ou use a recuperação de acesso."
+            : motivo,
       );
     } finally {
+      envioEmCurso.current = false;
       setLoading(false);
     }
   }
@@ -262,6 +289,7 @@ export default function Cadastro() {
                   label="Nome completo"
                   placeholder="Seu nome"
                   autoCapitalize="words"
+                  autoComplete="name"
                   value={form.nome}
                   onChangeText={(v) => setField("nome", v)}
                   erro={errors.nome}
@@ -270,6 +298,7 @@ export default function Cadastro() {
                   label="E-mail"
                   placeholder="voce@email.com"
                   keyboardType="email-address"
+                  autoComplete="email"
                   autoCapitalize="none"
                   autoCorrect={false}
                   value={form.email}
@@ -280,6 +309,7 @@ export default function Cadastro() {
                   label="Telefone"
                   placeholder="(92) 9 9999-9999"
                   keyboardType="phone-pad"
+                  autoComplete="tel"
                   value={form.telefone}
                   onChangeText={(v) => setField("telefone", formatarTelefone(v))}
                   erro={errors.telefone}
@@ -287,6 +317,8 @@ export default function Cadastro() {
                 <Campo
                   label="Senha"
                   placeholder="Mínimo 8 caracteres"
+                  helper="Use uma senha exclusiva para sua conta."
+                  autoComplete="new-password"
                   senha
                   visivel={senhaVisivel}
                   onAlternarVisivel={() => setSenhaVisivel((v) => !v)}
@@ -297,6 +329,7 @@ export default function Cadastro() {
                 <Campo
                   label="Confirmar senha"
                   placeholder="Repita a senha"
+                  autoComplete="new-password"
                   senha
                   visivel={senhaVisivel}
                   onAlternarVisivel={() => setSenhaVisivel((v) => !v)}
@@ -306,13 +339,18 @@ export default function Cadastro() {
                 />
                 {erroGeral ? (
                   <View className="mb-3 rounded-xl border border-red-200 bg-red-50 px-3.5 py-2.5">
-                    <Text className="text-[13px] font-medium text-red-600">
+                    <Text accessibilityRole="alert" className="text-[13px] font-medium text-red-600">
                       {erroGeral}
                     </Text>
+                    {mostrarLoginAposErro ? (
+                      <Botao label="Ir para entrar" variant="contorno"
+                        onPress={() => router.replace("/login")} className="mt-2 w-full" />
+                    ) : null}
                   </View>
                 ) : null}
                 <Botao
                   label="Continuar"
+                  disabled={loading}
                   onPress={() => {
                     if (validarEtapa1()) {
                       setErrors({});
@@ -326,7 +364,7 @@ export default function Cadastro() {
               <>
                 <Text style={{ fontSize: 17, fontWeight: "800", color: "#17243B", marginBottom: 7 }}>Seu veículo</Text>
                 <Text style={{ color: "#64748B", fontSize: 12, marginBottom: 16 }}>
-                  Opcional. Escolha o tipo e a motorização; informe a placa para salvar.
+                  Esta etapa é opcional. Você pode incluir veículos e solicitar credenciais depois, pelo perfil.
                 </Text>
                 <OptionChips
                   label="Tipo do veículo"
@@ -403,9 +441,13 @@ export default function Cadastro() {
                 </View>
                 {erroGeral ? (
                   <View className="mb-3 rounded-xl border border-red-200 bg-red-50 px-3.5 py-2.5">
-                    <Text className="text-[13px] font-medium text-red-600">
+                    <Text accessibilityRole="alert" className="text-[13px] font-medium text-red-600">
                       {erroGeral}
                     </Text>
+                    {mostrarLoginAposErro ? (
+                      <Botao label="Ir para entrar" variant="contorno"
+                        onPress={() => router.replace("/login")} className="mt-2 w-full" />
+                    ) : null}
                   </View>
                 ) : null}
                 <Botao
@@ -425,9 +467,11 @@ export default function Cadastro() {
                 />
                 <Pressable
                   onPress={() => {
+                    if (loading) return;
                     setErrors({});
                     setStep(1);
                   }}
+                  disabled={loading}
                   accessibilityRole="button"
                   accessibilityLabel="Voltar à etapa anterior"
                   hitSlop={4}

@@ -37,6 +37,8 @@ services:
       DATABASE_URL: "postgresql+psycopg2://smartparking_piloto:${PILOT_DB_PASSWORD:?Defina senha do banco}@postgres:5432/smartparking_piloto"
       SECRET_KEY: ${SECRET_KEY:?Defina SECRET_KEY}
       APP_SIGNING_SECRET: ${APP_SIGNING_SECRET:?Defina APP_SIGNING_SECRET}
+      # Web e APK sem segredo compartilhado. Proteção por JWT/RBAC.
+      REQUIRE_CLIENT_HMAC: "false"
       TRUSTED_HOSTS: ${TRUSTED_HOSTS:?Defina dominio real do Funnel em JSON}
       CORS_ORIGINS: ${CORS_ORIGINS:?Defina origem real do Cloudflare Pages em JSON}
       NOTIFICACOES_PUSH_ENABLED: ${NOTIFICACOES_PUSH_ENABLED:-false}

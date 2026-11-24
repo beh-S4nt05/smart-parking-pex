@@ -11,10 +11,10 @@ from core.config import settings
 
 class RequestValidationMiddleware(BaseHTTPMiddleware):
     """
-    Middleware que valida que as requisições de ESCRITA vêm realmente do app oficial,
-    e não de Postman, scripts ou clientes modificados.
+    Validador HMAC LEGADO e opcional. Não comprova que a requisição veio
+    do aplicativo oficial, pois a chave compartilhada pode ser extraída.
 
-    Como funciona (somente em produção):
+    Como funciona (REQUIRE_CLIENT_HMAC=true e em produção):
     - Rotas de escrita (POST/PUT/PATCH/DELETE) precisam dos headers:
         X-Request-Timestamp  -> unix time da requisição (janela de ±5 min)
         X-Request-Nonce      -> valor único por requisição (anti-replay)
@@ -68,8 +68,10 @@ class RequestValidationMiddleware(BaseHTTPMiddleware):
         ):
             return await call_next(request)
 
-        # Em desenvolvimento/testes passa direto sem exigir assinatura
-        if settings.ENVIRONMENT != "production":
+        # Chaves dentro do JS/APK/IPA são públicas. Por padrão não exigir
+        # HMAC de cliente; JWT/RBAC e chave própria de sensor continuam
+        # obrigatórios nos endpoints protegidos. Flag opt-in para legado.
+        if not settings.REQUIRE_CLIENT_HMAC or settings.ENVIRONMENT != "production":
             return await call_next(request)
 
         # ---------------- Produção: exige assinatura válida ----------------
