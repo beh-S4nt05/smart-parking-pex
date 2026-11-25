@@ -45,6 +45,15 @@ services:
       NOTIFICATIONS_ENCRYPTION_KEY: ${NOTIFICATIONS_ENCRYPTION_KEY:?Defina chave Fernet do servidor}
       EXPO_ACCESS_TOKEN: ${EXPO_ACCESS_TOKEN:-}
       SIMULADOR_BASE_URL: ${SIMULADOR_BASE_URL:?Defina dominio web real}
+      # Entrega pelo e-mail da empresa (nunca incluir credenciais no Git)
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_SENDER: ${SMTP_SENDER:-}
+      SMTP_STARTTLS: ${SMTP_STARTTLS:-true}
+      # Ativar SOMENTE após testar a entrega real SMTP e rodar migrations.
+      SECURITY_VERIFIED_EMAIL_REQUIRED: ${SECURITY_VERIFIED_EMAIL_REQUIRED:-false}
       GUNICORN_WORKERS: "1"
     ports:
       - "127.0.0.1:${PILOT_API_PORT:-8000}:8000"
