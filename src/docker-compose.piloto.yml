@@ -52,6 +52,7 @@ services:
       SMTP_PASSWORD: ${SMTP_PASSWORD:-}
       SMTP_SENDER: ${SMTP_SENDER:-}
       SMTP_STARTTLS: ${SMTP_STARTTLS:-true}
+      SMTP_SSL: ${SMTP_SSL:-false}
       # Ativar SOMENTE após testar a entrega real SMTP e rodar migrations.
       SECURITY_VERIFIED_EMAIL_REQUIRED: ${SECURITY_VERIFIED_EMAIL_REQUIRED:-false}
       GUNICORN_WORKERS: "1"
