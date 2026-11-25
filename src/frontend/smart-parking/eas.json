@@ -12,8 +12,12 @@
       "environment": "preview"
     },
     "production": {
+      "distribution": "store",
       "android": {
         "buildType": "app-bundle"
+      },
+      "ios": {
+        "simulator": false
       },
       "environment": "production"
     }
