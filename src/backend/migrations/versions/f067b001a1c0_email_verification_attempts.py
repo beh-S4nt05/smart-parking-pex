@@ -21,6 +21,13 @@ def upgrade():
         op.add_column("tokens_identidade", sa.Column(
             "tentativas", sa.Integer(), nullable=False, server_default="0"
         ))
+    usuarios = {c["name"] for c in sa.inspect(conn).get_columns("usuarios")}
+    if "email_confirmacao_obrigatoria" not in usuarios:
+        # Contas anteriores continuam habilitadas sem confirmação retroativa.
+        op.add_column("usuarios", sa.Column(
+            "email_confirmacao_obrigatoria", sa.Boolean(),
+            nullable=False, server_default=sa.false()
+        ))
 
 
 def downgrade():
