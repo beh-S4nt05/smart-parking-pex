@@ -82,9 +82,7 @@ def test_gmail_api_falha_503_sem_vazar_segredos(monkeypatch):
     _gmail_configurado(monkeypatch)
     def responder(request):
         return httpx.Response(401, json={"error": "invalid_grant", "detail": "secret"})
-    monkeypatch.setattr(gmail_api.httpx, "Client",
-                        lambda timeout: httpx.Client(transport=httpx.MockTransport(responder), timeout=timeout))
-    # Usar cliente HTTP original no fake de transporte; substituir só o transporte sem recursão.
+    # Preserva o construtor original antes de instalar o fake.
     cliente_real = httpx.Client
     monkeypatch.setattr(gmail_api.httpx, "Client",
                         lambda timeout: cliente_real(transport=httpx.MockTransport(responder), timeout=timeout))
