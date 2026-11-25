@@ -85,6 +85,20 @@ para contas reais.
 - Uma solicitação SMTP bem-sucedida comprova o envio ao servidor SMTP, não
   garante chegada à caixa de entrada. Fazer teste real de entrega e spam.
 
+## Teste SMTP real, sem criar conta
+
+Depois de configurar e subir o backend, teste somente com uma caixa postal sua
+ou explicitamente autorizada:
+
+```bash
+docker compose --env-file src/.env.piloto -f src/docker-compose.piloto.yml \\
+  exec backend python piloto_testar_email.py --destino EMAIL_AUTORIZADO@DOMINIO.EXEMPLO
+```
+
+O terminal deve indicar que o servidor SMTP **aceitou** a mensagem.
+A confirmação de entrega exige verificar a caixa de entrada (e spam).
+O script não imprime credenciais nem altera o PostgreSQL.
+
 ## Validação antes da feira
 
 1. Cadastrar e-mail real controlado pela equipe.
