@@ -138,6 +138,17 @@ jobs:
           test -f src/.env.piloto.example
           grep -q 'Persistent=true' scripts/piloto_agendar_encerramento.sh
           grep -q -- '--https=443 off' scripts/piloto_encerrar.sh
+      - name: Validar portão de publicação Android/iOS (sem credenciais)
+        run: |
+          node scripts/mobile_release_preflight.cjs --self-test
+          bash -n scripts/gerar_apps_mobile.sh
+          python3 - <<'PY'
+          from pathlib import Path
+          texto = Path(".github/workflows/mobile-release-eas.yml").read_text()
+          assert "workflow_dispatch:" in texto
+          assert "EXPO_TOKEN" in texto and "EXPO_EAS_PROJECT_ID" in texto
+          assert "api_url" in texto and "--auto-submit" in texto
+          PY
       - name: Validar compose, isolamento de rede e bootstrap
         env:
           PILOT_API_PORT: "18000"
