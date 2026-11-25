@@ -52,6 +52,12 @@
       "./plugins/withLocalNetwork",
       "expo-web-browser",
       "expo-notifications"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "e5085730-1137-4a66-b45a-87bc7bed9582"
+      }
+    },
+    "owner": "shadowthunderswd"
   }
 }

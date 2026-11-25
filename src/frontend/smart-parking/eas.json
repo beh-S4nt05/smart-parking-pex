@@ -5,13 +5,23 @@
   },
   "build": {
     "preview": {
+      "node": "24.19.0",
       "distribution": "internal",
       "android": {
         "buildType": "apk"
       },
       "environment": "preview"
     },
+    "simulator": {
+      "node": "24.19.0",
+      "distribution": "internal",
+      "ios": {
+        "simulator": true
+      },
+      "environment": "preview"
+    },
     "production": {
+      "node": "24.19.0",
       "distribution": "store",
       "android": {
         "buildType": "app-bundle"
