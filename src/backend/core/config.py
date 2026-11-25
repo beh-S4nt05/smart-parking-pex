@@ -93,6 +93,13 @@ class Settings(BaseSettings):
     SMTP_STARTTLS: bool = True
     # Para provedores que usam TLS implícito na porta 465.
     SMTP_SSL: bool = False
+    # Provedor selecionado: SMTP legado ou Gmail API OAuth 2.0 (sem senha de app).
+    EMAIL_PROVIDER: str = "smtp"
+    GMAIL_CLIENT_ID: str | None = None
+    GMAIL_CLIENT_SECRET: str | None = None
+    GMAIL_REFRESH_TOKEN: str | None = None
+    # Conta Google autorizada ou alias de envio previamente verificado.
+    GMAIL_SENDER: str | None = None
     SECURITY_VERIFIED_EMAIL_REQUIRED: bool = False
     SECURITY_STAFF_MFA_REQUIRED: bool = False
     # Fernet base64 urlsafe gerado por cryptography.Fernet.generate_key()
