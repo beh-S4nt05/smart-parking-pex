@@ -1,0 +1,106 @@
+# O artefato final é criado pelo Expo EAS. Nenhuma chave é colocada no APK.
+# Rodar manualmente no GitHub Actions, depois de configurar os segredos Expo.
+name: Publicar Mobile (APK e TestFlight)
+
+on:
+  workflow_dispatch:
+    inputs:
+      plataforma:
+        description: Plataforma a publicar
+        required: true
+        type: choice
+        options: [android, ios, ambos]
+        default: android
+      api_url:
+        description: URL HTTPS real da API FastAPI sem caminho (ex. https://nome.tailnet.ts.net)
+        required: true
+        type: string
+      enviar_testflight:
+        description: Enviar iOS para TestFlight apos build
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mobile-eas-release
+  cancel-in-progress: false
+
+jobs:
+  android-apk:
+    if: ${{ inputs.plataforma == 'android' || inputs.plataforma == 'ambos' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      CI: "1"
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      EXPO_EAS_PROJECT_ID: ${{ vars.EXPO_EAS_PROJECT_ID }}
+      EXPO_PUBLIC_API_URL_MOBILE: ${{ inputs.api_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24.19.0"
+          cache: npm
+          cache-dependency-path: src/frontend/smart-parking/package-lock.json
+      - name: Validar URL publica e configuracao
+        run: node scripts/mobile_release_preflight.cjs --require-eas-project --check-api
+      - name: Exigir token Expo privado
+        run: |
+          test -n "$EXPO_TOKEN" || { echo "Configure EXPO_TOKEN em Settings > Secrets and variables > Actions"; exit 1; }
+      - name: Instalar e autenticar ferramentas
+        working-directory: src/frontend/smart-parking
+        run: |
+          npm install -g npm@11.17.0
+          npm ci --no-audit --no-fund
+          npx --yes eas-cli@latest whoami
+      - name: Configurar URL no ambiente remoto preview
+        working-directory: src/frontend/smart-parking
+        run: |
+          npx --yes eas-cli@latest env:set --name EXPO_PUBLIC_API_URL_MOBILE \
+            --value "$EXPO_PUBLIC_API_URL_MOBILE" --environment preview --visibility plaintext
+      - name: Gerar APK assinado no EAS (Android físico)
+        working-directory: src/frontend/smart-parking
+        run: npx --yes eas-cli@latest build --platform android --profile preview --non-interactive --wait
+
+  ios-testflight:
+    if: ${{ inputs.plataforma == 'ios' || inputs.plataforma == 'ambos' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      CI: "1"
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      EXPO_EAS_PROJECT_ID: ${{ vars.EXPO_EAS_PROJECT_ID }}
+      EXPO_PUBLIC_API_URL_MOBILE: ${{ inputs.api_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24.19.0"
+          cache: npm
+          cache-dependency-path: src/frontend/smart-parking/package-lock.json
+      - name: Validar URL publica e configuracao iOS
+        run: node scripts/mobile_release_preflight.cjs --require-eas-project --check-api
+      - name: Exigir token Expo privado
+        run: |
+          test -n "$EXPO_TOKEN" || { echo "Configure EXPO_TOKEN nas secrets do GitHub"; exit 1; }
+      - name: Instalar e autenticar ferramentas
+        working-directory: src/frontend/smart-parking
+        run: |
+          npm install -g npm@11.17.0
+          npm ci --no-audit --no-fund
+          npx --yes eas-cli@latest whoami
+      - name: Configurar URL no ambiente remoto production
+        working-directory: src/frontend/smart-parking
+        run: |
+          npx --yes eas-cli@latest env:set --name EXPO_PUBLIC_API_URL_MOBILE \
+            --value "$EXPO_PUBLIC_API_URL_MOBILE" --environment production --visibility plaintext
+      - name: Compilar e enviar ao TestFlight
+        if: ${{ inputs.enviar_testflight }}
+        working-directory: src/frontend/smart-parking
+        run: npx --yes eas-cli@latest build --platform ios --profile production --auto-submit --non-interactive --wait
+      - name: Somente compilar iOS
+        if: ${{ !inputs.enviar_testflight }}
+        working-directory: src/frontend/smart-parking
+        run: npx --yes eas-cli@latest build --platform ios --profile production --non-interactive --wait
