@@ -4,7 +4,16 @@ import "../../assets/Styles/global.css";
 
 import { AppState, Platform } from "react-native";
 import { useEffect } from "react";
+import { Ionicons } from "@expo/vector-icons";
+import { useFonts } from "expo-font";
+import * as SplashScreen from "expo-splash-screen";
 import { instalarAlertaWeb } from "../services/web-alert-shim";
+
+// Não revelar telas nativas antes da fonte de ícones estar pronta.
+// Na Web, preservar a renderização estática do Expo Router.
+if (Platform.OS !== "web") {
+  void SplashScreen.preventAutoHideAsync().catch(() => undefined);
+}
 
 instalarAlertaWeb(); // Alert.alert é no-op no RN-web — shim p/ window.alert/confirm (ver módulo)
 import { Stack, useRouter } from "expo-router";
@@ -67,6 +76,14 @@ function SincronizacaoPushNativa() {
 export default function Layout() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  // Ícones Ionicons usam uma fonte; o carregamento assíncrono podia exibir
+  // quadrados vazios no primeiro frame do APK/iOS.
+  const [iconesCarregados, erroIcones] = useFonts(Ionicons.font);
+  useEffect(() => {
+    if (Platform.OS !== "web" && (iconesCarregados || erroIcones)) {
+      void SplashScreen.hideAsync().catch(() => undefined);
+    }
+  }, [iconesCarregados, erroIcones]);
   useEffect(() => {
     if (Platform.OS === "web") return;
     let ativo = true;
@@ -108,6 +125,9 @@ export default function Layout() {
       listener?.remove();
     };
   }, [router]);
+  if (Platform.OS !== "web" && !iconesCarregados && !erroIcones) {
+    return null;
+  }
   const topo = Platform.OS === "web" ? 0 : insets.top;
   const base = Platform.OS === "web" ? 0 : Math.max(insets.bottom, 8);
   return (
