@@ -54,6 +54,9 @@ export interface Usuario {
   /** RF-47: autodeclaração PCD — vaga PCD só é atribuída a quem declara. */
   is_pcd?: boolean;
   is_ativo: boolean;
+  confirmacao_email_pendente?: boolean;
+  email_enviado?: boolean;
+  email_verificado_em?: string | null;
   role: "publico" | "usuario" | "financeiro" | "gestor" | "admin";
   estacionamento_id?: string | null;
   /** Todos os shoppings que a conta pode ver (gestor: vários; financeiro: 1) */
