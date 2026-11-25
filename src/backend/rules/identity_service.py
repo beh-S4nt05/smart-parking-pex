@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from core.config import settings
 from core.email_templates import montar_email_transacional
+from core.gmail_api import enviar_email_gmail, gmail_api_configurada
 from core.identity_security import (gerar_codigo_email, gerar_token_uso_unico, hash_codigo_email,
                                     hash_token, novo_segredo_totp, uri_totp, validar_totp)
 from core.security import criar_hash_senha, verificar_senha
@@ -93,7 +94,21 @@ def _smtp_disponivel() -> bool:
     )
 
 
+def _transporte_disponivel() -> bool:
+    """Seleciona explicitamente um transporte, sem fallback silencioso."""
+    if settings.EMAIL_PROVIDER == "gmail_api":
+        return gmail_api_configurada()
+    if settings.EMAIL_PROVIDER == "smtp":
+        return _smtp_disponivel()
+    return False
+
+
 def _enviar_email(destino: str, titulo: str, corpo: str) -> None:
+    if settings.EMAIL_PROVIDER == "gmail_api":
+        enviar_email_gmail(destino, titulo, corpo)
+        return
+    if settings.EMAIL_PROVIDER != "smtp":
+        raise HTTPException(status_code=503, detail="Provedor de e-mail inválido no servidor")
     """Entrega SMTP com TLS verificado e MIME texto/HTML.
 
     A conta da empresa só é usada no servidor; credenciais não vão à API,
@@ -133,7 +148,7 @@ def solicitar_desafio(db: Session, email: str, finalidade: str) -> bool:
     """
     if finalidade not in {"verificar_email", "recuperar_senha"}:
         raise ValueError("finalidade inválida")
-    if not _smtp_disponivel():
+    if not _transporte_disponivel():
         raise HTTPException(status_code=503, detail="Serviço de e-mail não configurado")
 
     usuario = db.query(Usuario).filter(Usuario.email == email.strip().lower()).first()
