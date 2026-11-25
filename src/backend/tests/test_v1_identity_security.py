@@ -30,11 +30,12 @@ def test_email_confirmation_and_password_reset_require_valid_one_use_token(clien
     req = client.post("/auth/email/solicitar", json={"email": user.email})
     assert req.status_code == 202, req.text
     token = enviados[-1][2].split(": ")[1].split("\n")[0]
-    ok = client.post("/auth/email/confirmar", json={"token": token})
+    assert len(token) == 6 and token.isdecimal()
+    ok = client.post("/auth/email/confirmar", json={"email": user.email, "codigo": token})
     assert ok.status_code == 204, ok.text
     db.refresh(user)
     assert user.email_verificado_em is not None
-    assert client.post("/auth/email/confirmar", json={"token": token}).status_code == 400
+    assert client.post("/auth/email/confirmar", json={"email": user.email, "codigo": token}).status_code == 409
 
     assert client.post("/auth/senha/esqueci", json={"email": user.email}).status_code == 202
     codigo = enviados[-1][2].split(": ")[1].split("\n")[0]
