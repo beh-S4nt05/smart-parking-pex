@@ -170,7 +170,6 @@ def autenticar_usuario(db: Session, dados: LoginRequest, agente: str | None = No
             detail="Usuário desativado. Contate o suporte."
         )
 
-    from core.config import settings
     from rules import identity_service
 
     if usuario.email_confirmacao_obrigatoria and not usuario.email_verificado_em:
@@ -208,7 +207,6 @@ def renovar_access_token(db: Session, refresh_token: str) -> TokenResponse:
             detail="Usuário desativado. Contate o suporte.",
         )
 
-    from core.config import settings
     if usuario.email_confirmacao_obrigatoria and not usuario.email_verificado_em:
         raise HTTPException(status_code=403, detail="Confirme o e-mail cadastrado antes de entrar")
 
