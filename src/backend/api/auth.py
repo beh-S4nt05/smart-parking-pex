@@ -63,7 +63,7 @@ def registrar_usuario(
     if settings.SECURITY_VERIFIED_EMAIL_REQUIRED and not identity_service._smtp_disponivel():
         raise HTTPException(status_code=503, detail="Confirmação de e-mail indisponível. Tente mais tarde.")
     usuario = auth_service.criar_usuario(db, dados)
-    pendente = settings.SECURITY_VERIFIED_EMAIL_REQUIRED and usuario.email_verificado_em is None
+    pendente = usuario.email_confirmacao_obrigatoria and usuario.email_verificado_em is None
     enviado = False
     if pendente:
         try:
