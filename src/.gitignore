@@ -4,3 +4,4 @@ __pycache__
 # venv do run-dev.sh e SQLite de fallback — nunca versionar
 .venv/
 *.db
+*.json
