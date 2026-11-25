@@ -46,6 +46,8 @@ CORRECOES_ESQUEMA = {
         "is_pcd": "BOOLEAN NOT NULL DEFAULT false",  # RF-47
         "data_nascimento": "DATE",  # V1: campo opcional sem inventar idade
         "email_verificado_em": "TIMESTAMP",
+        # Cadastro novo valida e-mail; legados preservam acesso até a homologação.
+        "email_confirmacao_obrigatoria": "BOOLEAN NOT NULL DEFAULT false",
         "mfa_segredo_cifrado": "TEXT",
         "mfa_ativado_em": "TIMESTAMP",
         "mfa_ultimo_contador": "INTEGER NOT NULL DEFAULT -1",
