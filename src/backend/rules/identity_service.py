@@ -83,7 +83,14 @@ def exigir_mfa_no_login(db: Session, usuario: Usuario, codigo: str | None) -> No
 
 
 def _smtp_disponivel() -> bool:
-    return bool(settings.SMTP_HOST and settings.SMTP_SENDER)
+    """Checagem local de configuração, sem tentar conexão nem expor segredos."""
+    return bool(
+        settings.SMTP_HOST and settings.SMTP_SENDER
+        and (not settings.SMTP_USER or settings.SMTP_PASSWORD)
+        and not (settings.SMTP_SSL and settings.SMTP_STARTTLS)
+        and (settings.ENVIRONMENT.lower() != "production"
+             or settings.SMTP_SSL or settings.SMTP_STARTTLS)
+    )
 
 
 def _enviar_email(destino: str, titulo: str, corpo: str) -> None:
