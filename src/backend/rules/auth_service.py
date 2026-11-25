@@ -206,6 +206,10 @@ def renovar_access_token(db: Session, refresh_token: str) -> TokenResponse:
             detail="Usuário desativado. Contate o suporte.",
         )
 
+    from core.config import settings
+    if settings.SECURITY_VERIFIED_EMAIL_REQUIRED and not usuario.email_verificado_em:
+        raise HTTPException(status_code=403, detail="Confirme o e-mail cadastrado antes de entrar")
+
     # RF-13: o refresh pode estar vivo na assinatura e MORTO em revogação
     # (logout revogou a cadeia; troca de senha marcou o usuário inteiro).
     from core.deps import sessao_revogada
