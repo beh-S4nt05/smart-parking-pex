@@ -52,6 +52,9 @@ CORRECOES_ESQUEMA = {
         "mfa_ativado_em": "TIMESTAMP",
         "mfa_ultimo_contador": "INTEGER NOT NULL DEFAULT -1",
     },
+    "tokens_identidade": {
+        "tentativas": "INTEGER NOT NULL DEFAULT 0",
+    },
     "vagas": {
         "categoria_veiculo": "VARCHAR(12)",
         "recarga_disponivel": "BOOLEAN NOT NULL DEFAULT false",
