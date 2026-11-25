@@ -56,11 +56,27 @@ class AppleLoginRequest(BaseModel):
 def registrar_usuario(
     request: Request, dados: UsuarioCreate, db: Session = Depends(get_db)
 ):
-    """Cadastro transacional, executado no pool de threads (hash bcrypt CPU-bound)."""
+    """Cadastro atômico + envio de código corporativo quando exigido."""
+    from rules import identity_service
+
+    # Evita criar conta inutilizável se nenhum transportador SMTP foi definido.
+    if settings.SECURITY_VERIFIED_EMAIL_REQUIRED and not identity_service._smtp_disponivel():
+        raise HTTPException(status_code=503, detail="Confirmação de e-mail indisponível. Tente mais tarde.")
     usuario = auth_service.criar_usuario(db, dados)
+    pendente = settings.SECURITY_VERIFIED_EMAIL_REQUIRED and usuario.email_verificado_em is None
+    enviado = False
+    if pendente:
+        try:
+            enviado = identity_service.solicitar_desafio(db, usuario.email, "verificar_email")
+        except HTTPException as exc:
+            if exc.status_code != 503:
+                raise
+            # A conta já existe e segue pendente; o usuário pode reenviar
+            # sem precisar (nem poder) cadastrá-la novamente.
+            enviado = False
     return UsuarioResponse.model_validate(usuario).model_copy(update={
-        "confirmacao_email_pendente": settings.SECURITY_VERIFIED_EMAIL_REQUIRED
-            and usuario.email_verificado_em is None,
+        "confirmacao_email_pendente": pendente,
+        "email_enviado": enviado,
     })
 
 
@@ -536,6 +552,14 @@ class TokenIdentidadeIn(BaseModel):
     token: str = Field(min_length=24, max_length=128)
 
 
+class ConfirmarEmailIn(BaseModel):
+    # "token" mantém compatibilidade com links antigos; a interface nova
+    # envia e-mail + 6 dígitos para vincular o código à conta correta.
+    email: str | None = Field(default=None, min_length=3, max_length=254)
+    codigo: str | None = Field(default=None, pattern=r"^[0-9]{6}$")
+    token: str | None = Field(default=None, min_length=24, max_length=128)
+
+
 class RedefinirSenhaIn(TokenIdentidadeIn):
     nova_senha: str = Field(min_length=6, max_length=72)
 
@@ -563,9 +587,14 @@ def solicitar_verificacao_email(request: Request, dados: EmailIdentidade, db: Se
 
 @router.post("/email/confirmar", status_code=204)
 @limiter.limit(LIMITS["auth_escrita"])
-def confirmar_verificacao_email(request: Request, dados: TokenIdentidadeIn, db: Session = Depends(get_db)):
-    from rules.identity_service import confirmar_email
-    confirmar_email(db, dados.token)
+def confirmar_verificacao_email(request: Request, dados: ConfirmarEmailIn, db: Session = Depends(get_db)):
+    from rules.identity_service import confirmar_email, confirmar_email_codigo
+    if dados.email and dados.codigo:
+        confirmar_email_codigo(db, dados.email, dados.codigo)
+    elif dados.token:
+        confirmar_email(db, dados.token)
+    else:
+        raise HTTPException(status_code=422, detail="Informe o e-mail e o código de 6 dígitos")
 
 
 @router.post("/senha/esqueci", status_code=202)
