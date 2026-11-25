@@ -90,6 +90,9 @@ class UsuarioCreate(UsuarioBase):
 class UsuarioResponse(UsuarioBase):
     id: str
     is_ativo: bool
+    # Informado no cadastro para orientar a etapa de confirmação antes do login.
+    confirmacao_email_pendente: bool = False
+    email_verificado_em: datetime | None = None
     role: str
     estacionamento_id: str | None = None
     """Todos os shoppings que este usuário pode ver (gestor: vários)."""
