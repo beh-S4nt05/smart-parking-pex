@@ -174,6 +174,17 @@ export default function Login() {
         </View>
       ) : null}
 
+      <Pressable
+        onPress={() => router.push(`/confirmar-email?email=${encodeURIComponent(email.trim())}` as never)}
+        accessibilityRole="link"
+        accessibilityLabel="Confirmar meu e-mail"
+        style={{ alignSelf: "center", minHeight: 44, justifyContent: "center", paddingHorizontal: 8, marginBottom: 6 }}
+      >
+        <Text style={{ color: "#2563EB", fontSize: 13, fontWeight: "700" }}>
+          Já se cadastrou? Confirme seu e-mail
+        </Text>
+      </Pressable>
+
       <Botao
         label="Entrar"
         onPress={handleEntrar}
