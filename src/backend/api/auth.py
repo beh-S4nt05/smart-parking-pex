@@ -60,7 +60,7 @@ def registrar_usuario(
     from rules import identity_service
 
     # Evita criar conta inutilizável se nenhum transportador SMTP foi definido.
-    if settings.SECURITY_VERIFIED_EMAIL_REQUIRED and not identity_service._smtp_disponivel():
+    if settings.SECURITY_VERIFIED_EMAIL_REQUIRED and not identity_service._transporte_disponivel():
         raise HTTPException(status_code=503, detail="Confirmação de e-mail indisponível. Tente mais tarde.")
     usuario = auth_service.criar_usuario(db, dados)
     pendente = usuario.email_confirmacao_obrigatoria and usuario.email_verificado_em is None
