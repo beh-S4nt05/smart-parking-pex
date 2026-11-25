@@ -21,10 +21,13 @@ e-mail por SMTP -> confirmação em /confirmar-email -> login liberado.
    SMTP_PORT=587
    SMTP_USER=usuario-smtp
    SMTP_PASSWORD=credencial-smtp-privada
-   SMTP_SENDER=Smart Parking <naoresponda@seudominio.com.br>
+   SMTP_SENDER="Smart Parking <naoresponda@seudominio.com.br>"
    SMTP_STARTTLS=true
+   SMTP_SSL=false
    SECURITY_VERIFIED_EMAIL_REQUIRED=true
    ```
+   Para porta 465 com TLS implícito use `SMTP_PORT=465`, `SMTP_SSL=true`,
+   `SMTP_STARTTLS=false`. Em produção, uma das duas modalidades TLS é obrigatória.
 3. Não disponibilizar SMTP_PASSWORD no bundle Expo, EXPO_PUBLIC_*, repositório
    público, PDF, banner, captura, formulário ou console da aplicação.
    Credencial específica de aplicativo/SMTP deve ser diferente da senha
@@ -37,15 +40,25 @@ e-mail por SMTP -> confirmação em /confirmar-email -> login liberado.
 
 Fazer backup do PostgreSQL antes de aplicar qualquer migração.
 
-Na raiz do repositório:
+Na raiz do repositório, a imagem de produção **não** instala o CLI Alembic,
+pois `alembic` existe apenas em `requirements-dev.txt`. Portanto, em
+volumes legados o boot do backend inclui o reparo idempotente de colunas
+com `DEFAULT` seguro; em novos bancos as tabelas já nascem com as colunas
+corretas. O Alembic permanece disponível ao operador no ambiente de
+manutenção (revisão `f067b001a1c0`) para atualizar o histórico da migração.
 
 ```bash
-docker compose --env-file src/.env.piloto -f src/docker-compose.piloto.yml \
-  run --rm backend alembic upgrade head
-
-docker compose --env-file src/.env.piloto -f src/docker-compose.piloto.yml \
+# No host, depois do backup e com src/.env.piloto configurado:
+docker compose --env-file src/.env.piloto -f src/docker-compose.piloto.yml \\
   up -d --build backend
+docker compose --env-file src/.env.piloto -f src/docker-compose.piloto.yml \\
+  logs --tail=80 backend
 ```
+
+Não execute `alembic upgrade head` dentro do container runtime sem instalar
+a ferramenta: ela não integra a imagem de produção atual. Quando houver
+controle de migrações externo, executar Alembic pelo ambiente de manutenção
+com o mesmo DATABASE_URL e registrar a revisão após conferir esquema e backup.
 
 A migração `f067b001a1c0` adiciona contagem de tentativas aos desafios
 e marca `email_confirmacao_obrigatoria` apenas nos novos cadastros. Contas
