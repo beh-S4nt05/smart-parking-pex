@@ -91,6 +91,8 @@ class Settings(BaseSettings):
     SMTP_PASSWORD: str | None = None
     SMTP_SENDER: str | None = None
     SMTP_STARTTLS: bool = True
+    # Para provedores que usam TLS implícito na porta 465.
+    SMTP_SSL: bool = False
     SECURITY_VERIFIED_EMAIL_REQUIRED: bool = False
     SECURITY_STAFF_MFA_REQUIRED: bool = False
     # Fernet base64 urlsafe gerado por cryptography.Fernet.generate_key()
