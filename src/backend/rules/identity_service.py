@@ -1,14 +1,15 @@
 """Entrega de identidade PR60: SMTP verificado, desafios descartáveis e TOTP cifrado."""
 from datetime import datetime, timedelta, timezone
-from email.message import EmailMessage
 import hmac
 import smtplib
+import ssl
 
 from cryptography.fernet import Fernet, InvalidToken
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 from core.config import settings
+from core.email_templates import montar_email_transacional
 from core.identity_security import (gerar_codigo_email, gerar_token_uso_unico, hash_codigo_email,
                                     hash_token, novo_segredo_totp, uri_totp, validar_totp)
 from core.security import criar_hash_senha, verificar_senha
@@ -86,19 +87,33 @@ def _smtp_disponivel() -> bool:
 
 
 def _enviar_email(destino: str, titulo: str, corpo: str) -> None:
+    """Entrega SMTP com TLS verificado e MIME texto/HTML.
+
+    A conta da empresa só é usada no servidor; credenciais não vão à API,
+    ao HTML público, ao APK ou ao iOS.
+    """
     if not _smtp_disponivel():
         raise HTTPException(status_code=503, detail="Serviço de e-mail não configurado para envio de códigos")
-    msg = EmailMessage()
-    msg["From"] = settings.SMTP_SENDER
-    msg["To"] = destino
-    msg["Subject"] = titulo
-    msg.set_content(corpo)
+    if settings.SMTP_SSL and settings.SMTP_STARTTLS:
+        raise HTTPException(status_code=503, detail="Configuração SMTP incompatível: escolha SSL ou STARTTLS")
+    if settings.SMTP_USER and not settings.SMTP_PASSWORD:
+        raise HTTPException(status_code=503, detail="Credenciais SMTP incompletas no servidor")
+    if settings.ENVIRONMENT.lower() == "production" and not (settings.SMTP_SSL or settings.SMTP_STARTTLS):
+        raise HTTPException(status_code=503, detail="SMTP de produção exige conexão TLS")
+
+    msg = montar_email_transacional(settings.SMTP_SENDER, destino, titulo, corpo)
+    contexto_tls = ssl.create_default_context()
     try:
-        with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=8) as servidor:
+        if settings.SMTP_SSL:
+            conexao = smtplib.SMTP_SSL(settings.SMTP_HOST, settings.SMTP_PORT,
+                                       timeout=12, context=contexto_tls)
+        else:
+            conexao = smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=12)
+        with conexao as servidor:
             if settings.SMTP_STARTTLS:
-                servidor.starttls()
+                servidor.starttls(context=contexto_tls)
             if settings.SMTP_USER:
-                servidor.login(settings.SMTP_USER, settings.SMTP_PASSWORD or "")
+                servidor.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
             servidor.send_message(msg)
     except (OSError, smtplib.SMTPException):
         raise HTTPException(status_code=503, detail="Falha temporária de entrega de e-mail") from None
