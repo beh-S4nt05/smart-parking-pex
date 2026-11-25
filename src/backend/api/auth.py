@@ -57,7 +57,11 @@ def registrar_usuario(
     request: Request, dados: UsuarioCreate, db: Session = Depends(get_db)
 ):
     """Cadastro transacional, executado no pool de threads (hash bcrypt CPU-bound)."""
-    return auth_service.criar_usuario(db, dados)
+    usuario = auth_service.criar_usuario(db, dados)
+    return UsuarioResponse.model_validate(usuario).model_copy(update={
+        "confirmacao_email_pendente": settings.SECURITY_VERIFIED_EMAIL_REQUIRED
+            and usuario.email_verificado_em is None,
+    })
 
 
 @router.post("/login", response_model=TokenResponse)
