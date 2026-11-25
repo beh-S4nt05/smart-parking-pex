@@ -1,8 +1,16 @@
 # Smart Parking — Confirmação de e-mail pelo endereço da empresa
 
+> **Gmail / Google Workspace:** a integração recomendada é **Gmail API com
+> OAuth 2.0**, sem senha SMTP. Veja o guia passo a passo:
+> [GMAIL_API_OAUTH2.md](GMAIL_API_OAUTH2.md).
+>
+> Este arquivo preserva as instruções do transporte SMTP **opcional** para
+> provedores terceiros. Em ambos os casos, não misture os modos de transporte;
+> selecione explicitamente `EMAIL_PROVIDER=gmail_api` ou `EMAIL_PROVIDER=smtp`.
+
 ## Objetivo
 
-O remetente é uma caixa postal ou domínio legitimamente autorizado da empresa
+No modo SMTP opcional, o remetente é uma caixa postal ou domínio legitimamente autorizado da empresa
 (ex.: `Smart Parking <naoresponda@seudominio.com.br>`). O e-mail do usuário não
 é considerado verificado só porque tem formato válido. A mensagem sai do
 **backend FastAPI**, nunca diretamente do Web/Android/iOS.
@@ -32,7 +40,7 @@ e-mail por SMTP -> confirmação em /confirmar-email -> login liberado.
    público, PDF, banner, captura, formulário ou console da aplicação.
    Credencial específica de aplicativo/SMTP deve ser diferente da senha
    principal da caixa postal. Verificar domínio e remetente autorizados.
-4. No piloto, `src/docker-compose.piloto.yml` injeta as variáveis no **backend**.
+4. No piloto, `src/docker-compose.piloto.yml` injeta as variáveis SMTP ou Gmail API no **backend**.
    O valor padrão da flag de confirmação continua **false**, até o serviço
    SMTP estar operacional e o banco migrado.
 
