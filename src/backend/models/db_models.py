@@ -110,6 +110,7 @@ class Usuario(Base):
     placa_veiculo = Column(String, nullable=True, index=True)
     data_nascimento = Column(Date, nullable=True)  # opcional; idade declarada não concede credencial
     email_verificado_em = Column(DateTime(timezone=True), nullable=True)
+    email_confirmacao_obrigatoria = Column(Boolean, nullable=False, default=False, server_default=false())
     mfa_segredo_cifrado = Column(Text, nullable=True)
     mfa_ativado_em = Column(DateTime(timezone=True), nullable=True)
     mfa_ultimo_contador = Column(Integer, nullable=False, default=-1, server_default="-1")
@@ -181,6 +182,7 @@ class TokenIdentidade(Base):
     usuario_id = Column(String, ForeignKey("usuarios.id", ondelete="CASCADE"), nullable=False, index=True)
     finalidade = Column(String(24), nullable=False)  # verificar_email | recuperar_senha
     token_hash = Column(String(64), nullable=False, unique=True, index=True)
+    tentativas = Column(Integer, nullable=False, default=0, server_default="0")
     expira_em = Column(DateTime(timezone=True), nullable=False)
     consumido_em = Column(DateTime(timezone=True), nullable=True)
     criado_em = Column(DateTime(timezone=True), server_default=func.now())

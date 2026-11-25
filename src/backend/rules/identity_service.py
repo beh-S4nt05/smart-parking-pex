@@ -1,14 +1,18 @@
 """Entrega de identidade PR60: SMTP verificado, desafios descartáveis e TOTP cifrado."""
 from datetime import datetime, timedelta, timezone
-from email.message import EmailMessage
+import hmac
 import smtplib
+import ssl
 
 from cryptography.fernet import Fernet, InvalidToken
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 from core.config import settings
-from core.identity_security import gerar_token_uso_unico, hash_token, novo_segredo_totp, uri_totp, validar_totp
+from core.email_templates import montar_email_transacional
+from core.gmail_api import enviar_email_gmail, gmail_api_configurada
+from core.identity_security import (gerar_codigo_email, gerar_token_uso_unico, hash_codigo_email,
+                                    hash_token, novo_segredo_totp, uri_totp, validar_totp)
 from core.security import criar_hash_senha, verificar_senha
 from models.db_models import RevogacaoToken, TokenIdentidade, Usuario
 
@@ -80,48 +84,162 @@ def exigir_mfa_no_login(db: Session, usuario: Usuario, codigo: str | None) -> No
 
 
 def _smtp_disponivel() -> bool:
-    return bool(settings.SMTP_HOST and settings.SMTP_SENDER)
+    """Checagem local de configuração, sem tentar conexão nem expor segredos."""
+    return bool(
+        settings.SMTP_HOST and settings.SMTP_SENDER
+        and (not settings.SMTP_USER or settings.SMTP_PASSWORD)
+        and not (settings.SMTP_SSL and settings.SMTP_STARTTLS)
+        and (settings.ENVIRONMENT.lower() != "production"
+             or settings.SMTP_SSL or settings.SMTP_STARTTLS)
+    )
+
+
+def _transporte_disponivel() -> bool:
+    """Seleciona explicitamente um transporte, sem fallback silencioso."""
+    if settings.EMAIL_PROVIDER == "gmail_api":
+        return gmail_api_configurada()
+    if settings.EMAIL_PROVIDER == "smtp":
+        return _smtp_disponivel()
+    return False
 
 
 def _enviar_email(destino: str, titulo: str, corpo: str) -> None:
+    if settings.EMAIL_PROVIDER == "gmail_api":
+        enviar_email_gmail(destino, titulo, corpo)
+        return
+    if settings.EMAIL_PROVIDER != "smtp":
+        raise HTTPException(status_code=503, detail="Provedor de e-mail inválido no servidor")
+    """Entrega SMTP com TLS verificado e MIME texto/HTML.
+
+    A conta da empresa só é usada no servidor; credenciais não vão à API,
+    ao HTML público, ao APK ou ao iOS.
+    """
     if not _smtp_disponivel():
         raise HTTPException(status_code=503, detail="Serviço de e-mail não configurado para envio de códigos")
-    msg = EmailMessage()
-    msg["From"] = settings.SMTP_SENDER
-    msg["To"] = destino
-    msg["Subject"] = titulo
-    msg.set_content(corpo)
+    if settings.SMTP_SSL and settings.SMTP_STARTTLS:
+        raise HTTPException(status_code=503, detail="Configuração SMTP incompatível: escolha SSL ou STARTTLS")
+    if settings.SMTP_USER and not settings.SMTP_PASSWORD:
+        raise HTTPException(status_code=503, detail="Credenciais SMTP incompletas no servidor")
+    if settings.ENVIRONMENT.lower() == "production" and not (settings.SMTP_SSL or settings.SMTP_STARTTLS):
+        raise HTTPException(status_code=503, detail="SMTP de produção exige conexão TLS")
+
+    msg = montar_email_transacional(settings.SMTP_SENDER, destino, titulo, corpo)
+    contexto_tls = ssl.create_default_context()
     try:
-        with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=8) as servidor:
+        if settings.SMTP_SSL:
+            conexao = smtplib.SMTP_SSL(settings.SMTP_HOST, settings.SMTP_PORT,
+                                       timeout=12, context=contexto_tls)
+        else:
+            conexao = smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=12)
+        with conexao as servidor:
             if settings.SMTP_STARTTLS:
-                servidor.starttls()
+                servidor.starttls(context=contexto_tls)
             if settings.SMTP_USER:
-                servidor.login(settings.SMTP_USER, settings.SMTP_PASSWORD or "")
+                servidor.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
             servidor.send_message(msg)
     except (OSError, smtplib.SMTPException):
         raise HTTPException(status_code=503, detail="Falha temporária de entrega de e-mail") from None
 
 
-def solicitar_desafio(db: Session, email: str, finalidade: str) -> None:
+def solicitar_desafio(db: Session, email: str, finalidade: str) -> bool:
+    """Envia confirmação numérica ou token forte de recuperação por SMTP da empresa.
+
+    Não revela se um e-mail existe. Reenvio por conta usa intervalo de 60 s.
+    """
     if finalidade not in {"verificar_email", "recuperar_senha"}:
         raise ValueError("finalidade inválida")
-    # Fail closed e sem gerar token se não existe transportador de e-mail.
-    if not _smtp_disponivel():
+    if not _transporte_disponivel():
         raise HTTPException(status_code=503, detail="Serviço de e-mail não configurado")
+
     usuario = db.query(Usuario).filter(Usuario.email == email.strip().lower()).first()
     if not usuario or not usuario.is_ativo:
-        return  # resposta idêntica para evitar enumeração
+        return False
     if finalidade == "verificar_email" and usuario.email_verificado_em:
-        return
-    token, digest = gerar_token_uso_unico()
+        return False
+
+    agora = datetime.now(timezone.utc)
+    anterior = (db.query(TokenIdentidade).filter(
+        TokenIdentidade.usuario_id == usuario.id,
+        TokenIdentidade.finalidade == finalidade,
+        TokenIdentidade.consumido_em.is_(None),
+    ).order_by(TokenIdentidade.criado_em.desc()).first())
+    if anterior and anterior.criado_em:
+        criado = anterior.criado_em
+        if criado.tzinfo is None:
+            criado = criado.replace(tzinfo=timezone.utc)
+        if agora < criado + timedelta(seconds=60):
+            return False
+
+    if finalidade == "verificar_email":
+        codigo = gerar_codigo_email()
+        digest = hash_codigo_email(usuario.email, codigo)
+        prazo = timedelta(minutes=10)
+        assunto = "Smart Parking - confirme seu e-mail"
+        corpo = (f"Seu código de confirmação Smart Parking é: {codigo}\n"
+                 "Validade: 10 minutos. Não compartilhe esse código.\n"
+                 "Se você não realizou este cadastro, ignore a mensagem.")
+    else:
+        codigo, digest = gerar_token_uso_unico()
+        prazo = timedelta(minutes=15)
+        assunto = "Smart Parking - recuperação de senha"
+        corpo = (f"Código de recuperação de uso único (15 minutos): {codigo}\n"
+                 "Não compartilhe esse código.")
     desafio = TokenIdentidade(
         usuario_id=usuario.id, finalidade=finalidade, token_hash=digest,
-        expira_em=datetime.now(timezone.utc) + timedelta(minutes=15),
+        expira_em=agora + prazo,
     )
-    db.add(desafio)
-    db.flush()
-    assunto = "Smart Parking - confirmação de e-mail" if finalidade == "verificar_email" else "Smart Parking - recuperação de senha"
-    _enviar_email(usuario.email, assunto, f"Código de uso único (15 minutos): {token}\nNão compartilhe esse código.")
+    try:
+        db.add(desafio)
+        db.flush()
+        _enviar_email(usuario.email, assunto, corpo)
+        # Somente após entrega SMTP bem-sucedida invalidar os desafios anteriores.
+        if anterior:
+            for antigo in db.query(TokenIdentidade).filter(
+                TokenIdentidade.usuario_id == usuario.id,
+                TokenIdentidade.finalidade == finalidade,
+                TokenIdentidade.id != desafio.id,
+                TokenIdentidade.consumido_em.is_(None),
+            ):
+                antigo.consumido_em = agora
+        db.commit()
+        return True
+    except Exception:
+        db.rollback()
+        raise
+
+
+def confirmar_email_codigo(db: Session, email: str, codigo: str) -> None:
+    """Confirma por e-mail + 6 dígitos; 5 tentativas máximas por desafio."""
+    if len(codigo) != 6 or not codigo.isascii() or not codigo.isdecimal():
+        raise HTTPException(status_code=400, detail="Código inválido ou expirado")
+    usuario = db.query(Usuario).filter(Usuario.email == email.strip().lower()).first()
+    if not usuario or not usuario.is_ativo:
+        raise HTTPException(status_code=400, detail="Código inválido ou expirado")
+    if usuario.email_verificado_em:
+        raise HTTPException(status_code=409, detail="E-mail já confirmado")
+
+    desafio = (db.query(TokenIdentidade).filter(
+        TokenIdentidade.usuario_id == usuario.id,
+        TokenIdentidade.finalidade == "verificar_email",
+        TokenIdentidade.consumido_em.is_(None),
+    ).order_by(TokenIdentidade.criado_em.desc()).with_for_update().first())
+    agora = datetime.now(timezone.utc)
+    if not desafio:
+        raise HTTPException(status_code=400, detail="Código inválido ou expirado")
+    expira = desafio.expira_em
+    if expira.tzinfo is None:
+        expira = expira.replace(tzinfo=timezone.utc)
+    if agora >= expira or desafio.tentativas >= 5:
+        raise HTTPException(status_code=400, detail="Código inválido ou expirado")
+
+    digest = hash_codigo_email(usuario.email, codigo)
+    if not hmac.compare_digest(desafio.token_hash, digest):
+        desafio.tentativas += 1
+        db.commit()
+        raise HTTPException(status_code=400, detail="Código inválido ou expirado")
+
+    desafio.consumido_em = agora
+    usuario.email_verificado_em = agora
     db.commit()
 
 

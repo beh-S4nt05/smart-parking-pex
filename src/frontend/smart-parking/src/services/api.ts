@@ -246,6 +246,17 @@ export const parkingApi = {
     return data;
   },
 
+  async solicitarConfirmacaoEmail(email: string): Promise<void> {
+    await api.post("/auth/email/solicitar", { email: email.trim().toLowerCase() });
+  },
+
+  async confirmarEmail(email: string, codigo: string): Promise<void> {
+    await api.post("/auth/email/confirmar", {
+      email: email.trim().toLowerCase(),
+      codigo: codigo.trim(),
+    });
+  },
+
   async me(): Promise<Usuario> {
     const { data } = await api.get<Usuario>("/auth/me");
     return data;

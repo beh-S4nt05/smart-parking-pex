@@ -158,7 +158,7 @@ export default function Cadastro() {
     let contaCriada = false;
     try {
       const comVeiculo = !pularOpcionais && Boolean(form.placa.trim());
-      await register({
+      const cadastro = await register({
         nome: form.nome.trim(),
         email: form.email.trim().toLowerCase(),
         senha: form.senha,
@@ -174,6 +174,12 @@ export default function Cadastro() {
         } : undefined,
       });
       contaCriada = true;
+      if (cadastro.confirmacao_email_pendente) {
+        // A conta existe, mas não pode fazer login até provar acesso ao e-mail.
+        // Mesmo se o SMTP falhar, a tela permite reenviar sem novo cadastro.
+        router.replace(`/confirmar-email?email=${encodeURIComponent(form.email.trim().toLowerCase())}` as never);
+        return;
+      }
       await signIn(form.email.trim().toLowerCase(), form.senha);
       router.replace("/");
     } catch (err) {

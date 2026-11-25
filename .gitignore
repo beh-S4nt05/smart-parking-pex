@@ -31,6 +31,10 @@ yarn-error.*
 *.pem
 
 # local env files
+# Credenciais Google OAuth e venv local: nunca versionar
+/.env
+/.venv/
+client_secret_*.json
 .env*.local
 # Piloto temporario: nunca comitar chaves/credenciais locais
 src/.env.piloto

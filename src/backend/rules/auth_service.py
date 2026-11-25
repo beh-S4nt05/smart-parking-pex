@@ -1,6 +1,7 @@
 import re
 
 import jwt as pyjwt
+from core.config import settings
 from fastapi import HTTPException, status
 from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
@@ -76,6 +77,7 @@ def criar_usuario(db: Session, dados: UsuarioCreate) -> Usuario:
             senha_hash=criar_hash_senha(dados.senha),
             role="usuario",
             is_ativo=True,
+            email_confirmacao_obrigatoria=settings.SECURITY_VERIFIED_EMAIL_REQUIRED,
             # Apenas solicitação; PCD/idoso depende de validação oficial.
             is_pcd=dados.is_pcd,
             data_nascimento=dados.data_nascimento,
@@ -168,10 +170,9 @@ def autenticar_usuario(db: Session, dados: LoginRequest, agente: str | None = No
             detail="Usuário desativado. Contate o suporte."
         )
 
-    from core.config import settings
     from rules import identity_service
 
-    if settings.SECURITY_VERIFIED_EMAIL_REQUIRED and not usuario.email_verificado_em:
+    if usuario.email_confirmacao_obrigatoria and not usuario.email_verificado_em:
         raise HTTPException(status_code=403, detail="Confirme o e-mail cadastrado antes de entrar")
     identity_service.exigir_mfa_no_login(db, usuario, dados.mfa_codigo)
 
@@ -205,6 +206,9 @@ def renovar_access_token(db: Session, refresh_token: str) -> TokenResponse:
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Usuário desativado. Contate o suporte.",
         )
+
+    if usuario.email_confirmacao_obrigatoria and not usuario.email_verificado_em:
+        raise HTTPException(status_code=403, detail="Confirme o e-mail cadastrado antes de entrar")
 
     # RF-13: o refresh pode estar vivo na assinatura e MORTO em revogação
     # (logout revogou a cadeia; troca de senha marcou o usuário inteiro).
