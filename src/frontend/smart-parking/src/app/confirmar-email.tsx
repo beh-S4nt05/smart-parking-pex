@@ -68,7 +68,7 @@ export default function ConfirmarEmail() {
               Confirme seu e-mail
             </Text>
             <Text style={{ color: "#475569", textAlign: "center", fontSize: 14, lineHeight: 21, marginTop: 8 }}>
-              Enviamos um código de 6 dígitos pelo e-mail da empresa. Ele vale por 10 minutos e só pode ser utilizado uma vez.
+              Para liberar sua conta, informe o código de 6 dígitos enviado pelo e-mail da empresa. Ele vale 10 minutos. Se não chegou, solicite o reenvio.
             </Text>
           </View>
           <Campo label="E-mail cadastrado" keyboardType="email-address" autoCapitalize="none" autoCorrect={false} value={email} onChangeText={setEmail} />
