@@ -56,7 +56,7 @@ def test_cliente_web_sem_uri_local_exibe_correcao_exata(tmp_path):
                 "redirect_uris": ["https://app.exemplo.com/retorno"]}
     })
     _, _, _, uris = _ler_cliente_oauth(arquivo)
-    with pytest.raises(ValueError, match="--redirect-uri http://127.0.0.1:8765/oauth/callback"):
+    with pytest.raises(ValueError, match=r"--redirect-uri http://127\\.0\\.0\\.1:8765/oauth/callback"):
         _redirect_web(uris, None)
 
 
