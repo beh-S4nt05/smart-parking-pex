@@ -53,6 +53,12 @@ services:
       SMTP_SENDER: ${SMTP_SENDER:-}
       SMTP_STARTTLS: ${SMTP_STARTTLS:-true}
       SMTP_SSL: ${SMTP_SSL:-false}
+      # Gmail API OAuth 2.0 (sem senha de app ou consentimento no frontend)
+      EMAIL_PROVIDER: ${EMAIL_PROVIDER:-smtp}
+      GMAIL_CLIENT_ID: ${GMAIL_CLIENT_ID:-}
+      GMAIL_CLIENT_SECRET: ${GMAIL_CLIENT_SECRET:-}
+      GMAIL_REFRESH_TOKEN: ${GMAIL_REFRESH_TOKEN:-}
+      GMAIL_SENDER: ${GMAIL_SENDER:-}
       # Ativar SOMENTE após testar a entrega real SMTP e rodar migrations.
       SECURITY_VERIFIED_EMAIL_REQUIRED: ${SECURITY_VERIFIED_EMAIL_REQUIRED:-false}
       GUNICORN_WORKERS: "1"
