@@ -92,6 +92,7 @@ class UsuarioResponse(UsuarioBase):
     is_ativo: bool
     # Informado no cadastro para orientar a etapa de confirmação antes do login.
     confirmacao_email_pendente: bool = False
+    email_enviado: bool = False
     email_verificado_em: datetime | None = None
     role: str
     estacionamento_id: str | None = None
