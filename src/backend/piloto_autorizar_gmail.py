@@ -1,4 +1,4 @@
-"""Autorização UMA VEZ da conta Gmail empresarial via OAuth 2.0 desktop.
+"""Autorização UMA VEZ da conta Gmail empresarial via OAuth 2.0.
 
 Executar no Linux do operador, nunca no APK nem numa rota pública.
 O navegador usa somente loopback 127.0.0.1 e o escopo gmail.send.
@@ -61,13 +61,100 @@ def _salvar_env_privado(caminho: Path, novos: dict[str, str]) -> None:
             os.unlink(temporario)
 
 
-def _iniciar_servidor_callback():
+def _ler_cliente_oauth(caminho: Path) -> tuple[str, str, str, list[str]]:
+    """Aceita os JSONs reais emitidos pelo Google Cloud: installed e web.
+
+    O nome do arquivo é irrelevante. NÃO imprimir IDs, segredos ou tokens.
+    """
+    try:
+        dados = json.loads(caminho.expanduser().read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        raise ValueError("Arquivo JSON não encontrado no caminho informado") from None
+    except OSError:
+        raise ValueError("Não foi possível ler o JSON informado") from None
+    except json.JSONDecodeError:
+        raise ValueError("O arquivo informado não contém JSON válido") from None
+
+    if not isinstance(dados, dict):
+        raise ValueError("A raiz do JSON OAuth precisa ser um objeto")
+    if isinstance(dados.get("installed"), dict):
+        tipo, cred = "desktop", dados["installed"]
+    elif isinstance(dados.get("web"), dict):
+        tipo, cred = "web", dados["web"]
+    elif isinstance(dados.get("client_id"), str) and isinstance(dados.get("client_secret"), str):
+        # Alguns exportadores entregam as duas chaves no nível superior.
+        tipo, cred = "web", dados
+    elif dados.get("type") == "service_account":
+        raise ValueError(
+            "O arquivo é uma conta de serviço, não um cliente OAuth de usuário. "
+            "Para Gmail pessoal é necessário OAuth com consentimento da conta remetente."
+        )
+    else:
+        raise ValueError(
+            "JSON válido, mas sem client_id e client_secret na estrutura OAuth. "
+            "Aceitos: chaves 'installed', 'web' ou credenciais na raiz."
+        )
+    client_id, client_secret = cred.get("client_id"), cred.get("client_secret")
+    if not isinstance(client_id, str) or not client_id.strip():
+        raise ValueError("JSON OAuth sem client_id válido")
+    if not isinstance(client_secret, str) or not client_secret.strip():
+        raise ValueError("JSON OAuth sem client_secret válido")
+
+    uris = cred.get("redirect_uris", [])
+    if not isinstance(uris, list):
+        uris = []
+    return tipo, client_id, client_secret, [u for u in uris if isinstance(u, str)]
+
+
+def _validar_callback_local(uri: str) -> tuple[str, int, str]:
+    """Não aceitar callback remoto: o script recebe códigos somente em loopback."""
+    try:
+        parsed = urlparse(uri)
+        port = parsed.port
+    except ValueError:
+        raise ValueError("Porta do redirect_uri inválida") from None
+    if (parsed.scheme != "http"
+            or parsed.hostname not in ("127.0.0.1", "localhost")
+            or not port or parsed.username or parsed.password
+            or parsed.query or parsed.fragment):
+        raise ValueError(
+            "Use redirect_uri HTTP local com porta fixa, por exemplo "
+            "http://127.0.0.1:8765/oauth/callback"
+        )
+    return parsed.hostname, port, parsed.path or "/"
+
+
+def _redirect_web(uris: list[str], fornecida: str | None) -> str:
+    """Web OAuth exige URI registrado EXATAMENTE no Google Cloud."""
+    if fornecida:
+        _validar_callback_local(fornecida)
+        return fornecida
+
+    for uri in uris:
+        try:
+            _validar_callback_local(uri)
+        except ValueError:
+            continue
+        return uri
+
+    raise ValueError(
+        "JSON do tipo 'web' reconhecido, mas sem redirect_uri local autorizado. "
+        "No Google Cloud > APIs e serviços > Credenciais > cliente OAuth Web, "
+        "adicione 'http://127.0.0.1:8765/oauth/callback' em URIs de "
+        "redirecionamento autorizados. Depois execute com "
+        "--redirect-uri http://127.0.0.1:8765/oauth/callback "
+        "(não precisa renomear nem recriar o JSON)."
+    )
+
+
+def _iniciar_servidor_callback(porta: int = 0, rota: str = "/oauth/callback"):
+
     estado = {}
     class Callback(BaseHTTPRequestHandler):
         def log_message(self, formato, *args):
             pass  # Nunca registrar authorization code na URL.
         def do_GET(self):
-            if urlparse(self.path).path != "/oauth/callback":
+            if urlparse(self.path).path != rota:
                 self.send_error(404)
                 return
             params = parse_qs(urlparse(self.path).query)
@@ -87,29 +174,43 @@ def _iniciar_servidor_callback():
                 "<body style='font:16px sans-serif;padding:40px'>"
                 f"<h2>{mensagem}</h2></body></html>"
             ).encode("utf-8"))
-    servidor = HTTPServer(("127.0.0.1", 0), Callback)
+    servidor = HTTPServer(("127.0.0.1", porta), Callback)
     return servidor, estado
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Autorizar Gmail API para o Smart Parking")
     parser.add_argument("--client-json", type=Path, required=True,
-                        help="JSON OAuth Desktop app baixado do Google Cloud")
+                        help="Caminho para o JSON OAuth do Google Cloud, seja web ou desktop")
     parser.add_argument("--env-file", type=Path, default=Path("src/.env.piloto"))
     parser.add_argument("--remetente", required=True,
                         help="Endereço Gmail autorizado ou alias verificado")
+    parser.add_argument("--redirect-uri", default=None,
+                        help="Somente para cliente Web: URI local EXATO registrado no Google Cloud")
     args = parser.parse_args()
     if "@" not in args.remetente or any(x in args.remetente for x in "\r\n"):
         parser.error("Informe apenas o e-mail remetente, sem nome de exibição")
     try:
-        cred = json.loads(args.client_json.expanduser().read_text(encoding="utf-8"))["installed"]
-        client_id = cred["client_id"]
-        client_secret = cred["client_secret"]
-    except (OSError, KeyError, ValueError):
-        parser.error("Use um client_secret JSON de tipo 'Aplicativo para computador'")
-
-    servidor, recebido = _iniciar_servidor_callback()
-    redirect = f"http://127.0.0.1:{servidor.server_port}/oauth/callback"
+        tipo, client_id, client_secret, uris = _ler_cliente_oauth(args.client_json)
+        if tipo == "web":
+            redirect = _redirect_web(uris, args.redirect_uri)
+            _, porta, rota = _validar_callback_local(redirect)
+            print("Cliente OAuth Web reconhecido; usando callback local registrado:", redirect)
+        else:
+            if args.redirect_uri:
+                parser.error("--redirect-uri é exclusivo de clientes OAuth do tipo Web")
+            porta, rota = 0, "/oauth/callback"
+            print("Cliente OAuth Desktop reconhecido; usando callback local dinâmico.")
+        servidor, recebido = _iniciar_servidor_callback(porta=porta, rota=rota)
+    except ValueError as exc:
+        parser.error(str(exc))
+    except OSError:
+        parser.error(
+            "Não foi possível abrir a porta do callback local. "
+            "Verifique se já existe outro programa usando a porta configurada."
+        )
+    if tipo == "desktop":
+        redirect = f"http://127.0.0.1:{servidor.server_port}/oauth/callback"
     state = secrets.token_urlsafe(32)
     verifier = secrets.token_urlsafe(64)
     challenge = base64.urlsafe_b64encode(
@@ -135,7 +236,9 @@ def main() -> int:
         servidor.server_close()
     params = recebido.get("params", {})
     if params.get("state", [""])[0] != state or not params.get("code"):
-        parser.error("OAuth não autorizado ou callback expirou. Nenhuma credencial foi gravada.")
+        if params.get("error"):
+            parser.error("Autorização Google negada. Confira usuário de teste, consentimento e permissões.")
+        parser.error("OAuth não autorizado, estado inválido ou callback expirou. Nenhuma credencial foi gravada.")
 
     try:
         resp = httpx.post(TOKEN, data={
@@ -149,7 +252,7 @@ def main() -> int:
         resp.raise_for_status()
         resposta = resp.json()
     except (httpx.HTTPError, ValueError):
-        parser.error("Falha ao concluir OAuth no Google. Revise o cliente Desktop e o consentimento.")
+        parser.error("Falha ao concluir OAuth no Google. Confira o cliente OAuth, URI de retorno e consentimento.")
     refresh_token = resposta.get("refresh_token")
     escopos = resposta.get("scope", "").split()
     if not isinstance(refresh_token, str) or not refresh_token or ESCOPO not in escopos:

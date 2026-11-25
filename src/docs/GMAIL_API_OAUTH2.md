@@ -42,9 +42,15 @@ diz respeito somente ao **remetente empresarial**, não ao usuário cadastrado.
    **Internal** quando aplicável.
 3. Autorize somente o escopo
    `https://www.googleapis.com/auth/gmail.send`.
-4. Crie um cliente OAuth 2.0 do tipo **Desktop app / Aplicativo para computador**
-   (não é preciso adicionar callback de produção). Baixe o JSON no Linux
-   sob uma pasta privada.
+4. Use o arquivo JSON OAuth gerado pelo Google Cloud. O autorizador agora
+   reconhece **Desktop app** (`installed`) e **Aplicativo Web** (`web`).
+   O nome do arquivo `client_secret_...json` não precisa ser alterado.
+   Para cliente Web, é obrigatório cadastrar um callback de loopback exato
+   na configuração da credencial, por exemplo
+   `http://127.0.0.1:8765/oauth/callback`, no campo
+   **URIs de redirecionamento autorizados**. Cliente Desktop utiliza
+   porta local dinâmica e não precisa dessa configuração manual.
+   Baixe o JSON no Linux sob uma pasta privada.
 5. Execute a autorização pelo navegador **da própria máquina**. Se o Google
    mostrar a escolha de conta, selecione a conta empresarial que realmente
    enviará as mensagens. O remetente configurado deve ser a própria conta
@@ -67,6 +73,25 @@ python src/backend/piloto_autorizar_gmail.py \
   --env-file src/.env.piloto \
   --remetente EMAIL_DA_EMPRESA@gmail.com
 ```
+
+Para uma credencial Web cujo JSON **ainda não contenha** um callback
+local autorizado, cadastre no Google Cloud:
+`http://127.0.0.1:8765/oauth/callback`
+
+Depois execute acrescentando a opção:
+
+```bash
+python src/backend/piloto_autorizar_gmail.py \
+  --client-json ~/Downloads/SEU_CLIENT_SECRET.json \
+  --env-file src/.env.piloto \
+  --remetente behsolutionsandautomations@gmail.com \
+  --redirect-uri http://127.0.0.1:8765/oauth/callback
+```
+
+A URI informada precisa corresponder **exatamente** a uma das URIs
+autorizadas no Google Cloud. Se o JSON já traz uma URI local autorizada
+(`http://localhost:PORTA/rota`), o script poderá usá-la automaticamente.
+Ele não aceita callback remoto ou não seguro.
 
 O script:
 - usa navegador do sistema e callback somente em `127.0.0.1`;
@@ -114,7 +139,7 @@ e-mails, enquanto usuários anteriores continuam com suas regras existentes.
 | `503 Gmail API não configurada` | OAuth JSON não autorizado ou `GMAIL_*` ausentes no backend |
 | `503 Falha na autorização` | Refresh token revogado/expirado, cliente incompatível, conta mudou permissões |
 | `503 Falha no envio` | Gmail API não habilitada, escopo insuficiente, remetente não autorizado, quota/limite |
-| `redirect_uri_mismatch` | Cliente OAuth incorreto; use **Desktop app** |
+| `redirect_uri_mismatch` | Em cliente **Web**, autorize exatamente a URI usada pelo script no Google Cloud; cliente Desktop usa porta dinâmica |
 | `access_denied` | Conta não é test user, consentimento recusado ou restrição de administrador Workspace |
 | Código não chegou | Caixa de spam, erro de remetente ou Gmail aceitou mas não entregou |
 | Código errado ou vencido | 6 dígitos, válido por 10 min, máximo 5 tentativas |
