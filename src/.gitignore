@@ -5,3 +5,10 @@ __pycache__
 .venv/
 *.db
 *.json
+
+# Configurações versionadas necessárias ao build do Expo EAS.
+!frontend/smart-parking/app.json
+!frontend/smart-parking/eas.json
+!frontend/smart-parking/package.json
+!frontend/smart-parking/package-lock.json
+!frontend/smart-parking/tsconfig.json

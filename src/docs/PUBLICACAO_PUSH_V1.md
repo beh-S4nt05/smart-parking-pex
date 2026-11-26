@@ -24,7 +24,7 @@ npx eas-cli@latest init
 npx expo config --type public
 ```
 
-O identificador Android é `com.behs4nt05.smartparking`. No Firebase Console, crie um app Android com **esse mesmo package**, baixe `google-services.json` e não o versiona. Na área **Environment variables** do projeto Expo/EAS, crie uma variável **FILE/secret** chamada `GOOGLE_SERVICES_JSON` para o ambiente `preview` (e depois `production`). O `app.config.js` já a usa em `android.googleServicesFile`. Configure também as **credenciais de envio FCM V1 (service account)** via:
+O identificador Android é `com.behs4nt05.smartparking`. No Firebase Console, crie um app Android com **esse mesmo package**, baixe `google-services.json` e não o versiona. Na área **Environment variables** do projeto Expo/EAS, crie uma variável **FILE/secret** chamada `GOOGLE_SERVICES_JSON` para o ambiente `preview` (e depois `production`). O `app.config.js` usa esse arquivo em `android.googleServicesFile` e interrompe builds Android no EAS se o arquivo estiver ausente, inválido ou pertencer a outro pacote. Configure também as **credenciais de envio FCM V1 (service account)** via:
 
 ```bash
 npx eas-cli@latest credentials --platform android
@@ -34,7 +34,8 @@ As credenciais para receber o token no APK e as credenciais FCM para enviar pelo
 
 Configure no ambiente **preview** do Expo:
 - `EXPO_PUBLIC_API_URL_MOBILE=https://SUA_API_PUBLICA` (não `localhost` nem o QR/Metro).
-- `EXPO_PUBLIC_APP_SIGNING_SECRET`: compatibilidade temporária com o validador legado do backend. **É pública em todo APK/Web e não fornece autenticação real.** O controle de acesso é feito pelo JWT e pelo backend, não por essa assinatura extra.
+
+No backend usado pelo APK e pelo iOS, mantenha `REQUIRE_CLIENT_HMAC=false`, como no Compose do piloto e no Blueprint Render. A mensagem antiga “Use o aplicativo oficial” vem do validador HMAC legado da API. Atualize o backend que estiver retornando essa mensagem e preserve JWT e as permissões por perfil.
 
 Depois:
 
@@ -46,7 +47,7 @@ Esse APK utiliza a API pública definida em `EXPO_PUBLIC_API_URL_MOBILE`; o tún
 
 Abra o link do build no telefone e instale o **APK**. Não depende de publicar na Play Store. Ao iniciar, faça login e abra **Notificações → Verificar configuração**. Após o diagnóstico ficar apto, ative o switch. Teste reserva, cancelamento e recebimento **com o aplicativo em primeiro plano, fundo e fechado**.
 
-**iOS:** distribuir binário instalável a terceiros exige os requisitos de assinatura/provisionamento da Apple, normalmente uma conta paga. Sem isso, disponibilize a versão web para Safari; isso não equivale a push nativo iOS.
+**iOS:** vincule ao EAS uma equipe ativa do Apple Developer Program, o certificado de distribuição e o perfil de provisionamento para `com.behs4nt05.smartparking`. Habilite Push Notifications para esse identificador e associe uma chave APNs nas credenciais iOS do EAS (`npx eas-cli@latest credentials --platform ios`). Gere o IPA com o perfil `production` para TestFlight ou `preview` para distribuição Ad Hoc em aparelhos cadastrados. Repita no iPhone os testes de cadastro, reserva, cancelamento e abertura da notificação.
 
 Fontes oficiais:
 - https://docs.expo.dev/push-notifications/push-notifications-setup/
@@ -61,7 +62,7 @@ O `render.yaml` prepara **apenas a API FastAPI no Render**. A arquitetura previa
 Variáveis fundamentais do backend (configurar **privadamente** no Render):
 - `DATABASE_URL` — conexão real ao PostgreSQL. Nunca commitar credenciais.
 - `SECRET_KEY` — segredo JWT robusto, gerado automaticamente no Blueprint.
-- `APP_SIGNING_SECRET` — valor forte para o middleware legado; a cópia `EXPO_PUBLIC_APP_SIGNING_SECRET` do frontend **não é confidencial**.
+- `REQUIRE_CLIENT_HMAC=false` — usa JWT e permissões por perfil para as operações do aplicativo. Preserve `APP_SIGNING_SECRET` no servidor enquanto a configuração legada existir.
 - `TRUSTED_HOSTS` — JSON com domínio concreto da API, por exemplo `["smartparking-api.onrender.com"]` **somente se esse for o endereço efetivo**.
 - `CORS_ORIGINS` — JSON com o endereço HTTPS real do frontend, sem `*`.
 - `ENVIRONMENT=production`; `DEBUG=false`; `DB_AUTO_SQLITE=false`; `SEED_DEMO_ON_STARTUP=false`.
@@ -72,7 +73,6 @@ Variáveis fundamentais do backend (configurar **privadamente** no Render):
 Variáveis públicas do site **Cloudflare Pages** (compilação estática Expo Web):
 - `NODE_VERSION=24.19.0`
 - `EXPO_PUBLIC_API_URL_WEB=https://DOMINIO_REAL_DA_API`
-- `EXPO_PUBLIC_APP_SIGNING_SECRET` — mesmo valor do backend **para compatibilidade atual**, nunca considerado proteção de identidade.
 
 No Cloudflare Pages, use a raiz do repositório, comando `cd src/frontend/smart-parking && npm ci --no-audit --no-fund && npx expo export --platform web` e diretório de saída `src/frontend/smart-parking/dist`. Configure fallback de rotas conforme o export Expo estático (evite reescrever indiscriminadamente rotas que já geram HTML).
 
@@ -94,4 +94,4 @@ O banco Neon Free é adequado para pequenos testes persistentes, mas sujeito a c
 
 ## 5. Segurança a resolver antes de tratar o deploy como produção comercial
 
-O middleware atual usa HMAC com chave incorporada ao cliente `EXPO_PUBLIC_APP_SIGNING_SECRET`. Qualquer usuário consegue extrair esse valor do JS/APK, portanto ele **não diferencia aplicativo legítimo de script malicioso**. Não prometa integridade de cliente ou antirreplay global baseado nesse segredo. JWT, autorização por recurso no servidor e TLS são necessários, mas ainda não equivalem a uma auditoria de pentest. O simulador e demais recursos sensíveis precisam de análise específica antes de expor usuários reais.
+O middleware HMAC é opcional e fica desativado nas configurações de publicação. Uma chave incorporada ao cliente pode ser extraída do JS ou do binário. JWT, autorização por recurso no servidor e TLS são necessários, mas ainda não equivalem a uma auditoria de pentest. O simulador e demais recursos sensíveis precisam de análise específica antes de expor usuários reais.
