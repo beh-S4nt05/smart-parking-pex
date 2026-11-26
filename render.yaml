@@ -30,6 +30,8 @@ services:
         generateValue: true
       - key: APP_SIGNING_SECRET
         sync: false
+      - key: REQUIRE_CLIENT_HMAC
+        value: "false"
       - key: TRUSTED_HOSTS
         sync: false
       - key: CORS_ORIGINS

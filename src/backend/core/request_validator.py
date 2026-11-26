@@ -99,7 +99,7 @@ class RequestValidationMiddleware(BaseHTTPMiddleware):
             return JSONResponse(
                 status_code=403,
                 content={
-                    "detail": "Requisição inválida: Assinatura ausente. Use o aplicativo oficial."
+                    "detail": "Assinatura ausente na requisição. O servidor exige assinatura HMAC de clientes legados."
                 },
             )
 
