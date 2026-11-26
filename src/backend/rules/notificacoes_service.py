@@ -197,6 +197,12 @@ def ao_evento_operacional(db: Session, *, evento: str, usuario_id: str | None,
         entidade, referencia = "pagamento", pagamento_id
     else:
         mensagem = f"Vaga {codigo}: {titulo.lower()}."
+        if evento == "reserva_criada" and reserva_id:
+            reserva = db.get(Reserva, reserva_id)
+            if reserva:
+                prazo = normalizar(reserva.horario_fim).replace(tzinfo=timezone.utc)
+                prazo_local = prazo.astimezone(FUSO_MANAUS).strftime("%d/%m às %H:%M")
+                mensagem = f"Vaga {codigo} reservada até {prazo_local} (horário de Manaus)."
         destino = "/reservas"
         entidade, referencia = "reserva", reserva_id
     chave = f"operacao:{evento}:{pagamento_id or reserva_id}"
@@ -227,16 +233,20 @@ def registrar_dispositivo(db: Session, usuario_id: str, token: str, plataforma: 
 def lembretes_pendentes(db: Session, agora: datetime | None = None) -> int:
     agora = agora or utc_agora()
     janela = agora + timedelta(minutes=15)
-    reservas = db.query(Reserva).filter(
+    ja_avisada = db.query(Notificacao.id).filter(
+        Notificacao.chave_idempotencia == ("reserva:" + Reserva.id + ":aviso15"),
+    ).exists()
+    reservas = db.query(Reserva).outerjoin(
+        PreferenciaNotificacao, PreferenciaNotificacao.usuario_id == Reserva.usuario_id,
+    ).filter(
         Reserva.status == StatusReserva.CONFIRMADA,
         Reserva.horario_fim > agora,
         Reserva.horario_fim <= janela,
-    ).limit(200).all()
+        func.coalesce(PreferenciaNotificacao.lembretes, True),
+        ~ja_avisada,
+    ).order_by(Reserva.horario_fim, Reserva.id).limit(200).all()
     count = 0
     for reserva in reservas:
-        pref = preferencias(db, reserva.usuario_id)
-        if not pref.lembretes:
-            continue
         vaga = db.get(Vaga, reserva.vaga_id)
         est_id = vaga.andar.estacionamento_id if vaga and vaga.andar else None
         mensagem = f"Sua reserva da vaga {vaga.codigo if vaga else '—'} está perto do vencimento."

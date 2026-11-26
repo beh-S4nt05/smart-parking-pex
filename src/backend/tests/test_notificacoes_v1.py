@@ -1,9 +1,9 @@
 """Regressão V1 — notificações idempotentes, usuários e filtros no backend real."""
 from datetime import timedelta
 
-from core.timeutils import utc_agora
+from core.timeutils import FUSO_MANAUS, normalizar, utc_agora
 from models.db_models import (
-    AcompanhamentoVaga, EventoOperacional, Notificacao, TipoUsuario,
+    AcompanhamentoVaga, EntregaNotificacao, EventoOperacional, Notificacao, TipoUsuario,
 )
 from models.schemas import ReservaCreate
 from rules import notificacoes_service as notify, reserva_service
@@ -56,6 +56,31 @@ def test_reserva_cancelamento_gera_apenas_notificacoes_da_conta(db, fab, client)
     assert client.patch("/api/notificacoes/ler-todas", headers=fab.token(outro)).status_code == 200
 
 
+def test_marcar_notificacoes_em_producao_usa_autenticacao_da_conta(db, fab, client, monkeypatch):
+    motorista = fab.usuario()
+    outro = fab.usuario()
+    vaga = fab.vaga(fab.andar(fab.est()))
+    reserva = _reserva(db, vaga, motorista)
+    reserva_service.cancelar_reserva(db, reserva.id, motorista)
+    notificacoes = db.query(Notificacao).filter_by(
+        usuario_id=motorista.id, referencia_id=reserva.id,
+    ).all()
+    assert len(notificacoes) == 2
+
+    monkeypatch.setattr(notify.settings, "ENVIRONMENT", "production")
+    monkeypatch.setattr(notify.settings, "REQUIRE_CLIENT_HMAC", False)
+    rota_individual = f"/api/notificacoes/{notificacoes[0].id}/ler"
+    rota_todas = "/api/notificacoes/ler-todas"
+
+    assert client.patch(rota_todas).status_code == 401
+    assert client.patch(rota_individual, headers=fab.token(outro)).status_code == 404
+    assert client.patch(rota_todas, headers=fab.token(outro)).json() == {"atualizadas": 0}
+    headers = fab.token(motorista)
+    assert client.patch(rota_individual, headers=headers).status_code == 200
+    assert client.patch(rota_todas, headers=headers).json() == {"atualizadas": 1}
+    assert client.get("/api/notificacoes/contador", headers=headers).json() == {"nao_lidas": 0}
+
+
 def test_lembrete_antes_prazo_idempotente_e_cancelado(db, fab):
     est = fab.est()
     vaga = fab.vaga(fab.andar(est))
@@ -75,6 +100,32 @@ def test_lembrete_antes_prazo_idempotente_e_cancelado(db, fab):
     assert len(lembretes) == 1
     reserva_service.cancelar_reserva(db, reserva.id, usuario)
     assert notify.lembretes_pendentes(db) == 0
+
+
+def test_push_da_reserva_informa_prazo_e_enfileira_lembrete_e_expiracao(db, fab, monkeypatch):
+    from datetime import timezone
+    from cryptography.fernet import Fernet
+
+    monkeypatch.setattr(notify.settings, "NOTIFICATIONS_ENCRYPTION_KEY", Fernet.generate_key().decode())
+    usuario = fab.usuario()
+    vaga = fab.vaga(fab.andar(fab.est()))
+    notify.preferencias(db, usuario.id).push_ativo = True
+    dispositivo = notify.registrar_dispositivo(db, usuario.id, "ExpoPushToken[teste_prazo]", "android")
+    reserva = _reserva(db, vaga, usuario)
+    fim = normalizar(reserva.horario_fim)
+
+    assert notify.lembretes_pendentes(db, fim - timedelta(minutes=16)) == 0
+    assert notify.lembretes_pendentes(db, fim - timedelta(minutes=15)) == 1
+    assert notify.lembretes_pendentes(db, fim - timedelta(minutes=14)) == 0
+    monkeypatch.setattr(reserva_service, "utc_agora", lambda: fim + timedelta(seconds=1))
+    assert reserva_service.expirar_reservas_vencidas(db) == 1
+
+    avisos = dict(db.query(Notificacao.tipo, Notificacao.mensagem)
+                 .join(EntregaNotificacao)
+                 .filter(EntregaNotificacao.dispositivo_id == dispositivo.id).all())
+    assert set(avisos) == {"reserva_confirmada", "lembrete_reserva", "reserva_expirada"}
+    prazo_manaus = fim.replace(tzinfo=timezone.utc).astimezone(FUSO_MANAUS)
+    assert prazo_manaus.strftime("%d/%m às %H:%M") in avisos["reserva_confirmada"]
 
 
 def test_central_preferencias_e_acompanhamento_escopo(db, fab, client):
