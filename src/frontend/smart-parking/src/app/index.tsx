@@ -26,9 +26,8 @@ import { parkingApi } from "../services/api";
 export default function Index() {
   const router = useRouter();
 
-  // Dados operacionais da Home: 1.500 ms, sem empilhar requisicoes lentas.
   const { estacionamentos, loading, atualizando, erro, refresh } = useEstacionamentos({
-    pollingMs: 1500,
+    pollingMs: 15000,
   });
   const [selecionadoId, setSelecionadoId] = useState<string | null>(null);
   const [tempoMedio, setTempoMedio] = useState<number | null>(null);
